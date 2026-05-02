@@ -1,0 +1,68 @@
+{
+  "siteTitle": "Cristina Adam | NYC",
+  "heroTitle": "Cristina Adam",
+  "heroSubtitle": "19. NYC. Neon Lights & Late Night Feelings.",
+  "homeBio": "Hey, I'm Cristina. 19. Just a New York girl living for neon lights, oversized hoodies, and the 3 AM energy of this city. Welcome to my personal dump—where I post the fits and feelings that are too much for the Gram.",
+  "bio": "NYC Nights & Neon Lights: My Life Unfiltered\n\nAbout Me\nI’m Cristina Adam. Born and raised in the heart of New York, I’ve spent my whole life navigating the chaos of this city. People usually know me as that 'E-girl from the Lower East Side,' but there’s a lot more to me than just pink hair and winged eyeliner. At 19, I’m just trying to figure out life in the city that never sleeps while staying true to my own weird aesthetic.\n\nThe NYC Lifestyle\nYou can usually find me wandering around the East Village looking for vintage gems or lost in a warehouse party in Brooklyn. I’m obsessed with the 'New York contrast'—the grit of the subway vs. the luxury of the Upper East Side. My room is basically a shrine to LED strips, old gaming consoles, and clothes I probably should have returned months ago. If I’m not out exploring the city, I’m definitely at my PC, losing my rank in Valorant or curating my latest playlist.\n\nThe E-Girl Vibe\nMy style? It’s a mix of everything I love: anime-core, 90s grunge, and a lot of custom streetwear. I love the 'glitchy' side of fashion—the stuff that makes people do a double-take on the L-train. To me, being an E-girl isn't a costume; it's just how I express the noise in my head. It’s about being a bit messy, a bit mysterious, and 100% authentic to what I'm feeling that day.\n\nWhy I Started This Blog\nInstagram is cool, but the algorithm is exhausting. I wanted a space that I actually own—a place where I can post my full shoots, my late-night 'Notes app' thoughts, and the stuff that’s a little too edgy for public socials. This site is my digital bedroom. Glad you’re here.\n\nCurrent Obsessions:\n* Iced coffee (even when it’s freezing out).\n* Cyberpunk aesthetics.\n* Late-night walks across the Williamsburg Bridge.\n* Retro gaming soundtracks.",
+  "links": {
+    "fanvue": "https://www.fanvue.com/your-profile",
+    "instagram": "https://instagram.com/your-profile",
+    "twitter": "https://twitter.com/your-profile",
+    "tiktok": "https://tiktok.com/@your-profile"
+  },
+  "cta": {
+    "primary": "Unlock Exclusive Content 🔒",
+    "secondary": "View Gallery"
+  },
+  "images": {
+    "hero": "",
+    "heroSlider": [],
+    "gallery": []
+  },
+  "seo": {
+    "metaTitle": "Digital Creator | AI Personality",
+    "metaDescription": "Official website of your favorite AI model. Explore exclusive content and digital lifestyle.",
+    "favicon": ""
+  },
+  "theme": {
+    "primaryColor": "#ffffff",
+    "backgroundColor": "#0a0a0a",
+    "accentColor": "#ffffff",
+    "fontFamily": "'Didot', serif"
+  },
+  "settings": {
+    "maintenanceMode": false,
+    "showFaq": true,
+    "showMustHaves": true
+  },
+  "faq": [
+    { "q": "How old are you?", "a": "I'm 19, born and raised in NYC." },
+    { "q": "What games do you play?", "a": "Mostly Valorant, Overwatch 2, and some retro RPGs." },
+    { "q": "Do you do meetups?", "a": "Only for close friends in the VIP Club for now!" }
+  ],
+  "mustHaves": [
+    { "name": "Gamer Headset", "image": "https://via.placeholder.com/300", "link": "#" },
+    { "name": "Neon Desk Lights", "image": "https://via.placeholder.com/300", "link": "#" },
+    { "name": "Vintage Camcorder", "image": "https://via.placeholder.com/300", "link": "#" }
+  ],
+  "blog": [
+    {
+      "id": 1,
+      "title": "A Day in the Digital Life",
+      "excerpt": "Ever wonder what goes on behind the scenes of an AI model's daily routine?",
+      "content": "Full story coming soon. We are documenting the creative process and how digital identities are formed in 2026."
+    },
+    {
+      "id": 2,
+      "title": "Summer Vibes & Digital Sun",
+      "excerpt": "Exploring the latest summer fashion trends through an AI lens.",
+      "content": "Fashion is evolving. See how we blend style with technology to create stunning visuals."
+    }
+  ],
+  "adminPassword": "password123",
+  "analytics": {
+    "totalHits": 0,
+    "pages": {},
+    "referrers": {}
+  }
+}
