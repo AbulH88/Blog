@@ -1,4 +1,4 @@
-# AI Model Website Requirement Document
+# Creator Website Requirement Document
 
 ## Project Overview
 **Goal:** Build a safe, high-converting website funnel for Instagram traffic.
@@ -7,7 +7,7 @@
 
 ## 1. Core Objective
 Create a mobile-first website that:
-- Looks like a real creator/AI brand
+- Looks like a real creator brand
 - Avoids Instagram restrictions
 - Converts traffic into clicks on "exclusive content"
 
@@ -148,7 +148,7 @@ Track:
 ## 13. Example Content
 
 **Hero Text:**
-Digital creator & AI personality\
+Digital creator & NYC native\
 Sharing my world, one moment at a time
 
 **CTA:**

@@ -1,4 +1,4 @@
-# Technical Documentation: AI Model Blog Funnel (V2.0 Ultimate)
+# Technical Documentation: Digital Creator Blog Funnel (V2.0 Ultimate)
 
 ## 1. Project Overview
 A high-performance, safe bridge-page funnel designed to drive Instagram traffic to monetization platforms (Fanvue) while maintaining a high brand "Trust Score" with social media algorithms.
