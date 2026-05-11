@@ -1,4 +1,3 @@
-import React from 'react';
 import { SERVER_URL } from '../api';
 
 const Gallery = ({ images }: { images: string[] }) => {
