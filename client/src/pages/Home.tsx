@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { SERVER_URL } from '../api';
 
@@ -21,7 +21,7 @@ const Home = ({ config }: { config: any }) => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [slides]);
+  }, [slides.length]);
 
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {

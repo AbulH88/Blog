@@ -1,4 +1,3 @@
-import React from 'react';
 
 const VIP = ({ config }: { config: any }) => {
   return (
