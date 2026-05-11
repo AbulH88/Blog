@@ -7,6 +7,7 @@ const Admin = ({ config, refreshConfig }: { config: any, refreshConfig: () => vo
   const [activeTab, setActiveTab] = useState('analytics');
   const [status, setStatus] = useState('');
   const [analytics, setAnalytics] = useState<any>(null);
+  const [editingPost, setEditingPost] = useState<any>(null);
   
   const getFullUrl = (path: string) => {
     if (!path) return '';
@@ -23,7 +24,7 @@ const Admin = ({ config, refreshConfig }: { config: any, refreshConfig: () => vo
 
     const fetchAnalytics = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/analytics');
+        const res = await fetch(`${SERVER_URL}/api/analytics`);
         const data = await res.json();
         setAnalytics(data);
       } catch(e) {}
@@ -382,7 +383,7 @@ const Admin = ({ config, refreshConfig }: { config: any, refreshConfig: () => vo
         <div className="admin-header">
           <div>
              <h1 style={{ textTransform: 'capitalize' }}>{activeTab} Management</h1>
-             <p style={{ fontSize: '0.8rem', color: '#666' }}>Manage your AI model brand identity</p>
+             <p style={{ fontSize: '0.8rem', color: '#666' }}>Manage your creator brand identity</p>
           </div>
           <button onClick={() => { localStorage.removeItem('adminToken'); navigate('/login'); }} className="btn btn-secondary" style={{ padding: '8px 20px', fontSize: '0.8rem', color: '#333' }}>Logout</button>
         </div>
