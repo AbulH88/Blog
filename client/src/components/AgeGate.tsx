@@ -1,4 +1,3 @@
-import React from 'react';
 
 const AgeGate = ({ onVerify }: { onVerify: () => void }) => {
   const handleVerify = () => {
