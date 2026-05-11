@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateConfig, uploadImage, SERVER_URL } from '../api';
 
@@ -9,10 +9,6 @@ const Admin = ({ config, refreshConfig }: { config: any, refreshConfig: () => vo
   const [analytics, setAnalytics] = useState<any>(null);
   const [editingPost, setEditingPost] = useState<any>(null);
   
-  const getFullUrl = (path: string) => {
-    if (!path) return '';
-    return path.startsWith('http') ? path : `${SERVER_URL}${path}`;
-  };
 
   const navigate = useNavigate();
 
@@ -27,7 +23,7 @@ const Admin = ({ config, refreshConfig }: { config: any, refreshConfig: () => vo
         const res = await fetch(`${SERVER_URL}/api/analytics`);
         const data = await res.json();
         setAnalytics(data);
-      } catch(e) {}
+      } catch { /* ignore error */ }
     };
     fetchAnalytics();
   }, [navigate]);

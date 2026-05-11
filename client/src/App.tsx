@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { getConfig } from './api';
 import './styles/main.css';
@@ -26,7 +26,7 @@ const Maintenance = () => (
 
 function App() {
   const [config, setConfig] = useState<any>(null);
-  const [isVerified, setIsVerified] = useState(false);
+  const [isVerified, setIsVerified] = useState(() => localStorage.getItem('ageVerified') === 'true');
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -68,10 +68,6 @@ function App() {
       }
     };
     fetchConfig();
-    
-    if (localStorage.getItem('ageVerified') === 'true') {
-      setIsVerified(true);
-    }
   }, []);
 
   if (!config) return <div className="loading">Loading...</div>;
