@@ -1,0 +1,161 @@
+const express = require('express');
+const { Collection, Post, Creator, Transaction } = require('../models');
+const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+
+const router = express.Router();
+
+// GET /api/collections/:slug/all — creator sees all collections + their posts
+router.get('/:slug/all', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await Creator.findOne({ where: { slug: req.params.slug } });
+    if (!creator || creator.id !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+
+    const collections = await Collection.findAll({
+      where: { creatorId: creator.id },
+      order: [['createdAt', 'DESC']],
+    });
+
+    const withPosts = await Promise.all(
+      collections.map(async col => {
+        const posts = await Post.findAll({ where: { collectionId: col.id } });
+        return { ...col.toJSON(), posts };
+      })
+    );
+
+    res.json(withPosts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/collections/:slug — public, published collections with post count
+router.get('/:slug', async (req, res) => {
+  try {
+    const creator = await Creator.findOne({ where: { slug: req.params.slug } });
+    if (!creator) return res.status(404).json({ error: 'Creator not found' });
+
+    const collections = await Collection.findAll({
+      where: { creatorId: creator.id, isPublished: true },
+      order: [['createdAt', 'DESC']],
+    });
+
+    const withCounts = await Promise.all(
+      collections.map(async col => {
+        const postCount = await Post.count({ where: { collectionId: col.id } });
+        return { ...col.toJSON(), postCount };
+      })
+    );
+
+    res.json(withCounts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/collections — create collection
+router.post('/', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await Creator.findOne({ where: { slug: req.body.creatorSlug } });
+    if (!creator || creator.id !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+
+    const { title, description, price, isPublished } = req.body;
+    const col = await Collection.create({
+      creatorId: creator.id,
+      title: title || 'Untitled Bundle',
+      description: description || '',
+      price: parseFloat(price) || 9.99,
+      isPublished: isPublished !== false,
+    });
+
+    res.status(201).json(col);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/collections/:id — update collection
+router.patch('/:id', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const col = await Collection.findByPk(req.params.id);
+    if (!col || col.creatorId !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+
+    const { title, description, price, isPublished } = req.body;
+    await col.update({ title, description, price: parseFloat(price), isPublished });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/collections/:id — delete, unlinks posts
+router.delete('/:id', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const col = await Collection.findByPk(req.params.id);
+    if (!col || col.creatorId !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+
+    await Post.update({ collectionId: null }, { where: { collectionId: col.id } });
+    await col.destroy();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/collections/:id/assign — assign a post to this collection
+router.patch('/:id/assign', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const col = await Collection.findByPk(req.params.id);
+    if (!col || col.creatorId !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+
+    const post = await Post.findByPk(req.body.postId);
+    if (!post || post.creatorId !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+
+    await post.update({ collectionId: col.id, isPremium: true });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/collections/remove-post/:postId — remove post from its collection
+router.patch('/remove-post/:postId', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const post = await Post.findByPk(req.params.postId);
+    if (!post || post.creatorId !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+    await post.update({ collectionId: null });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/collections/:id/unlock — fan unlocks a collection (mock — real payment via Stripe later)
+router.post('/:id/unlock', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan access required' });
+
+    const col = await Collection.findByPk(req.params.id);
+    if (!col) return res.status(404).json({ error: 'Collection not found' });
+
+    // Check if already unlocked
+    const existing = await Transaction.findOne({
+      where: { userId: req.user.userId, type: 'collection_unlock', referenceId: col.id },
+    });
+    if (existing) return res.json({ success: true, alreadyUnlocked: true });
+
+    await Transaction.create({
+      userId: req.user.userId,
+      creatorId: col.creatorId,
+      type: 'collection_unlock',
+      amount: col.price,
+      referenceId: col.id,
+      description: `Bundle unlock: ${col.title}`,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;
