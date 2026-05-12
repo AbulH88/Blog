@@ -1,55 +1,85 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateConfig, uploadImage, SERVER_URL } from '../api';
+import {
+  updateConfig, uploadImage, SERVER_URL, createPost, updatePost, deletePost,
+  CREATOR_SLUG, getCreatorAnalytics,
+} from '../api';
+import AdminFloatingChat from '../components/AdminFloatingChat';
 
-const Admin = ({ config, refreshConfig }: { config: any, refreshConfig: () => void }) => {
-  const [formData, setFormData] = useState(config);
-  const [activeTab, setActiveTab] = useState('analytics');
-  const [status, setStatus] = useState('');
-  const [analytics, setAnalytics] = useState<any>(null);
+type Tab = 'overview' | 'content' | 'settings';
+
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'overview',  label: 'Overview',  icon: '◻' },
+  { id: 'content',   label: 'Content',   icon: '◈' },
+  { id: 'settings',  label: 'Settings',  icon: '◉' },
+];
+
+const mkColors = (dark: boolean) => ({
+  text:        dark ? '#fff'    : '#111',
+  muted:       dark ? '#666'    : '#888',
+  faint:       dark ? '#444'    : '#bbb',
+  border:      dark ? '#1a1a1a' : '#e8e8e8',
+  borderFaint: dark ? '#141414' : '#f0f0f0',
+  bg:          dark ? '#0a0a0a' : '#fafafa',
+  inputBg:     dark ? '#0a0a0a' : '#f8f8f8',
+  progressBg:  dark ? '#1a1a1a' : '#e5e5e5',
+  editBg:      dark ? '#0a0a0a' : '#f8f8f8',
+  sidebarText: dark ? '#555'    : '#bbb',
+  logoutText:  dark ? '#444'    : '#aaa',
+});
+
+const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => void }) => {
+  const [formData, setFormData]     = useState(config);
+  const [activeTab, setActiveTab]   = useState<Tab>('overview');
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('adminTheme') !== 'light');
+  const C = mkColors(isDark);
+  const toggleTheme = () => setIsDark(d => {
+    const next = !d;
+    localStorage.setItem('adminTheme', next ? 'dark' : 'light');
+    return next;
+  });
+  const [status, setStatus]         = useState('');
+  const [analytics, setAnalytics]   = useState<any>(null);
   const [editingPost, setEditingPost] = useState<any>(null);
-  
+
+  // Content (vault) state
+  const [vaultPosts, setVaultPosts]   = useState<any[]>([]);
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [newPost, setNewPost] = useState({ title: '', caption: '', isPremium: false, price: '0', isPinned: false });
+  const [postFile, setPostFile]   = useState<File | null>(null);
+  const [postStatus, setPostStatus] = useState('');
 
   const navigate = useNavigate();
 
+  // Auth guard + initial analytics load
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
-    if (!token) {
-      navigate('/login');
-    }
-
-    const fetchAnalytics = async () => {
-      try {
-        const res = await fetch(`${SERVER_URL}/api/analytics`);
-        const data = await res.json();
-        setAnalytics(data);
-      } catch { /* ignore error */ }
-    };
-    fetchAnalytics();
+    if (!token) { navigate('/login'); return; }
+    getCreatorAnalytics().then(setAnalytics).catch(() => {});
   }, [navigate]);
+
+  // Load data when switching to tabs that need it
+  useEffect(() => {
+    if (activeTab === 'content') fetchVaultPosts();
+  }, [activeTab]);
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleChange = (e: any) => {
     const { name, value, type, checked } = e.target;
     const val = type === 'checkbox' ? checked : value;
-
     if (name.includes('.')) {
-      const parts = name.split('.');
-      if (parts.length === 2) {
-        const [parent, child] = parts;
-        setFormData({
-          ...formData,
-          [parent]: { ...formData[parent], [child]: val }
-        });
-      }
+      const [parent, child] = name.split('.');
+      setFormData({ ...formData, [parent]: { ...formData[parent], [child]: val } });
     } else {
       setFormData({ ...formData, [name]: val });
     }
   };
 
-  const handleFileUpload = async (e: any, type: 'hero' | 'gallery' | 'slider' | 'favicon') => {
+  const handleFileUpload = async (e: any, type: 'gallery' | 'slider' | 'favicon') => {
     const file = e.target.files[0];
     if (!file) return;
-    setStatus('Uploading...');
+    setStatus('Uploading…');
     const res = await uploadImage(file);
     if (res.url) {
       if (type === 'favicon') {
@@ -63,33 +93,6 @@ const Admin = ({ config, refreshConfig }: { config: any, refreshConfig: () => vo
     }
   };
 
-  const handleSave = async () => {
-    setStatus('Saving...');
-    const res = await updateConfig(formData);
-    if (res.success) {
-      setStatus('Saved Successfully!');
-      refreshConfig();
-      setTimeout(() => setStatus(''), 3000);
-    }
-  };
-
-  // Blog CRUD
-  const saveBlogPost = () => {
-    let newBlog = [...formData.blog];
-    if (editingPost.id) {
-      newBlog = newBlog.map(p => p.id === editingPost.id ? editingPost : p);
-    } else {
-      const newId = Math.max(...newBlog.map(p => p.id), 0) + 1;
-      newBlog.push({ ...editingPost, id: newId });
-    }
-    setFormData({ ...formData, blog: newBlog });
-    setEditingPost(null);
-  };
-
-  const deleteBlogPost = (id: number) => {
-    setFormData({ ...formData, blog: formData.blog.filter((p: any) => p.id !== id) });
-  };
-
   const removeImage = (type: 'slider' | 'gallery', index: number) => {
     const key = type === 'slider' ? 'heroSlider' : 'gallery';
     const list = [...formData.images[key]];
@@ -97,302 +100,475 @@ const Admin = ({ config, refreshConfig }: { config: any, refreshConfig: () => vo
     setFormData({ ...formData, images: { ...formData.images, [key]: list } });
   };
 
-  const renderContent = () => {
-    switch(activeTab) {
-      case 'analytics':
-        return (
-          <div className="admin-form">
-             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
-                <div style={{ width: '10px', height: '10px', background: '#22c55e', borderRadius: '50%', marginRight: '10px', animation: 'pulse 2s infinite' }}></div>
-                <span style={{ fontSize: '0.9rem', color: '#666', fontWeight: 600 }}>System Live & Tracking</span>
-             </div>
-            <div className="analytics-grid">
-              <div className="stat-card">
-                <h3>Total Page Views</h3>
-                <p>{analytics?.totalHits || 0}</p>
-              </div>
-              <div className="stat-card" style={{ borderLeft: '4px solid #E1306C' }}>
-                <h3>Instagram</h3>
-                <p>{analytics?.referrers?.Instagram || 0}</p>
-              </div>
-              <div className="stat-card" style={{ borderLeft: '4px solid #1DA1F2' }}>
-                <h3>Twitter / X</h3>
-                <p>{analytics?.referrers?.['Twitter/X'] || 0}</p>
-              </div>
-              <div className="stat-card" style={{ borderLeft: '4px solid #EE1D52' }}>
-                <h3>TikTok</h3>
-                <p>{analytics?.referrers?.TikTok || 0}</p>
-              </div>
-            </div>
-            
-            <div className="admin-card">
-              <h3>Source Distribution</h3>
-              <div style={{ marginTop: '20px' }}>
-                {analytics && Object.entries(analytics.referrers).map(([source, count]: any) => {
-                  const percent = Math.round((count / analytics.totalHits) * 100);
-                  return (
-                    <div key={source} style={{ marginBottom: '15px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.9rem' }}>
-                        <span>{source}</span>
-                        <span>{percent}% ({count})</span>
-                      </div>
-                      <div style={{ width: '100%', height: '8px', background: '#edf2f7', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${percent}%`, height: '100%', background: '#4c51bf' }}></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        );
-      case 'general':
-        return (
-          <div className="admin-form">
-            <div className="admin-card">
-              <h3>Site Identity</h3>
-              <div className="form-group">
-                <label>Website Name</label>
-                <input name="siteTitle" value={formData.siteTitle} onChange={handleChange} />
-              </div>
-              <div className="form-group">
-                <label>Hero Headline</label>
-                <input name="heroTitle" value={formData.heroTitle} onChange={handleChange} />
-              </div>
-              <div className="form-group">
-                <label>Hero Sub-headline</label>
-                <input name="heroSubtitle" value={formData.heroSubtitle} onChange={handleChange} />
-              </div>
-            </div>
-            <div className="admin-card">
-              <h3>Bio Management</h3>
-              <div className="form-group">
-                <label>Homepage Intro (Short)</label>
-                <textarea name="homeBio" value={formData.homeBio} onChange={handleChange} rows={3} />
-              </div>
-              <div className="form-group">
-                <label>Full Story (About Page)</label>
-                <textarea name="bio" value={formData.bio} onChange={handleChange} rows={6} />
-              </div>
-            </div>
-          </div>
-        );
-      case 'blog':
-        return (
-          <div className="admin-form">
-            <div className="admin-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <h3>Blog Manager</h3>
-                <button className="btn btn-primary" style={{ padding: '8px 15px', fontSize: '0.8rem' }} onClick={() => setEditingPost({ title: '', excerpt: '', content: '' })}>+ New Post</button>
-              </div>
-              {editingPost ? (
-                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <h4>{editingPost.id ? 'Edit Post' : 'New Post'}</h4>
-                  <div className="form-group" style={{ marginTop: '15px' }}>
-                    <label>Post Title</label>
-                    <input value={editingPost.title} onChange={(e) => setEditingPost({...editingPost, title: e.target.value})} />
-                  </div>
-                  <div className="form-group">
-                    <label>Excerpt (Teaser)</label>
-                    <textarea value={editingPost.excerpt} onChange={(e) => setEditingPost({...editingPost, excerpt: e.target.value})} rows={2} />
-                  </div>
-                  <div className="form-group">
-                    <label>Full Content</label>
-                    <textarea value={editingPost.content} onChange={(e) => setEditingPost({...editingPost, content: e.target.value})} rows={5} />
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveBlogPost}>Save Post</button>
-                    <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingPost(null)}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="blog-admin-list">
-                  {formData.blog.map((post: any) => (
-                    <div key={post.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee' }}>
-                      <div>
-                        <strong>{post.title}</strong>
-                        <p style={{ fontSize: '0.8rem', color: '#666' }}>{post.excerpt.substring(0, 50)}...</p>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <button onClick={() => setEditingPost(post)} style={{ background: 'none', border: 'none', color: '#4c51bf', cursor: 'pointer' }}>Edit</button>
-                        <button onClick={() => deleteBlogPost(post.id)} style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer' }}>Delete</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      case 'seo':
-        return (
-          <div className="admin-form">
-            <div className="admin-card">
-              <h3>Search Engine Optimization (SEO)</h3>
-              <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '20px' }}>Optimize how your site appears on Google and when shared on socials.</p>
-              <div className="form-group">
-                <label>Meta Title (Browser Tab)</label>
-                <input name="seo.metaTitle" value={formData.seo?.metaTitle} onChange={handleChange} />
-              </div>
-              <div className="form-group">
-                <label>Meta Description</label>
-                <textarea name="seo.metaDescription" value={formData.seo?.metaDescription} onChange={handleChange} rows={3} />
-              </div>
-              <div className="form-group">
-                <label>Favicon (Site Icon)</label>
-                <input type="file" onChange={(e) => handleFileUpload(e, 'favicon')} />
-                {formData.seo?.favicon && <img src={formData.seo.favicon} style={{ width: '32px', marginTop: '10px', display: 'block' }} alt="Favicon" />}
-              </div>
-            </div>
-          </div>
-        );
-      case 'theme':
-        return (
-          <div className="admin-form">
-            <div className="admin-card">
-              <h3>Appearance & Theme</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div className="form-group">
-                  <label>Primary Accent Color</label>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input type="color" name="theme.primaryColor" value={formData.theme?.primaryColor} onChange={handleChange} style={{ width: '50px', padding: '2px', height: '40px' }} />
-                    <input value={formData.theme?.primaryColor} name="theme.primaryColor" onChange={handleChange} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label>Background Color</label>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input type="color" name="theme.backgroundColor" value={formData.theme?.backgroundColor} onChange={handleChange} style={{ width: '50px', padding: '2px', height: '40px' }} />
-                    <input value={formData.theme?.backgroundColor} name="theme.backgroundColor" onChange={handleChange} />
-                  </div>
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Font Family</label>
-                <select name="theme.fontFamily" value={formData.theme?.fontFamily} onChange={handleChange} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                  <option value="'Didot', serif">Luxury (Didot)</option>
-                  <option value="'Inter', sans-serif">Modern (Inter)</option>
-                  <option value="'Playfair Display', serif">Classic (Playfair)</option>
-                  <option value="'System-UI', sans-serif">Minimalist (System)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        );
-      case 'social':
-        return (
-          <div className="admin-form">
-             <div className="admin-card">
-              <h3>Social Media & Monetization</h3>
-              <div className="form-group"><label>Fanvue Profile (VIP)</label><input name="links.fanvue" value={formData.links.fanvue} onChange={handleChange} placeholder="https://fanvue.com/..." /></div>
-              <div className="form-group"><label>Instagram Profile</label><input name="links.instagram" value={formData.links.instagram} onChange={handleChange} /></div>
-              <div className="form-group"><label>Twitter / X Profile</label><input name="links.twitter" value={formData.links.twitter} onChange={handleChange} /></div>
-              <div className="form-group"><label>TikTok Profile</label><input name="links.tiktok" value={formData.links.tiktok} onChange={handleChange} /></div>
-            </div>
-          </div>
-        );
-      case 'media':
-        return (
-          <div className="admin-form">
-            <div className="admin-card">
-              <h3>Hero Slider Images</h3>
-              <input type="file" onChange={(e) => handleFileUpload(e, 'slider')} />
-              <div className="gallery-grid" style={{ marginTop: '20px' }}>
-                {formData.images.heroSlider?.map((img: string, idx: number) => (
-                  <div key={idx} className="gallery-item" style={{ position: 'relative' }}>
-                    <img src={img} alt="Slider" />
-                    <button onClick={() => removeImage('slider', idx)} style={{ position: 'absolute', top: 5, right: 5, background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '10px' }}>X</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="admin-card">
-              <h3>Gallery Manager</h3>
-              <input type="file" onChange={(e) => handleFileUpload(e, 'gallery')} />
-              <div className="gallery-grid" style={{ marginTop: '20px' }}>
-                {formData.images.gallery?.map((img: string, idx: number) => (
-                  <div key={idx} className="gallery-item" style={{ position: 'relative' }}>
-                    <img src={img} alt="Gallery" />
-                    <button onClick={() => removeImage('gallery', idx)} style={{ position: 'absolute', top: 5, right: 5, background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '10px' }}>X</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      case 'settings':
-        return (
-          <div className="admin-form">
-            <div className="admin-card">
-              <h3>Security</h3>
-              <div className="form-group">
-                <label>Update Admin Password</label>
-                <input type="password" name="newPassword" placeholder="Enter new password" onChange={handleChange} />
-                <p style={{ fontSize: '0.7rem', color: '#666' }}>Leave blank to keep current password.</p>
-              </div>
-            </div>
-            <div className="admin-card" style={{ borderLeft: formData.settings?.maintenanceMode ? '4px solid #f59e0b' : '4px solid #10b981' }}>
-              <h3>Site Maintenance</h3>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                   <strong>Maintenance Mode</strong>
-                   <p style={{ fontSize: '0.8rem', color: '#666' }}>When active, public visitors will see a "Coming Soon" screen.</p>
-                </div>
-                <input 
-                  type="checkbox" 
-                  name="settings.maintenanceMode" 
-                  checked={formData.settings?.maintenanceMode} 
-                  onChange={handleChange}
-                  style={{ width: '40px', height: '20px', cursor: 'pointer' }}
-                />
-              </div>
-            </div>
-          </div>
-        );
-      default: return null;
+  const handleSave = async () => {
+    setStatus('Saving…');
+    const res = await updateConfig(formData);
+    if (res.success) {
+      setStatus('Saved!');
+      refreshConfig();
+      setTimeout(() => setStatus(''), 3000);
+    } else {
+      setStatus('Error saving');
     }
   };
 
-  return (
-    <div className="admin-layout">
-      <div className="admin-sidebar">
-        <div style={{ padding: '0 20px 20px' }}>
-           <h2 style={{ border: 'none', padding: 0, margin: 0 }}>PRO PANEL</h2>
-           <span style={{ fontSize: '0.7rem', color: '#4c51bf', fontWeight: 800 }}>V2.0 ULTIMATE</span>
+  // Blog
+  const saveBlogPost = () => {
+    let updated = [...formData.blog];
+    if (editingPost.id) {
+      updated = updated.map((p: any) => p.id === editingPost.id ? editingPost : p);
+    } else {
+      const newId = Math.max(...updated.map((p: any) => p.id), 0) + 1;
+      updated.push({ ...editingPost, id: newId });
+    }
+    setFormData({ ...formData, blog: updated });
+    setEditingPost(null);
+  };
+  const deleteBlogPost = (id: number) =>
+    setFormData({ ...formData, blog: formData.blog.filter((p: any) => p.id !== id) });
+
+  // Vault posts
+  const fetchVaultPosts = async () => {
+    setVaultLoading(true);
+    try {
+      const res = await fetch(`${SERVER_URL}/api/posts/${CREATOR_SLUG}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+      });
+      const data = await res.json();
+      setVaultPosts(data.posts || []);
+    } catch { /* ignore */ }
+    setVaultLoading(false);
+  };
+
+  const handleUploadPost = async () => {
+    if (!postFile) { setPostStatus('Select a file first'); return; }
+    setPostStatus('Uploading…');
+    const fd = new FormData();
+    fd.append('media', postFile);
+    fd.append('title', newPost.title);
+    fd.append('caption', newPost.caption);
+    fd.append('isPremium', String(newPost.isPremium));
+    fd.append('price', newPost.price);
+    fd.append('isPinned', String(newPost.isPinned));
+    fd.append('mediaType', postFile.type.startsWith('video') ? 'video' : postFile.type.startsWith('audio') ? 'audio' : 'image');
+    const res = await createPost(fd);
+    if (res.id) {
+      setPostStatus('Posted!');
+      setNewPost({ title: '', caption: '', isPremium: false, price: '0', isPinned: false });
+      setPostFile(null);
+      fetchVaultPosts();
+      setTimeout(() => setPostStatus(''), 3000);
+    } else {
+      setPostStatus(res.error || 'Upload failed');
+    }
+  };
+
+  const togglePostField = async (id: number, field: 'isPremium' | 'isPinned', current: boolean) => {
+    await updatePost(id, { [field]: !current });
+    fetchVaultPosts();
+  };
+
+  const handleDeletePost = async (id: number) => {
+    if (!window.confirm('Delete this post?')) return;
+    await deletePost(id);
+    fetchVaultPosts();
+  };
+
+  // ── Tab renderers ────────────────────────────────────────────────────────────
+
+  const renderOverview = () => {
+    const traffic = analytics?.traffic || { totalHits: 0, referrers: {} };
+    const referrers = traffic.referrers || {};
+    const totalHits = traffic.totalHits || 0;
+    const topSource = Object.entries(referrers).sort((a: any, b: any) => b[1] - a[1])[0];
+
+    return (
+      <div>
+        <div className="av2-stat-grid">
+          <div className="av2-stat">
+            <p className="av2-stat-label">Active Members</p>
+            <p className="av2-stat-value">{analytics?.subscribers?.active ?? '—'}</p>
+          </div>
+          <div className="av2-stat">
+            <p className="av2-stat-label">Total Revenue</p>
+            <p className="av2-stat-value">${(analytics?.revenue?.total || 0).toFixed(2)}</p>
+          </div>
+          <div className="av2-stat">
+            <p className="av2-stat-label">Page Views</p>
+            <p className="av2-stat-value">{totalHits.toLocaleString()}</p>
+          </div>
+          <div className="av2-stat">
+            <p className="av2-stat-label">Top Source</p>
+            <p className="av2-stat-value" style={{ fontSize: '1.1rem' }}>{topSource ? topSource[0] : '—'}</p>
+          </div>
         </div>
-        <div className="sidebar-nav">
-          <div className={`sidebar-link ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>📊 Overview</div>
-          <div className={`sidebar-link ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>📝 Content</div>
-          <div className={`sidebar-link ${activeTab === 'blog' ? 'active' : ''}`} onClick={() => setActiveTab('blog')}>📰 Blog Manager</div>
-          <div className={`sidebar-link ${activeTab === 'media' ? 'active' : ''}`} onClick={() => setActiveTab('media')}>🖼️ Media Library</div>
-          <div className={`sidebar-link ${activeTab === 'social' ? 'active' : ''}`} onClick={() => setActiveTab('social')}>🔗 Socials & VIP</div>
-          <div className={`sidebar-link ${activeTab === 'seo' ? 'active' : ''}`} onClick={() => setActiveTab('seo')}>🔍 SEO & Meta</div>
-          <div className={`sidebar-link ${activeTab === 'theme' ? 'active' : ''}`} onClick={() => setActiveTab('theme')}>🎨 Appearance</div>
-          <div className={`sidebar-link ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>⚙️ Site Settings</div>
+
+        <div className="av2-card">
+          <p className="av2-section-label">Traffic Breakdown</p>
+          {Object.keys(referrers).length === 0 ? (
+            <p style={{ color: C.faint, fontSize: '0.85rem' }}>No traffic recorded yet. Once fans visit your page, data will appear here.</p>
+          ) : Object.entries(referrers).map(([src, count]: any) => {
+            const pct = totalHits > 0 ? Math.round((count / totalHits) * 100) : 0;
+            return (
+              <div key={src} style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 5 }}>
+                  <span style={{ color: C.text }}>{src}</span>
+                  <span style={{ color: C.muted }}>{pct}% · {count}</span>
+                </div>
+                <div style={{ height: 4, background: C.progressBg, borderRadius: 2 }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: '#7c3aed', borderRadius: 2 }} />
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <div style={{ marginTop: 'auto', padding: '20px' }}>
-          <button onClick={() => window.open('/', '_blank')} className="btn btn-secondary" style={{ width: '100%', fontSize: '0.7rem', color: '#fff', borderColor: '#444' }}>Preview Site ↗</button>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={() => window.open('/', '_blank')} className="btn btn-secondary"
+            style={{ flex: 1, padding: '12px', fontSize: '0.8rem', letterSpacing: 1 }}>
+            Preview Site ↗
+          </button>
+          <button onClick={() => setActiveTab('content')} className="btn btn-primary"
+            style={{ flex: 1, padding: '12px', fontSize: '0.8rem', letterSpacing: 1 }}>
+            Upload Content
+          </button>
         </div>
       </div>
-      
-      <div className="admin-main">
-        <div className="admin-header">
+    );
+  };
+
+  const renderContent = () => (
+    <div>
+      {/* Upload */}
+      <div className="av2-card">
+        <p className="av2-section-label">New Post</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <label className="av2-upload-area">
+            <input type="file" accept="image/*,video/*,audio/*" style={{ display: 'none' }}
+              onChange={e => setPostFile(e.target.files?.[0] || null)} />
+            <span style={{ fontSize: '1.6rem' }}>{postFile ? '✓' : '+'}</span>
+            <span style={{ fontSize: '0.78rem', color: C.muted, marginTop: 6 }}>
+              {postFile ? postFile.name.substring(0, 20) + '…' : 'Pick media'}
+            </span>
+          </label>
           <div>
-             <h1 style={{ textTransform: 'capitalize' }}>{activeTab} Management</h1>
-             <p style={{ fontSize: '0.8rem', color: '#666' }}>Manage your creator brand identity</p>
+            <input className="av2-input" placeholder="Title (optional)"
+              value={newPost.title} onChange={e => setNewPost({ ...newPost, title: e.target.value })} />
+            <textarea className="av2-input" placeholder="Caption…" rows={3}
+              value={newPost.caption} onChange={e => setNewPost({ ...newPost, caption: e.target.value })}
+              style={{ resize: 'none', marginBottom: 10 }} />
           </div>
-          <button onClick={() => { localStorage.removeItem('adminToken'); navigate('/login'); }} className="btn btn-secondary" style={{ padding: '8px 20px', fontSize: '0.8rem', color: '#333' }}>Logout</button>
         </div>
+        <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+          <label className="av2-toggle-label">
+            <input type="checkbox" checked={newPost.isPremium}
+              onChange={e => setNewPost({ ...newPost, isPremium: e.target.checked })} />
+            Members Only
+          </label>
+          <label className="av2-toggle-label">
+            <input type="checkbox" checked={newPost.isPinned}
+              onChange={e => setNewPost({ ...newPost, isPinned: e.target.checked })} />
+            Pin to top
+          </label>
+          {newPost.isPremium && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '0.78rem', color: '#777' }}>Unlock $</span>
+              <input type="number" min="0" step="0.99" className="av2-input"
+                value={newPost.price} onChange={e => setNewPost({ ...newPost, price: e.target.value })}
+                style={{ width: 80, marginBottom: 0 }} />
+            </div>
+          )}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            {postStatus && <span style={{ fontSize: '0.82rem', color: postStatus.includes('fail') || postStatus.includes('Select') ? '#f87171' : '#4ade80' }}>{postStatus}</span>}
+            <button className="btn btn-primary" onClick={handleUploadPost} style={{ padding: '10px 24px', fontSize: '0.8rem' }}>
+              Post
+            </button>
+          </div>
+        </div>
+      </div>
 
-        {renderContent()}
+      {/* Post list */}
+      <div className="av2-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <p className="av2-section-label" style={{ marginBottom: 0 }}>All Posts ({vaultPosts.length})</p>
+          <button onClick={fetchVaultPosts} style={{ background: 'none', border: '1px solid #222', borderRadius: 6, padding: '4px 12px', color: '#555', cursor: 'pointer', fontSize: '0.75rem' }}>
+            Refresh
+          </button>
+        </div>
+        {vaultLoading ? (
+          <p style={{ color: C.faint, fontSize: '0.85rem' }}>Loading…</p>
+        ) : vaultPosts.length === 0 ? (
+          <p style={{ color: C.faint, fontSize: '0.85rem' }}>No posts yet. Upload your first one above.</p>
+        ) : vaultPosts.map(post => (
+          <div key={post.id} className="av2-post-row">
+            <div className="av2-post-thumb">
+              {post.mediaUrls?.[0]
+                ? <img src={`${SERVER_URL}${post.mediaUrls[0]}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontSize: '1.2rem' }}>📝</span>}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.text }}>
+                {post.title || post.caption || 'Untitled'}
+              </p>
+              <p style={{ margin: '3px 0 0', fontSize: '0.72rem', color: C.muted }}>
+                {new Date(post.createdAt).toLocaleDateString()} · {post.likesCount} likes
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button onClick={() => togglePostField(post.id, 'isPremium', post.isPremium)} className={`av2-tag-btn ${post.isPremium ? 'purple' : ''}`}>
+                {post.isPremium ? '🔒 Members' : 'Free'}
+              </button>
+              <button onClick={() => togglePostField(post.id, 'isPinned', post.isPinned)} className={`av2-tag-btn ${post.isPinned ? 'green' : ''}`}>
+                {post.isPinned ? '📌' : 'Pin'}
+              </button>
+              <button onClick={() => handleDeletePost(post.id)} className="av2-tag-btn red">
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
-        {activeTab !== 'analytics' && (
-          <div className="admin-save-bar">
-            {status && <span style={{ marginRight: '20px', alignSelf: 'center', color: status.includes('Uploaded') ? '#4c51bf' : 'green', fontWeight: 600 }}>{status}</span>}
-            <button onClick={handleSave} className="btn btn-primary" style={{ padding: '12px 40px', borderRadius: '6px' }}>Save Changes</button>
+  const renderSettings = () => (
+    <div>
+      {/* Profile */}
+      <div className="av2-card">
+        <p className="av2-section-label">Profile</p>
+        <label className="av2-label">Display Name</label>
+        <input className="av2-input" name="siteTitle" value={formData.siteTitle} onChange={handleChange} />
+        <label className="av2-label">Short Bio (shown on home page)</label>
+        <textarea className="av2-input" name="homeBio" value={formData.homeBio} onChange={handleChange} rows={2} style={{ resize: 'vertical' }} />
+        <label className="av2-label">Full Bio (About page)</label>
+        <textarea className="av2-input" name="bio" value={formData.bio} onChange={handleChange} rows={5} style={{ resize: 'vertical' }} />
+      </div>
+
+      {/* Media */}
+      <div className="av2-card">
+        <p className="av2-section-label">Hero Slider Images</p>
+        <label className="av2-upload-area" style={{ marginBottom: 14 }}>
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, 'slider')} />
+          <span style={{ fontSize: '1.4rem' }}>+</span>
+          <span style={{ fontSize: '0.76rem', color: '#555', marginTop: 4 }}>Add slider image</span>
+        </label>
+        {(formData.images?.heroSlider || []).length > 0 && (
+          <div className="av2-img-grid">
+            {formData.images.heroSlider.map((img: string, idx: number) => (
+              <div key={idx} style={{ position: 'relative' }}>
+                <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 8 }} />
+                <button onClick={() => removeImage('slider', idx)} className="av2-img-remove">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="av2-section-label" style={{ marginTop: 20 }}>Gallery Images</p>
+        <label className="av2-upload-area" style={{ marginBottom: 14 }}>
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, 'gallery')} />
+          <span style={{ fontSize: '1.4rem' }}>+</span>
+          <span style={{ fontSize: '0.76rem', color: '#555', marginTop: 4 }}>Add gallery image</span>
+        </label>
+        {(formData.images?.gallery || []).length > 0 && (
+          <div className="av2-img-grid">
+            {formData.images.gallery.map((img: string, idx: number) => (
+              <div key={idx} style={{ position: 'relative' }}>
+                <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 8 }} />
+                <button onClick={() => removeImage('gallery', idx)} className="av2-img-remove">✕</button>
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Appearance */}
+      <div className="av2-card">
+        <p className="av2-section-label">Appearance</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div>
+            <label className="av2-label">Primary Color</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" name="theme.primaryColor" value={formData.theme?.primaryColor || '#ffffff'} onChange={handleChange}
+                style={{ width: 40, height: 40, padding: 2, border: '1px solid #1e1e1e', borderRadius: 6, background: 'none', cursor: 'pointer' }} />
+              <input className="av2-input" name="theme.primaryColor" value={formData.theme?.primaryColor || '#ffffff'} onChange={handleChange} style={{ marginBottom: 0 }} />
+            </div>
+          </div>
+          <div>
+            <label className="av2-label">Background Color</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" name="theme.backgroundColor" value={formData.theme?.backgroundColor || '#0a0a0a'} onChange={handleChange}
+                style={{ width: 40, height: 40, padding: 2, border: '1px solid #1e1e1e', borderRadius: 6, background: 'none', cursor: 'pointer' }} />
+              <input className="av2-input" name="theme.backgroundColor" value={formData.theme?.backgroundColor || '#0a0a0a'} onChange={handleChange} style={{ marginBottom: 0 }} />
+            </div>
+          </div>
+        </div>
+        <label className="av2-label" style={{ marginTop: 14 }}>Font</label>
+        <select className="av2-input" name="theme.fontFamily" value={formData.theme?.fontFamily} onChange={handleChange}>
+          <option value="'Didot', serif">Luxury — Didot</option>
+          <option value="'Inter', sans-serif">Modern — Inter</option>
+          <option value="'Playfair Display', serif">Classic — Playfair</option>
+          <option value="'System-UI', sans-serif">Minimal — System</option>
+        </select>
+      </div>
+
+      {/* SEO */}
+      <div className="av2-card">
+        <p className="av2-section-label">SEO & Meta</p>
+        <label className="av2-label">Page Title (browser tab)</label>
+        <input className="av2-input" name="seo.metaTitle" value={formData.seo?.metaTitle || ''} onChange={handleChange} />
+        <label className="av2-label">Meta Description</label>
+        <textarea className="av2-input" name="seo.metaDescription" value={formData.seo?.metaDescription || ''} onChange={handleChange} rows={3} style={{ resize: 'vertical' }} />
+        <label className="av2-label">Favicon</label>
+        <label className="av2-upload-area" style={{ width: 'fit-content', padding: '10px 20px', flexDirection: 'row', gap: 10 }}>
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, 'favicon')} />
+          <span>Upload favicon</span>
+          {formData.seo?.favicon && <img src={formData.seo.favicon} style={{ width: 24, height: 24, objectFit: 'contain' }} alt="" />}
+        </label>
+      </div>
+
+      {/* Social links */}
+      <div className="av2-card">
+        <p className="av2-section-label">Social Links</p>
+        <label className="av2-label">Instagram</label>
+        <input className="av2-input" name="links.instagram" value={formData.links?.instagram || ''} onChange={handleChange} placeholder="https://instagram.com/…" />
+        <label className="av2-label">Twitter / X</label>
+        <input className="av2-input" name="links.twitter" value={formData.links?.twitter || ''} onChange={handleChange} placeholder="https://x.com/…" />
+        <label className="av2-label">TikTok</label>
+        <input className="av2-input" name="links.tiktok" value={formData.links?.tiktok || ''} onChange={handleChange} placeholder="https://tiktok.com/@…" />
+      </div>
+
+      {/* Blog */}
+      <div className="av2-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <p className="av2-section-label" style={{ marginBottom: 0 }}>Blog Posts</p>
+          <button onClick={() => setEditingPost({ title: '', excerpt: '', content: '' })}
+            style={{ background: '#7c3aed', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
+            + New Post
+          </button>
+        </div>
+        {editingPost ? (
+          <div style={{ background: C.editBg, borderRadius: 8, padding: 16, border: `1px solid ${C.border}` }}>
+            <label className="av2-label">Title</label>
+            <input className="av2-input" value={editingPost.title} onChange={e => setEditingPost({ ...editingPost, title: e.target.value })} />
+            <label className="av2-label">Excerpt</label>
+            <textarea className="av2-input" rows={2} value={editingPost.excerpt} onChange={e => setEditingPost({ ...editingPost, excerpt: e.target.value })} style={{ resize: 'vertical' }} />
+            <label className="av2-label">Content</label>
+            <textarea className="av2-input" rows={5} value={editingPost.content} onChange={e => setEditingPost({ ...editingPost, content: e.target.value })} style={{ resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-primary" style={{ flex: 1, padding: '10px' }} onClick={saveBlogPost}>Save</button>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => setEditingPost(null)}>Cancel</button>
+            </div>
+          </div>
+        ) : formData.blog?.length === 0 ? (
+          <p style={{ color: '#444', fontSize: '0.85rem' }}>No blog posts yet.</p>
+        ) : formData.blog?.map((post: any) => (
+          <div key={post.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: `1px solid ${C.border}` }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>{post.title}</p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: C.muted }}>{(post.excerpt || '').substring(0, 60)}…</p>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+              <button onClick={() => setEditingPost(post)} style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', fontSize: '0.82rem' }}>Edit</button>
+              <button onClick={() => deleteBlogPost(post.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.82rem' }}>Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Security & Maintenance */}
+      <div className="av2-card">
+        <p className="av2-section-label">Security</p>
+        <label className="av2-label">New Password (leave blank to keep current)</label>
+        <input className="av2-input" type="password" name="newPassword" placeholder="Enter new password…" onChange={handleChange} />
+
+        <p className="av2-section-label" style={{ marginTop: 20 }}>Maintenance Mode</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600 }}>Show "Coming Soon" to public</p>
+            <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: C.muted }}>Admin and login remain accessible.</p>
+          </div>
+          <input type="checkbox" name="settings.maintenanceMode" checked={!!formData.settings?.maintenanceMode}
+            onChange={handleChange} style={{ width: 40, height: 22, cursor: 'pointer', accentColor: '#7c3aed' }} />
+        </div>
+      </div>
+
+      {/* Save bar */}
+      <div className="av2-save-bar">
+        {status && <span style={{ fontSize: '0.85rem', color: status.includes('Error') ? '#f87171' : '#4ade80', fontWeight: 600 }}>{status}</span>}
+        <button className="btn btn-primary" onClick={handleSave} style={{ padding: '12px 40px', fontSize: '0.85rem' }}>
+          Save Changes
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Layout ───────────────────────────────────────────────────────────────────
+
+  return (
+    <div className={`av2-layout ${isDark ? '' : 'light'}`}>
+      {/* Desktop sidebar */}
+      <aside className="av2-sidebar">
+        <div style={{ padding: '0 24px 28px', borderBottom: `1px solid ${C.borderFaint}` }}>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: '0.72rem', letterSpacing: 4, color: C.sidebarText, textTransform: 'uppercase' }}>Creator</p>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', letterSpacing: 1, color: C.text }}>Dashboard</p>
+        </div>
+
+        <nav style={{ padding: '16px 0', flex: 1 }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`av2-nav-btn ${activeTab === t.id ? 'active' : ''}`}>
+              <span style={{ fontSize: '1rem', width: 22, textAlign: 'center' }}>{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div style={{ padding: '16px 20px', borderTop: `1px solid ${C.borderFaint}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button onClick={toggleTheme}
+            style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px', color: C.muted, cursor: 'pointer', fontSize: '0.75rem', width: '100%' }}>
+            {isDark ? '☀ Light Mode' : '☾ Dark Mode'}
+          </button>
+          <button onClick={() => window.open('/', '_blank')}
+            style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px', color: C.muted, cursor: 'pointer', fontSize: '0.75rem', width: '100%' }}>
+            View Site ↗
+          </button>
+          <button onClick={() => { localStorage.removeItem('adminToken'); navigate('/login'); }}
+            style={{ background: 'none', border: 'none', padding: '9px', color: C.logoutText, cursor: 'pointer', fontSize: '0.75rem', width: '100%' }}>
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="av2-main">
+        <div className="av2-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ margin: 0, fontSize: '0.68rem', letterSpacing: 3, textTransform: 'uppercase', color: C.faint, fontWeight: 700 }}>
+            {activeTab}
+          </p>
+          <button onClick={toggleTheme}
+            style={{ display: 'none', background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 12px', color: C.muted, cursor: 'pointer', fontSize: '0.75rem' }}
+            className="av2-theme-toggle-mobile">
+            {isDark ? '☀' : '☾'}
+          </button>
+        </div>
+
+        {activeTab === 'overview'  && renderOverview()}
+        {activeTab === 'content'   && renderContent()}
+        {activeTab === 'settings'  && renderSettings()}
+      </main>
+
+      {/* Mobile bottom nav */}
+      <nav className="av2-bottom-nav">
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            className={`av2-bottom-btn ${activeTab === t.id ? 'active' : ''}`}>
+            <span>{t.icon}</span>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <AdminFloatingChat isDark={isDark} />
     </div>
   );
 };
