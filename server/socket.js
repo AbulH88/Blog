@@ -48,7 +48,7 @@ const setupSocket = (io) => {
     });
 
     // Creator replies to a fan
-    socket.on('creator_reply', async ({ fanId, content, isPPV, ppvPrice }) => {
+    socket.on('creator_reply', async ({ fanId, content, isPPV, ppvPrice, mediaUrl }) => {
       try {
         if (user.role !== 'creator') return;
 
@@ -57,7 +57,8 @@ const setupSocket = (io) => {
           fanId,
           senderId: user.creatorId,
           senderType: 'creator',
-          content: isPPV ? '' : content,
+          content: isPPV ? '' : (content || ''),
+          mediaUrl: mediaUrl || null,
           isPPV: !!isPPV,
           ppvPrice: isPPV ? parseFloat(ppvPrice) || 0 : 0,
           isUnlocked: !isPPV,

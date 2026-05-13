@@ -231,6 +231,15 @@ export const getCollections = async (creatorSlug: string) => {
   return res.json();
 };
 
+// Public — fan-facing bundle list. Includes isUnlocked when fan token present.
+export const getPublicCollections = async (creatorSlug: string) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const headers: Record<string, string> = {};
+  if (fanToken) headers['Authorization'] = `Bearer ${fanToken}`;
+  const res = await fetch(`${API_URL}/collections/${creatorSlug}`, { headers });
+  return res.json();
+};
+
 export const createCollection = async (data: { creatorSlug: string; title: string; description: string; price: number }) => {
   const res = await fetch(`${API_URL}/collections`, {
     method: 'POST',
@@ -316,11 +325,17 @@ export const getThreadWithFan = async (creatorSlug: string, fanId: number) => {
   return res.json();
 };
 
-export const sendBlast = async (creatorSlug: string, content: string, isPPV: boolean, ppvPrice: number) => {
+export const sendBlast = async (
+  creatorSlug: string,
+  content: string,
+  isPPV: boolean,
+  ppvPrice: number,
+  mediaUrl?: string | null,
+) => {
   const res = await fetch(`${API_URL}/chat/${creatorSlug}/blast`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ content, isPPV, ppvPrice }),
+    body: JSON.stringify({ content, isPPV, ppvPrice, mediaUrl: mediaUrl || null }),
   });
   return res.json();
 };

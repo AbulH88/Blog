@@ -916,3 +916,21 @@ select.av2-input { cursor: pointer; }
     height: 70vh;
   }
 }
+
+/* ── AdminMessages — responsive two-column layout ─────────────────────────── */
+@media (max-width: 768px) {
+  .av2-msg-layout {
+    flex-direction: column !important;
+    height: calc(100vh - 130px) !important;
+  }
+  .av2-msg-list {
+    width: 100% !important;
+    max-height: 38vh;
+    border-right: none !important;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .av2-msg-thread {
+    flex: 1 !important;
+    min-height: 0;
+  }
+}

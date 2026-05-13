@@ -3,14 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import {
   updateConfig, uploadImage, SERVER_URL, createPost, updatePost, deletePost,
   CREATOR_SLUG, getCreatorAnalytics,
+  getCollections, createCollection, updateCollection, deleteCollection,
+  assignPostToCollection, removePostFromCollection,
 } from '../api';
-import AdminFloatingChat from '../components/AdminFloatingChat';
+import AdminMessages from './AdminMessages';
+import AdminBroadcast from './AdminBroadcast';
 
-type Tab = 'overview' | 'content' | 'settings';
+type Tab = 'overview' | 'content' | 'messages' | 'broadcast' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'overview',  label: 'Overview',  icon: '◻' },
   { id: 'content',   label: 'Content',   icon: '◈' },
+  { id: 'messages',  label: 'Messages',  icon: '◎' },
   { id: 'settings',  label: 'Settings',  icon: '◉' },
 ];
 
@@ -49,6 +53,12 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
   const [postFile, setPostFile]   = useState<File | null>(null);
   const [postStatus, setPostStatus] = useState('');
 
+  // Bundles state
+  const [bundles, setBundles] = useState<any[]>([]);
+  const [editingBundle, setEditingBundle] = useState<any>(null); // { id?, title, description, price, isPublished }
+  const [bundleStatus, setBundleStatus] = useState('');
+  const [assigningPostId, setAssigningPostId] = useState<number | null>(null);
+
   const navigate = useNavigate();
 
   // Auth guard + initial analytics load
@@ -60,7 +70,10 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
 
   // Load data when switching to tabs that need it
   useEffect(() => {
-    if (activeTab === 'content') fetchVaultPosts();
+    if (activeTab === 'content') {
+      fetchVaultPosts();
+      fetchBundles();
+    }
   }, [activeTab]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -172,6 +185,68 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
     if (!window.confirm('Delete this post?')) return;
     await deletePost(id);
     fetchVaultPosts();
+  };
+
+  // Bundles
+  const fetchBundles = async () => {
+    try {
+      const data = await getCollections(CREATOR_SLUG);
+      setBundles(Array.isArray(data) ? data : []);
+    } catch { /* ignore */ }
+  };
+
+  const saveBundle = async () => {
+    if (!editingBundle) return;
+    setBundleStatus('Saving…');
+    let res: any;
+    if (editingBundle.id) {
+      res = await updateCollection(editingBundle.id, {
+        title: editingBundle.title,
+        description: editingBundle.description,
+        price: editingBundle.price,
+        isPublished: editingBundle.isPublished,
+      });
+    } else {
+      res = await createCollection({
+        creatorSlug: CREATOR_SLUG,
+        title: editingBundle.title || 'Untitled Bundle',
+        description: editingBundle.description || '',
+        price: parseFloat(editingBundle.price) || 9.99,
+      });
+    }
+    if (res?.success || res?.id) {
+      setBundleStatus('Saved!');
+      setEditingBundle(null);
+      fetchBundles();
+      setTimeout(() => setBundleStatus(''), 2500);
+    } else {
+      setBundleStatus(res?.error || 'Save failed');
+    }
+  };
+
+  const handleDeleteBundle = async (id: number) => {
+    if (!window.confirm('Delete this bundle? Posts in it will be unlinked but kept.')) return;
+    await deleteCollection(id);
+    fetchBundles();
+    fetchVaultPosts();
+  };
+
+  const togglePublished = async (b: any) => {
+    await updateCollection(b.id, {
+      title: b.title, description: b.description, price: b.price, isPublished: !b.isPublished,
+    });
+    fetchBundles();
+  };
+
+  const handleAssignToBundle = async (postId: number, collectionId: number | null) => {
+    if (collectionId === null) {
+      await removePostFromCollection(postId);
+    } else {
+      await assignPostToCollection(collectionId, postId);
+    }
+    setAssigningPostId(null);
+    fetchVaultPosts();
+    fetchBundles();
   };
 
   // ── Tab renderers ────────────────────────────────────────────────────────────
@@ -287,6 +362,117 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         </div>
       </div>
 
+      {/* Bundles */}
+      <div className="av2-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <p className="av2-section-label" style={{ marginBottom: 0 }}>Bundles ({bundles.length})</p>
+          <button
+            onClick={() => setEditingBundle({ title: '', description: '', price: '9.99', isPublished: true })}
+            style={{ background: '#7c3aed', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
+            + New Bundle
+          </button>
+        </div>
+
+        {editingBundle && (
+          <div style={{ background: C.editBg, borderRadius: 8, padding: 16, border: `1px solid ${C.border}`, marginBottom: 14 }}>
+            <label className="av2-label">Title</label>
+            <input className="av2-input" placeholder="Behind the scenes"
+              value={editingBundle.title}
+              onChange={e => setEditingBundle({ ...editingBundle, title: e.target.value })} />
+            <label className="av2-label">Description</label>
+            <textarea className="av2-input" rows={2} placeholder="What's inside?"
+              value={editingBundle.description}
+              onChange={e => setEditingBundle({ ...editingBundle, description: e.target.value })}
+              style={{ resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '0.82rem', color: C.muted }}>Price $</span>
+                <input type="number" min="0.99" step="0.01"
+                  value={editingBundle.price}
+                  onChange={e => setEditingBundle({ ...editingBundle, price: e.target.value })}
+                  className="av2-input" style={{ width: 100, marginBottom: 0 }} />
+              </div>
+              <label className="av2-toggle-label">
+                <input type="checkbox"
+                  checked={!!editingBundle.isPublished}
+                  onChange={e => setEditingBundle({ ...editingBundle, isPublished: e.target.checked })} />
+                Published
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button className="btn btn-primary" style={{ flex: 1, padding: '10px' }} onClick={saveBundle}>Save</button>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => setEditingBundle(null)}>Cancel</button>
+              {bundleStatus && <span style={{ fontSize: '0.78rem', color: bundleStatus.includes('fail') ? '#f87171' : '#4ade80' }}>{bundleStatus}</span>}
+            </div>
+          </div>
+        )}
+
+        {bundles.length === 0 ? (
+          <p style={{ color: C.faint, fontSize: '0.85rem' }}>No bundles yet. Create one to group premium posts.</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+            {bundles.map(b => (
+              <div key={b.id} style={{ background: C.editBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.92rem', color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {b.title}
+                    </p>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.74rem', color: C.muted }}>
+                      ${parseFloat(b.price).toFixed(2)} · {b.posts?.length ?? 0} post{(b.posts?.length ?? 0) === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <span
+                    onClick={() => togglePublished(b)}
+                    title={b.isPublished ? 'Published — click to hide' : 'Draft — click to publish'}
+                    style={{
+                      cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase',
+                      padding: '3px 8px', borderRadius: 4,
+                      background: b.isPublished ? '#4ade80' : '#444',
+                      color: b.isPublished ? '#000' : '#ccc',
+                    }}>
+                    {b.isPublished ? 'Live' : 'Draft'}
+                  </span>
+                </div>
+
+                {/* Thumbnail strip */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, minHeight: 56 }}>
+                  {(b.posts || []).slice(0, 4).map((p: any) => (
+                    <div key={p.id} style={{ aspectRatio: '1/1', background: '#1a1a1a', borderRadius: 4, overflow: 'hidden' }}>
+                      {p.mediaUrls?.[0]
+                        ? <img src={`${SERVER_URL}${p.mediaUrls[0]}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', color: '#555' }}>📝</div>}
+                    </div>
+                  ))}
+                  {(b.posts?.length ?? 0) === 0 && (
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.faint, fontSize: '0.72rem' }}>
+                      No posts assigned
+                    </div>
+                  )}
+                </div>
+
+                {b.description && (
+                  <p style={{ margin: 0, fontSize: '0.76rem', color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {b.description}
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
+                  <button onClick={() => setEditingBundle({ ...b, price: String(b.price) })}
+                    style={{ flex: 1, background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 0', color: C.muted, cursor: 'pointer', fontSize: '0.74rem' }}>
+                    Edit
+                  </button>
+                  <button onClick={() => handleDeleteBundle(b.id)}
+                    style={{ flex: 1, background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 0', color: '#f87171', cursor: 'pointer', fontSize: '0.74rem' }}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Post list */}
       <div className="av2-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -314,7 +500,48 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                 {new Date(post.createdAt).toLocaleDateString()} · {post.likesCount} likes
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', position: 'relative' }}>
+              {post.collectionId ? (
+                <button
+                  onClick={() => handleAssignToBundle(post.id, null)}
+                  className="av2-tag-btn purple"
+                  title="Remove from bundle">
+                  📦 {bundles.find(b => b.id === post.collectionId)?.title?.substring(0, 12) || 'Bundle'} ✕
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setAssigningPostId(assigningPostId === post.id ? null : post.id)}
+                    className="av2-tag-btn">
+                    📦 Add to bundle
+                  </button>
+                  {assigningPostId === post.id && (
+                    <div style={{
+                      position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 50,
+                      background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.3)', minWidth: 200, maxHeight: 240, overflowY: 'auto',
+                    }}>
+                      {bundles.length === 0 ? (
+                        <p style={{ margin: 0, padding: '10px 14px', fontSize: '0.78rem', color: C.muted }}>
+                          No bundles yet
+                        </p>
+                      ) : bundles.map(b => (
+                        <button key={b.id} onClick={() => handleAssignToBundle(post.id, b.id)}
+                          style={{
+                            display: 'block', width: '100%', textAlign: 'left',
+                            padding: '9px 14px', background: 'none', border: 'none',
+                            color: C.text, cursor: 'pointer', fontSize: '0.8rem',
+                            borderBottom: `1px solid ${C.borderFaint}`,
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = C.editBg)}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                          {b.title} <span style={{ color: C.muted, fontSize: '0.72rem' }}>· ${parseFloat(b.price).toFixed(2)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
               <button onClick={() => togglePostField(post.id, 'isPremium', post.isPremium)} className={`av2-tag-btn ${post.isPremium ? 'purple' : ''}`}>
                 {post.isPremium ? '🔒 Members' : 'Free'}
               </button>
@@ -528,6 +755,16 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
             style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px', color: C.muted, cursor: 'pointer', fontSize: '0.75rem', width: '100%' }}>
             {isDark ? '☀ Light Mode' : '☾ Dark Mode'}
           </button>
+          <button onClick={() => setActiveTab('broadcast')}
+            style={{
+              background: activeTab === 'broadcast' ? '#7c3aed' : 'none',
+              border: `1px solid ${activeTab === 'broadcast' ? '#7c3aed' : C.border}`,
+              borderRadius: 8, padding: '9px',
+              color: activeTab === 'broadcast' ? '#fff' : C.muted,
+              cursor: 'pointer', fontSize: '0.75rem', width: '100%',
+            }}>
+            📣 Broadcast
+          </button>
           <button onClick={() => window.open('/', '_blank')}
             style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px', color: C.muted, cursor: 'pointer', fontSize: '0.75rem', width: '100%' }}>
             View Site ↗
@@ -554,6 +791,8 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
 
         {activeTab === 'overview'  && renderOverview()}
         {activeTab === 'content'   && renderContent()}
+        {activeTab === 'messages'  && <AdminMessages isDark={isDark} />}
+        {activeTab === 'broadcast' && <AdminBroadcast isDark={isDark} />}
         {activeTab === 'settings'  && renderSettings()}
       </main>
 
@@ -567,8 +806,6 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           </button>
         ))}
       </nav>
-
-      <AdminFloatingChat isDark={isDark} />
     </div>
   );
 };
