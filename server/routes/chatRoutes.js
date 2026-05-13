@@ -64,11 +64,24 @@ router.get('/:creatorSlug/inbox', requireAuth, requireCreator, async (req, res) 
       unreadMap[m.fanId] = (unreadMap[m.fanId] || 0) + 1;
     }
 
-    const inbox = Array.from(threads.values()).map(thread => ({
-      ...thread,
-      fan: fanMap[thread.fanId] || { id: thread.fanId, username: 'Unknown' },
-      unread: unreadMap[thread.fanId] || 0,
-    }));
+    // Active subscriptions — map fanId → { tier, createdAt }
+    const activeSubs = await Subscription.findAll({
+      where: { creatorId: creator.id, status: 'active', userId: fanIds },
+    });
+    const subMap = Object.fromEntries(
+      activeSubs.map(s => [s.userId, { tier: s.tier, since: s.createdAt }])
+    );
+
+    // Only include fans who currently have an active subscription
+    const inbox = Array.from(threads.values())
+      .filter(thread => subMap[thread.fanId])
+      .map(thread => ({
+        ...thread,
+        fan: fanMap[thread.fanId] || { id: thread.fanId, username: 'Unknown' },
+        unread: unreadMap[thread.fanId] || 0,
+        subscriptionTier: subMap[thread.fanId].tier,
+        memberSince: subMap[thread.fanId].since,
+      }));
 
     res.json(inbox);
   } catch (err) {
@@ -132,8 +145,8 @@ router.post('/:creatorSlug/blast', requireAuth, requireCreator, async (req, res)
     const creator = await Creator.findOne({ where: { slug: req.params.creatorSlug } });
     if (!creator || creator.id !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
 
-    const { content, isPPV, ppvPrice } = req.body;
-    if (!content && !isPPV) return res.status(400).json({ error: 'Content required' });
+    const { content, isPPV, ppvPrice, mediaUrl } = req.body;
+    if (!content && !isPPV && !mediaUrl) return res.status(400).json({ error: 'Content, media, or PPV required' });
 
     const subs = await Subscription.findAll({
       where: { creatorId: creator.id, status: 'active' },
@@ -146,7 +159,8 @@ router.post('/:creatorSlug/blast', requireAuth, requireCreator, async (req, res)
           fanId: sub.userId,
           senderId: creator.id,
           senderType: 'creator',
-          content: isPPV ? '' : content,
+          content: isPPV ? '' : (content || ''),
+          mediaUrl: mediaUrl || null,
           isPPV: !!isPPV,
           ppvPrice: isPPV ? parseFloat(ppvPrice) || 0 : 0,
           isUnlocked: !isPPV,

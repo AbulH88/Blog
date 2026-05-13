@@ -89,33 +89,61 @@ const Chat = ({ config }: { config: any }) => {
 
         {messages.map((msg) => {
           const isFromFan = msg.senderType === 'fan';
+          const locked = msg.isPPV && !msg.isUnlocked;
+          const mediaAbs = msg.mediaUrl
+            ? (msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `${SERVER_URL}${msg.mediaUrl.startsWith('/') ? '' : '/'}${msg.mediaUrl}`)
+            : '';
+          const isVideo = mediaAbs && /\.(mp4|mov|webm)$/i.test(mediaAbs);
           return (
             <div key={msg.id} style={{ display: 'flex', justifyContent: isFromFan ? 'flex-end' : 'flex-start' }}>
               <div style={{
                 maxWidth: '72%',
-                padding: msg.isPPV && !msg.isUnlocked ? '14px 18px' : '10px 14px',
+                padding: locked ? 0 : (mediaAbs ? 4 : '10px 14px'),
                 borderRadius: isFromFan ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                 background: isFromFan ? 'var(--primary)' : '#1a1a1a',
                 color: isFromFan ? 'var(--bg)' : 'var(--primary)',
                 fontSize: '0.9rem',
                 lineHeight: 1.5,
+                overflow: 'hidden',
               }}>
-                {msg.isPPV && !msg.isUnlocked ? (
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 10px', fontSize: '1.3rem' }}>🔒</p>
-                    <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: '#aaa' }}>
-                      Pay ${parseFloat(msg.ppvPrice).toFixed(2)} to unlock this message
-                    </p>
-                    <button
-                      onClick={() => handleUnlock(msg.id)}
-                      className="btn btn-primary"
-                      style={{ padding: '8px 20px', fontSize: '0.8rem' }}
-                    >
-                      Unlock — ${parseFloat(msg.ppvPrice).toFixed(2)}
-                    </button>
+                {locked ? (
+                  <div style={{
+                    position: 'relative',
+                    minWidth: 220, minHeight: 160,
+                    background: '#0d0d0d',
+                    backgroundImage: mediaAbs ? `url("${mediaAbs}")` : 'none',
+                    backgroundSize: 'cover', backgroundPosition: 'center',
+                    borderRadius: 'inherit',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '24px 18px',
+                  }}>
+                    {mediaAbs && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(16px)' }} />}
+                    <div style={{ position: 'relative', textAlign: 'center', color: '#fff' }}>
+                      <p style={{ margin: '0 0 6px', fontSize: '1.5rem' }}>🔒</p>
+                      <p style={{ margin: '0 0 4px', fontSize: '0.88rem', fontWeight: 600 }}>Exclusive content</p>
+                      <p style={{ margin: '0 0 14px', fontSize: '0.82rem', color: '#bbb' }}>
+                        ${parseFloat(msg.ppvPrice).toFixed(2)}
+                      </p>
+                      <button
+                        onClick={() => handleUnlock(msg.id)}
+                        className="btn btn-primary"
+                        style={{ padding: '8px 18px', fontSize: '0.8rem' }}
+                      >
+                        Unlock Now
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <>{msg.content}</>
+                  <>
+                    {mediaAbs && (
+                      isVideo
+                        ? <video src={mediaAbs} controls style={{ display: 'block', width: '100%', maxWidth: 320, borderRadius: 14 }} />
+                        : <img src={mediaAbs} alt="" style={{ display: 'block', width: '100%', maxWidth: 320, borderRadius: 14 }} />
+                    )}
+                    {msg.content && (
+                      <div style={{ padding: mediaAbs ? '8px 12px 6px' : 0 }}>{msg.content}</div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

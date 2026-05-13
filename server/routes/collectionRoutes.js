@@ -1,8 +1,18 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const { Collection, Post, Creator, Transaction } = require('../models');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+require('dotenv').config();
 
 const router = express.Router();
+
+const decodeFan = (authHeader) => {
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  try {
+    const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+    return decoded.role === 'fan' ? decoded : null;
+  } catch { return null; }
+};
 
 // GET /api/collections/:slug/all — creator sees all collections + their posts
 router.get('/:slug/all', requireAuth, requireCreator, async (req, res) => {
@@ -39,10 +49,37 @@ router.get('/:slug', async (req, res) => {
       order: [['createdAt', 'DESC']],
     });
 
+    // Optional fan auth — surface unlock state per bundle and a thumbnail strip
+    const fan = decodeFan(req.headers.authorization);
+    const unlockedIds = new Set();
+    if (fan) {
+      const unlocks = await Transaction.findAll({
+        where: { userId: fan.userId, type: 'collection_unlock' },
+        attributes: ['referenceId'],
+      });
+      unlocks.forEach(u => unlockedIds.add(u.referenceId));
+    }
+
     const withCounts = await Promise.all(
       collections.map(async col => {
-        const postCount = await Post.count({ where: { collectionId: col.id } });
-        return { ...col.toJSON(), postCount };
+        const [postCount, sampleThumbs] = await Promise.all([
+          Post.count({ where: { collectionId: col.id } }),
+          Post.findAll({
+            where: { collectionId: col.id },
+            attributes: ['mediaUrls'],
+            limit: 4,
+            order: [['createdAt', 'DESC']],
+          }),
+        ]);
+        const thumbs = sampleThumbs
+          .map(p => Array.isArray(p.mediaUrls) ? p.mediaUrls[0] : null)
+          .filter(Boolean);
+        return {
+          ...col.toJSON(),
+          postCount,
+          thumbs,
+          isUnlocked: unlockedIds.has(col.id),
+        };
       })
     );
 
