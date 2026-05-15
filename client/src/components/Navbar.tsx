@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import JoinPremiumModal from './JoinPremiumModal';
 
-const Navbar = ({ siteTitle }: { siteTitle: string }) => {
-  const [scrolled, setScrolled] = useState(false);
+const Navbar = ({
+  siteTitle,
+  instagramHandle,
+  fanvueUrl,
+}: {
+  siteTitle: string;
+  instagramHandle?: string;
+  fanvueUrl?: string;
+}) => {
   const [fanUser, setFanUser] = useState<any>(null);
+  const [joinOpen, setJoinOpen] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const location = useLocation();
 
   useEffect(() => {
     const u = localStorage.getItem('fanUser');
@@ -24,39 +28,73 @@ const Navbar = ({ siteTitle }: { siteTitle: string }) => {
     navigate('/');
   };
 
-  return (
-    <nav className={`navbar ${scrolled ? 'scrolled' : ''}`} style={{ position: 'fixed', width: '100%', top: 0, zIndex: 100, transition: 'all 0.3s', background: scrolled ? 'rgba(10,10,10,0.95)' : 'transparent' }}>
-      <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
-        <Link to="/" className="nav-logo"><strong>{siteTitle}</strong></Link>
+  // Hide chrome on self-styled mobile pages
+  const isMobileRosePage =
+    location.pathname === '/chat' ||
+    location.pathname === '/vault' ||
+    location.pathname === '/dashboard';
 
-        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link to="/gallery">Gallery</Link>
-          <Link to="/vault">Vault</Link>
+  if (isMobileRosePage) return null;
+
+  const handle = instagramHandle || '@cristina_style';
+
+  return (
+    <>
+      {/* Top terracotta brand bar */}
+      <div className="v3-brand-bar">
+        {siteTitle?.toUpperCase()} <span style={{ opacity: 0.7, margin: '0 6px' }}>|</span> {handle}
+      </div>
+
+      {/* Main nav */}
+      <nav className="v3-nav">
+        <Link to="/" className="v3-logo">
+          {(siteTitle || 'CRISTINA').toUpperCase()}
+        </Link>
+
+        <div className="v3-nav-links">
+          <Link to="/">Home</Link>
+          <Link to="/about">About</Link>
+          {/* Shop — coming soon, hidden for now */}
+          <Link to="/gallery">Travel</Link>
           <Link to="/blog">Blog</Link>
+        </div>
+
+        <div className="v3-nav-right">
+          <button className="v3-nav-search" aria-label="Search">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </button>
 
           {fanUser ? (
             <>
-              <Link to="/chat" style={{ fontSize: '0.85rem', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '5px 14px', borderRadius: 4 }}>
-                Message
-              </Link>
-              <Link to="/dashboard" style={{ fontSize: '0.82rem', color: 'var(--secondary)' }}>
+              <Link to="/dashboard" className="v3-btn v3-btn-outline" style={{ fontSize: '0.72rem', padding: '10px 18px' }}>
                 {fanUser.username}
               </Link>
-              <button onClick={handleLogout} style={{ background: 'none', border: '1px solid #333', borderRadius: 6, padding: '5px 12px', color: '#666', cursor: 'pointer', fontSize: '0.78rem' }}>
+              <button onClick={handleLogout} className="v3-btn v3-btn-primary" style={{ fontSize: '0.72rem' }}>
                 Sign out
               </button>
             </>
           ) : (
-            <>
-              <Link to="/login" style={{ fontSize: '0.85rem', color: 'var(--secondary)' }}>Sign in</Link>
-              <Link to="/vip" style={{ color: '#fff', border: '1px solid #fff', padding: '5px 15px', borderRadius: 4, marginLeft: 4, fontSize: '0.85rem' }}>
-                Join 🔒
-              </Link>
-            </>
+            <button
+              onClick={() => setJoinOpen(true)}
+              className="v3-btn v3-btn-primary"
+              type="button"
+            >
+              Get Premium Access
+            </button>
           )}
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      <JoinPremiumModal
+        open={joinOpen}
+        onClose={() => setJoinOpen(false)}
+        fanvueUrl={fanvueUrl}
+        creatorName={siteTitle}
+      />
+    </>
   );
 };
 

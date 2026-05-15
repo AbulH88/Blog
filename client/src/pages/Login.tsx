@@ -16,7 +16,6 @@ const Login = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       if (mode === 'creator') {
         const res = await creatorLogin(email, password);
@@ -32,7 +31,7 @@ const Login = () => {
         if (res.token) {
           localStorage.setItem('fanToken', res.token);
           localStorage.setItem('fanUser', JSON.stringify(res.user));
-          navigate('/');
+          navigate('/dashboard');
         } else {
           setError(res.error || 'Invalid credentials');
         }
@@ -42,65 +41,69 @@ const Login = () => {
     }
   };
 
+  const inputStyle: React.CSSProperties = {
+    padding: '12px 14px', borderRadius: 10,
+    border: '1.5px solid var(--v3-line)',
+    background: '#FFFAF4', color: 'var(--v3-ink)',
+    fontFamily: 'inherit', fontSize: '0.92rem', outline: 'none',
+  };
+
   return (
-    <div style={{ padding: '80px 20px', maxWidth: '380px', margin: '0 auto' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '8px' }}>
-        {mode === 'creator' ? 'Creator Login' : 'Member Login'}
-      </h1>
-      <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--secondary)', marginBottom: '32px' }}>
-        {mode === 'creator' ? 'Access your admin dashboard' : 'Sign in to your membership'}
-      </p>
-
-      {/* Toggle */}
-      <div style={{ display: 'flex', background: '#1a1a1a', borderRadius: '8px', padding: '4px', marginBottom: '28px' }}>
-        {(['fan', 'creator'] as Mode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => { setMode(m); setError(''); }}
-            style={{
-              flex: 1, padding: '8px', border: 'none', borderRadius: '6px', cursor: 'pointer',
-              background: mode === m ? 'var(--primary)' : 'transparent',
-              color: mode === m ? 'var(--bg)' : 'var(--secondary)',
-              fontWeight: mode === m ? 700 : 400, fontSize: '0.85rem', textTransform: 'capitalize',
-            }}
-          >
-            {m === 'fan' ? 'Member' : 'Creator'}
-          </button>
-        ))}
-      </div>
-
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ padding: '12px', borderRadius: '6px', border: '1px solid var(--border)', background: '#111', color: '#fff' }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ padding: '12px', borderRadius: '6px', border: '1px solid var(--border)', background: '#111', color: '#fff' }}
-        />
-        {error && <p style={{ color: '#f87171', fontSize: '0.82rem', margin: 0 }}>{error}</p>}
-        <button type="submit" className="btn btn-primary" disabled={loading}
-          style={{ padding: '13px', marginTop: '4px', opacity: loading ? 0.7 : 1 }}>
-          {loading ? 'Signing in…' : 'Sign In'}
-        </button>
-      </form>
-
-      {mode === 'fan' && (
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.85rem', color: 'var(--secondary)' }}>
-          No account?{' '}
-          <Link to="/register" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
-            Join the club
-          </Link>
+    <div style={{ minHeight: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', background: 'var(--v3-cream)' }}>
+      <div style={{ width: '100%', maxWidth: 420, padding: '36px 32px', background: '#fff', borderRadius: 18, border: '1px solid var(--v3-line)', boxShadow: 'var(--v3-shadow)' }}>
+        <h1 style={{ fontFamily: 'var(--v3-heading)', fontSize: '1.7rem', textAlign: 'center', margin: '0 0 6px', color: 'var(--v3-ink)' }}>
+          {mode === 'creator' ? 'Creator Login' : 'Welcome back'}
+        </h1>
+        <p style={{ textAlign: 'center', fontSize: '0.88rem', color: 'var(--v3-ink-soft)', margin: '0 0 24px' }}>
+          {mode === 'creator' ? 'Access your admin dashboard' : 'Sign in to your account'}
         </p>
-      )}
+
+        <div style={{ display: 'flex', background: 'var(--v3-cream-deep)', borderRadius: 10, padding: 4, marginBottom: 22 }}>
+          {(['fan', 'creator'] as Mode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => { setMode(m); setError(''); }}
+              style={{
+                flex: 1, padding: '9px 0', border: 'none', borderRadius: 7, cursor: 'pointer',
+                background: mode === m ? '#fff' : 'transparent',
+                color: mode === m ? 'var(--v3-ink)' : 'var(--v3-ink-soft)',
+                fontWeight: mode === m ? 700 : 500, fontSize: '0.82rem',
+                fontFamily: 'inherit', textTransform: 'capitalize',
+                boxShadow: mode === m ? 'var(--v3-shadow-sm)' : 'none',
+                transition: 'all 0.15s',
+              }}
+            >
+              {m === 'fan' ? 'Member' : 'Creator'}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input type="email" placeholder="Email address" value={email}
+            onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
+          <input type="password" placeholder="Password" value={password}
+            onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
+          {error && <p style={{ color: 'var(--v3-danger)', fontSize: '0.84rem', margin: 0 }}>{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="v3-btn v3-btn-primary"
+            style={{ marginTop: 4, opacity: loading ? 0.7 : 1, width: '100%' }}
+          >
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
+
+        {mode === 'fan' && (
+          <p style={{ textAlign: 'center', marginTop: 22, fontSize: '0.88rem', color: 'var(--v3-ink-soft)' }}>
+            No account?{' '}
+            <Link to="/register" style={{ color: 'var(--v3-terracotta)', textDecoration: 'none', fontWeight: 700 }}>
+              Join free
+            </Link>
+          </p>
+        )}
+      </div>
     </div>
   );
 };

@@ -9,13 +9,22 @@ import {
 import AdminMessages from './AdminMessages';
 import AdminBroadcast from './AdminBroadcast';
 
-type Tab = 'overview' | 'content' | 'messages' | 'broadcast' | 'settings';
+type Tab =
+  | 'overview' | 'biobuilder' | 'analytics' | 'content'
+  | 'messages' | 'broadcast' | 'audience' | 'branding'
+  | 'settings' | 'support';
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'overview',  label: 'Overview',  icon: '◻' },
-  { id: 'content',   label: 'Content',   icon: '◈' },
-  { id: 'messages',  label: 'Messages',  icon: '◎' },
-  { id: 'settings',  label: 'Settings',  icon: '◉' },
+const TABS: { id: Tab; label: string; icon: string; badge?: string }[] = [
+  { id: 'overview',   label: 'Dashboard',    icon: '🏠', badge: 'Active' },
+  { id: 'biobuilder', label: 'Bio Builder',  icon: '☰' },
+  { id: 'analytics',  label: 'Analytics',    icon: '📊' },
+  { id: 'content',    label: 'Content',      icon: '◈' },
+  { id: 'messages',   label: 'Messages',     icon: '◎' },
+  { id: 'broadcast',  label: 'Broadcast',    icon: '📣' },
+  { id: 'audience',   label: 'Audience',     icon: '👥' },
+  { id: 'branding',   label: 'Branding',     icon: '🔗' },
+  { id: 'settings',   label: 'Settings',     icon: '⚙' },
+  { id: 'support',    label: 'Support',      icon: '?' },
 ];
 
 const mkColors = (dark: boolean) => ({
@@ -256,42 +265,64 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
     const referrers = traffic.referrers || {};
     const totalHits = traffic.totalHits || 0;
     const topSource = Object.entries(referrers).sort((a: any, b: any) => b[1] - a[1])[0];
+    const activeMembers = analytics?.subscribers?.active ?? 0;
+    const revenue = analytics?.revenue?.total || 0;
 
     return (
       <div>
-        <div className="av2-stat-grid">
-          <div className="av2-stat">
-            <p className="av2-stat-label">Active Members</p>
-            <p className="av2-stat-value">{analytics?.subscribers?.active ?? '—'}</p>
+        <h1 className="title">DASHBOARD</h1>
+        <p className="welcome">Welcome back, {config?.siteTitle || 'Creator'}! ✨</p>
+        <p style={{ margin: '0 0 22px', fontSize: '0.92rem', color: 'var(--v3-muted)' }}>
+          Manage your links and track performance.
+        </p>
+
+        {/* Stat cards */}
+        <div className="v3-stat-grid">
+          <div className="v3-stat pink">
+            <span className="label">Total Clicks (30 Days)</span>
+            <span className="value">{totalHits.toLocaleString()}</span>
+            <span style={{ fontSize: '0.78rem' }}>📈</span>
+            <div className="icon-bubble">↗</div>
           </div>
-          <div className="av2-stat">
-            <p className="av2-stat-label">Total Revenue</p>
-            <p className="av2-stat-value">${(analytics?.revenue?.total || 0).toFixed(2)}</p>
+          <div className="v3-stat dark">
+            <span className="label">Active Members</span>
+            <span className="value">{activeMembers.toLocaleString()}</span>
+            <span style={{ fontSize: '0.74rem', opacity: 0.7 }}>Live subscribers</span>
+            <div className="icon-bubble" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>👥</div>
           </div>
-          <div className="av2-stat">
-            <p className="av2-stat-label">Page Views</p>
-            <p className="av2-stat-value">{totalHits.toLocaleString()}</p>
+          <div className="v3-stat peach">
+            <span className="label">Total Revenue</span>
+            <span className="value">${revenue.toFixed(2)}</span>
+            <span style={{ fontSize: '0.78rem' }}>This month</span>
+            <div className="icon-bubble">💰</div>
           </div>
-          <div className="av2-stat">
-            <p className="av2-stat-label">Top Source</p>
-            <p className="av2-stat-value" style={{ fontSize: '1.1rem' }}>{topSource ? topSource[0] : '—'}</p>
+          <div className="v3-stat" style={{ background: '#F4E4E0' }}>
+            <span className="label">Top Source</span>
+            <span className="value" style={{ fontSize: '1.3rem' }}>{topSource ? String(topSource[0]).slice(0, 14) : '—'}</span>
+            <span style={{ fontSize: '0.78rem', color: 'rgba(0,0,0,0.6)' }}>{topSource ? `${topSource[1]} hits` : 'No data yet'}</span>
+            <div className="icon-bubble">🌐</div>
           </div>
         </div>
 
-        <div className="av2-card">
-          <p className="av2-section-label">Traffic Breakdown</p>
+        {/* Traffic breakdown */}
+        <div className="v3-card">
+          <div className="v3-card-head">
+            <h3>Traffic Breakdown</h3>
+          </div>
           {Object.keys(referrers).length === 0 ? (
-            <p style={{ color: C.faint, fontSize: '0.85rem' }}>No traffic recorded yet. Once fans visit your page, data will appear here.</p>
+            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', margin: 0 }}>
+              No traffic recorded yet. Once fans visit your page, data will appear here.
+            </p>
           ) : Object.entries(referrers).map(([src, count]: any) => {
             const pct = totalHits > 0 ? Math.round((count / totalHits) * 100) : 0;
             return (
               <div key={src} style={{ marginBottom: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 5 }}>
-                  <span style={{ color: C.text }}>{src}</span>
-                  <span style={{ color: C.muted }}>{pct}% · {count}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', marginBottom: 5 }}>
+                  <span style={{ color: 'var(--v3-ink)' }}>{src}</span>
+                  <span style={{ color: 'var(--v3-muted)' }}>{pct}% · {count}</span>
                 </div>
-                <div style={{ height: 4, background: C.progressBg, borderRadius: 2 }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: '#7c3aed', borderRadius: 2 }} />
+                <div style={{ height: 6, background: 'var(--v3-cream-deep)', borderRadius: 3 }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: 'var(--v3-terracotta)', borderRadius: 3 }} />
                 </div>
               </div>
             );
@@ -299,18 +330,160 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={() => window.open('/', '_blank')} className="btn btn-secondary"
-            style={{ flex: 1, padding: '12px', fontSize: '0.8rem', letterSpacing: 1 }}>
+          <button onClick={() => window.open('/', '_blank')} className="v3-btn v3-btn-outline" style={{ flex: 1 }}>
             Preview Site ↗
           </button>
-          <button onClick={() => setActiveTab('content')} className="btn btn-primary"
-            style={{ flex: 1, padding: '12px', fontSize: '0.8rem', letterSpacing: 1 }}>
+          <button onClick={() => setActiveTab('content')} className="v3-btn v3-btn-primary" style={{ flex: 1 }}>
             Upload Content
           </button>
         </div>
       </div>
     );
   };
+
+  const renderBioBuilder = () => {
+    const featuredLinks: any[] = formData.featuredLinks || [];
+    const instagramPosts: string[] = formData.instagramPosts || [];
+
+    const updateFeatured = (idx: number, patch: any) => {
+      const next = [...featuredLinks];
+      next[idx] = { ...next[idx], ...patch };
+      setFormData({ ...formData, featuredLinks: next });
+    };
+    const addFeatured = () => setFormData({
+      ...formData,
+      featuredLinks: [...featuredLinks, { kind: 'terracotta', icon: 'instagram', title: '', subtitle: '', href: '' }],
+    });
+    const removeFeatured = (idx: number) => setFormData({
+      ...formData,
+      featuredLinks: featuredLinks.filter((_, i) => i !== idx),
+    });
+
+    const updateIg = (idx: number, url: string) => {
+      const next = [...instagramPosts];
+      next[idx] = url;
+      setFormData({ ...formData, instagramPosts: next });
+    };
+    const addIg = () => setFormData({ ...formData, instagramPosts: [...instagramPosts, ''] });
+    const removeIg = (idx: number) => setFormData({ ...formData, instagramPosts: instagramPosts.filter((_, i) => i !== idx) });
+
+    return (
+      <div>
+        <h1 className="title">BIO BUILDER</h1>
+        <p className="welcome">Edit your homepage hero, social links, featured tiles, and IG feed.</p>
+
+        <div className="av2-card">
+          <p className="av2-section-label">Social Links</p>
+          <label className="av2-label">Instagram</label>
+          <input className="av2-input" name="links.instagram" value={formData.links?.instagram || ''} onChange={handleChange} placeholder="https://instagram.com/…" />
+          <label className="av2-label">TikTok</label>
+          <input className="av2-input" name="links.tiktok" value={formData.links?.tiktok || ''} onChange={handleChange} placeholder="https://tiktok.com/@…" />
+          <label className="av2-label">YouTube</label>
+          <input className="av2-input" name="links.youtube" value={formData.links?.youtube || ''} onChange={handleChange} placeholder="https://youtube.com/@…" />
+          <label className="av2-label">Twitter / X</label>
+          <input className="av2-input" name="links.twitter" value={formData.links?.twitter || ''} onChange={handleChange} placeholder="https://x.com/…" />
+        </div>
+
+        <div className="av2-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <p className="av2-section-label" style={{ marginBottom: 0 }}>Featured Tiles ({featuredLinks.length})</p>
+            <button onClick={addFeatured}
+              style={{ background: 'var(--v3-terracotta)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
+              + Add Tile
+            </button>
+          </div>
+
+          {featuredLinks.length === 0 && (
+            <p style={{ fontSize: '0.86rem', color: 'var(--v3-muted)', margin: 0 }}>
+              No custom tiles yet — your homepage uses the default Instagram/TikTok/YouTube tiles based on your Social Links.
+            </p>
+          )}
+
+          {featuredLinks.map((t, idx) => (
+            <div key={idx} className="v3-bio-row">
+              <select value={t.icon || 'instagram'} onChange={(e) => updateFeatured(idx, { icon: e.target.value })}>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="youtube">YouTube</option>
+                <option value="twitter">Twitter/X</option>
+                <option value="threads">Threads</option>
+                <option value="pinterest">Pinterest</option>
+                <option value="shopping">Shop</option>
+                <option value="document">Document</option>
+                <option value="handshake">Collab</option>
+              </select>
+              <select value={t.kind || 'terracotta'} onChange={(e) => updateFeatured(idx, { kind: e.target.value })}>
+                <option value="terracotta">Terracotta</option>
+                <option value="navy">Navy</option>
+              </select>
+              <input
+                placeholder="Title (e.g. INSTAGRAM)"
+                value={t.title || ''}
+                onChange={(e) => updateFeatured(idx, { title: e.target.value })}
+              />
+              <input
+                placeholder="Subtitle (optional)"
+                value={t.subtitle || ''}
+                onChange={(e) => updateFeatured(idx, { subtitle: e.target.value })}
+              />
+              <input
+                placeholder="URL or /path"
+                value={t.href || ''}
+                onChange={(e) => updateFeatured(idx, { href: e.target.value })}
+              />
+              <button onClick={() => removeFeatured(idx)} className="av2-tag-btn red" aria-label="Remove">✕</button>
+            </div>
+          ))}
+        </div>
+
+        <div className="av2-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <p className="av2-section-label" style={{ marginBottom: 0 }}>Instagram Posts ({instagramPosts.length})</p>
+            <button onClick={addIg}
+              style={{ background: 'var(--v3-terracotta)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
+              + Add Post URL
+            </button>
+          </div>
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
+            Paste full Instagram post URLs (https://www.instagram.com/p/…). Up to 9 will display on your home page.
+          </p>
+
+          {instagramPosts.map((url, idx) => (
+            <div key={idx} className="v3-bio-row">
+              <input
+                style={{ flex: 1 }}
+                placeholder="https://www.instagram.com/p/XYZ123/"
+                value={url}
+                onChange={(e) => updateIg(idx, e.target.value)}
+              />
+              <button onClick={() => removeIg(idx)} className="av2-tag-btn red" aria-label="Remove">✕</button>
+            </div>
+          ))}
+        </div>
+
+        <div className="av2-save-bar">
+          {status && <span style={{ fontSize: '0.85rem', color: status.includes('Error') ? 'var(--v3-danger)' : 'var(--v3-success)', fontWeight: 600 }}>{status}</span>}
+          <button className="v3-btn v3-btn-primary" onClick={handleSave} style={{ padding: '12px 30px' }}>
+            Save Changes
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPlaceholder = (title: string, blurb: string) => (
+    <div>
+      <h1 className="title">{title.toUpperCase()}</h1>
+      <p className="welcome">{blurb}</p>
+      <div className="v3-card" style={{ textAlign: 'center', padding: '60px 24px', marginTop: 18 }}>
+        <p style={{ fontSize: '2.2rem', margin: '0 0 10px' }}>✨</p>
+        <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--v3-ink)' }}>Coming soon</p>
+        <p style={{ margin: '4px 0 0', fontSize: '0.86rem', color: 'var(--v3-muted)' }}>
+          This section is on the roadmap and will land in a future update.
+        </p>
+      </div>
+    </div>
+  );
 
   const renderContent = () => (
     <div>
@@ -338,7 +511,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           <label className="av2-toggle-label">
             <input type="checkbox" checked={newPost.isPremium}
               onChange={e => setNewPost({ ...newPost, isPremium: e.target.checked })} />
-            Members Only
+            Paid post
           </label>
           <label className="av2-toggle-label">
             <input type="checkbox" checked={newPost.isPinned}
@@ -368,7 +541,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           <p className="av2-section-label" style={{ marginBottom: 0 }}>Bundles ({bundles.length})</p>
           <button
             onClick={() => setEditingBundle({ title: '', description: '', price: '9.99', isPublished: true })}
-            style={{ background: '#7c3aed', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
+            style={{ background: 'var(--v3-terracotta)', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
             + New Bundle
           </button>
         </div>
@@ -438,7 +611,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                 {/* Thumbnail strip */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, minHeight: 56 }}>
                   {(b.posts || []).slice(0, 4).map((p: any) => (
-                    <div key={p.id} style={{ aspectRatio: '1/1', background: '#1a1a1a', borderRadius: 4, overflow: 'hidden' }}>
+                    <div key={p.id} style={{ aspectRatio: '1/1', background: 'var(--v3-cream-deep)', borderRadius: 4, overflow: 'hidden' }}>
                       {p.mediaUrls?.[0]
                         ? <img src={`${SERVER_URL}${p.mediaUrls[0]}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', color: '#555' }}>📝</div>}
@@ -543,7 +716,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                 </>
               )}
               <button onClick={() => togglePostField(post.id, 'isPremium', post.isPremium)} className={`av2-tag-btn ${post.isPremium ? 'purple' : ''}`}>
-                {post.isPremium ? '🔒 Members' : 'Free'}
+                {post.isPremium ? `🔒 Paid${post.price > 0 ? ` $${post.price}` : ''}` : 'Free'}
               </button>
               <button onClick={() => togglePostField(post.id, 'isPinned', post.isPinned)} className={`av2-tag-btn ${post.isPinned ? 'green' : ''}`}>
                 {post.isPinned ? '📌' : 'Pin'}
@@ -569,6 +742,40 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         <textarea className="av2-input" name="homeBio" value={formData.homeBio} onChange={handleChange} rows={2} style={{ resize: 'vertical' }} />
         <label className="av2-label">Full Bio (About page)</label>
         <textarea className="av2-input" name="bio" value={formData.bio} onChange={handleChange} rows={5} style={{ resize: 'vertical' }} />
+      </div>
+
+      {/* Fanvue — dedicated monetization card */}
+      <div className="v3-fanvue-card">
+        <div className="ico">💎</div>
+        <div className="body">
+          <h3>Fanvue Integration</h3>
+          <p className="sub">
+            Adding your Fanvue URL adds a <strong>"Watch on Fanvue"</strong> option to the "Get Premium Access"
+            modal — a trusted second path for fans who prefer Fanvue's checkout.
+            Leave blank to hide that option entirely.
+          </p>
+          <input
+            type="url"
+            name="fanvueUrl"
+            value={formData.fanvueUrl || ''}
+            onChange={handleChange}
+            placeholder="https://fanvue.com/your-handle"
+            spellCheck={false}
+          />
+          <div className="actions">
+            <span className={`status-pill ${formData.fanvueUrl ? 'live' : 'empty'}`}>
+              {formData.fanvueUrl ? '● Live in modal' : '○ Not connected'}
+            </span>
+            {formData.fanvueUrl && (
+              <a className="test-link"
+                 href={formData.fanvueUrl}
+                 target="_blank"
+                 rel="noreferrer">
+                Test link ↗
+              </a>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Media */}
@@ -669,7 +876,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <p className="av2-section-label" style={{ marginBottom: 0 }}>Blog Posts</p>
           <button onClick={() => setEditingPost({ title: '', excerpt: '', content: '' })}
-            style={{ background: '#7c3aed', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
+            style={{ background: 'var(--v3-terracotta)', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
             + New Post
           </button>
         </div>
@@ -695,7 +902,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
               <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: C.muted }}>{(post.excerpt || '').substring(0, 60)}…</p>
             </div>
             <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-              <button onClick={() => setEditingPost(post)} style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', fontSize: '0.82rem' }}>Edit</button>
+              <button onClick={() => setEditingPost(post)} style={{ background: 'none', border: 'none', color: 'var(--v3-terracotta)', cursor: 'pointer', fontSize: '0.82rem' }}>Edit</button>
               <button onClick={() => deleteBlogPost(post.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.82rem' }}>Delete</button>
             </div>
           </div>
@@ -715,7 +922,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
             <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: C.muted }}>Admin and login remain accessible.</p>
           </div>
           <input type="checkbox" name="settings.maintenanceMode" checked={!!formData.settings?.maintenanceMode}
-            onChange={handleChange} style={{ width: 40, height: 22, cursor: 'pointer', accentColor: '#7c3aed' }} />
+            onChange={handleChange} style={{ width: 40, height: 22, cursor: 'pointer', accentColor: 'var(--v3-terracotta)' }} />
         </div>
       </div>
 
@@ -731,81 +938,79 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
 
   // ── Layout ───────────────────────────────────────────────────────────────────
 
+  const avatar = config?.images?.hero || config?.images?.heroSlider?.[0];
+  const handle = (config?.links?.instagram?.split('/').filter(Boolean).pop()) || (config?.siteTitle?.toLowerCase() || 'cristina') + '.style';
+
   return (
-    <div className={`av2-layout ${isDark ? '' : 'light'}`}>
-      {/* Desktop sidebar */}
-      <aside className="av2-sidebar">
-        <div style={{ padding: '0 24px 28px', borderBottom: `1px solid ${C.borderFaint}` }}>
-          <p style={{ margin: 0, fontWeight: 800, fontSize: '0.72rem', letterSpacing: 4, color: C.sidebarText, textTransform: 'uppercase' }}>Creator</p>
-          <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', letterSpacing: 1, color: C.text }}>Dashboard</p>
+    <div className="v3-admin">
+      {/* Sidebar */}
+      <aside className="v3-admin-side">
+        <div className="v3-admin-brand">
+          {(config?.siteTitle || 'CRISTINA').toUpperCase()} <span style={{ color: 'var(--v3-muted)' }}>|</span> <small>BIO ADMIN</small>
         </div>
 
-        <nav style={{ padding: '16px 0', flex: 1 }}>
+        <div className="v3-admin-profile">
+          <div className="avatar">
+            {avatar && <img src={avatar.startsWith('http') ? avatar : `${SERVER_URL}${avatar}`} alt="" />}
+          </div>
+          <div className="handle">@{handle}</div>
+        </div>
+
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`av2-nav-btn ${activeTab === t.id ? 'active' : ''}`}>
-              <span style={{ fontSize: '1rem', width: 22, textAlign: 'center' }}>{t.icon}</span>
+              className={`v3-admin-nav-btn ${activeTab === t.id ? 'active' : ''}`}>
+              <span style={{ width: 20, textAlign: 'center' }}>{t.icon}</span>
               <span>{t.label}</span>
+              {t.badge && activeTab === t.id && <span className="badge">{t.badge}</span>}
             </button>
           ))}
         </nav>
 
-        <div style={{ padding: '16px 20px', borderTop: `1px solid ${C.borderFaint}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button onClick={toggleTheme}
-            style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px', color: C.muted, cursor: 'pointer', fontSize: '0.75rem', width: '100%' }}>
+        <div className="v3-admin-side-footer">
+          <button onClick={() => window.open('/', '_blank')}>View Live Website</button>
+          <button onClick={toggleTheme} style={{ marginTop: 6 }}>
             {isDark ? '☀ Light Mode' : '☾ Dark Mode'}
           </button>
-          <button onClick={() => setActiveTab('broadcast')}
-            style={{
-              background: activeTab === 'broadcast' ? '#7c3aed' : 'none',
-              border: `1px solid ${activeTab === 'broadcast' ? '#7c3aed' : C.border}`,
-              borderRadius: 8, padding: '9px',
-              color: activeTab === 'broadcast' ? '#fff' : C.muted,
-              cursor: 'pointer', fontSize: '0.75rem', width: '100%',
-            }}>
-            📣 Broadcast
-          </button>
-          <button onClick={() => window.open('/', '_blank')}
-            style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px', color: C.muted, cursor: 'pointer', fontSize: '0.75rem', width: '100%' }}>
-            View Site ↗
-          </button>
           <button onClick={() => { localStorage.removeItem('adminToken'); navigate('/login'); }}
-            style={{ background: 'none', border: 'none', padding: '9px', color: C.logoutText, cursor: 'pointer', fontSize: '0.75rem', width: '100%' }}>
+            style={{ marginTop: 6, background: 'none', border: 'none', color: 'var(--v3-muted)' }}>
             Sign Out
           </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="av2-main">
-        <div className="av2-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p style={{ margin: 0, fontSize: '0.68rem', letterSpacing: 3, textTransform: 'uppercase', color: C.faint, fontWeight: 700 }}>
-            {activeTab}
-          </p>
-          <button onClick={toggleTheme}
-            style={{ display: 'none', background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 12px', color: C.muted, cursor: 'pointer', fontSize: '0.75rem' }}
-            className="av2-theme-toggle-mobile">
-            {isDark ? '☀' : '☾'}
-          </button>
+      {/* Main */}
+      <main className="v3-admin-main">
+        {/* Top bar */}
+        <div className="v3-admin-top">
+          <div className="v3-admin-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input placeholder="Search" />
+          </div>
+          <div className="right">
+            <div className="v3-admin-bell">🔔<span className="dot">3</span></div>
+            <div className="v3-admin-bell" title="Help">?</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#ddd' }}>
+                {avatar && <img src={avatar.startsWith('http') ? avatar : `${SERVER_URL}${avatar}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+              </div>
+              <span style={{ fontSize: '0.85rem', color: 'var(--v3-ink)' }}>@{handle}</span>
+            </div>
+          </div>
         </div>
 
-        {activeTab === 'overview'  && renderOverview()}
-        {activeTab === 'content'   && renderContent()}
-        {activeTab === 'messages'  && <AdminMessages isDark={isDark} />}
-        {activeTab === 'broadcast' && <AdminBroadcast isDark={isDark} />}
-        {activeTab === 'settings'  && renderSettings()}
+        {/* Tab content */}
+        {activeTab === 'overview'   && renderOverview()}
+        {activeTab === 'biobuilder' && renderBioBuilder()}
+        {activeTab === 'analytics'  && renderPlaceholder('Analytics', 'Deeper traffic, click, and conversion analytics with charts.')}
+        {activeTab === 'content'    && renderContent()}
+        {activeTab === 'messages'   && <AdminMessages isDark={isDark} />}
+        {activeTab === 'broadcast'  && <AdminBroadcast isDark={isDark} />}
+        {activeTab === 'audience'   && renderPlaceholder('Audience', 'Subscriber list, tiers, segments, and bulk actions.')}
+        {activeTab === 'branding'   && renderPlaceholder('Branding', 'Logo, colors, fonts, domain — make the site feel like you.')}
+        {activeTab === 'settings'   && renderSettings()}
+        {activeTab === 'support'    && renderPlaceholder('Support', 'Docs, FAQs, and a direct line to the team.')}
       </main>
-
-      {/* Mobile bottom nav */}
-      <nav className="av2-bottom-nav">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`av2-bottom-btn ${activeTab === t.id ? 'active' : ''}`}>
-            <span>{t.icon}</span>
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </nav>
     </div>
   );
 };

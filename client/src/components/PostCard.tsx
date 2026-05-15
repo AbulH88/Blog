@@ -72,7 +72,7 @@ const PostCard = ({ post, onLike }: Props) => {
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
             <span style={{ fontSize: '2rem' }}>🔒</span>
             <button
-              onClick={() => navigate('/vip')}
+              onClick={() => navigate('/vault')}
               className="btn btn-primary"
               style={{ padding: '10px 20px', fontSize: '0.8rem', letterSpacing: 1 }}
             >
