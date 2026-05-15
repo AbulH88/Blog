@@ -374,6 +374,44 @@ body.v3 main.container { max-width: 100%; padding: 0; width: 100%; }
   gap: 6px;
 }
 
+/* Make whole IG tile a tappable link to the creator's Instagram */
+a.v3-ig-card {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease;
+}
+a.v3-ig-card:hover { transform: translateY(-2px); }
+
+/* Follow CTA below the IG feed grid */
+.v3-ig-follow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 18px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #F2BFB9, #C75A3E);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 0.86rem;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  transition: all 0.18s ease;
+  box-shadow: 0 4px 14px rgba(199, 90, 62, 0.25);
+}
+.v3-ig-follow:hover {
+  background: linear-gradient(135deg, #E6927A, #A8482F);
+  box-shadow: 0 6px 20px rgba(199, 90, 62, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Reserved for Option A (Basic Display API) — when implemented, these
+   classes will style the real-IG-embed variant. Left as a placeholder
+   so the upgrade doesn't require revisiting this stylesheet. */
+.v3-ig-card--embed { /* will be styled when Option A lands */ }
+.v3-ig-embed-frame { /* will be styled when Option A lands */ }
+
 /* ───── Footer ────────────────────────────────────────────── */
 .v3-footer {
   background: var(--v3-terracotta);

@@ -436,29 +436,45 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           ))}
         </div>
 
-        <div className="av2-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <p className="av2-section-label" style={{ marginBottom: 0 }}>Instagram Posts ({instagramPosts.length})</p>
-            <button onClick={addIg}
-              style={{ background: 'var(--v3-terracotta)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
-              + Add Post URL
-            </button>
-          </div>
-          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
-            Paste full Instagram post URLs (https://www.instagram.com/p/…). Up to 9 will display on your home page.
+        <div className="av2-card" style={{ background: 'linear-gradient(135deg, #FAF3E8 0%, #F0E0BD 100%)', border: '1px solid rgba(168, 134, 78, 0.2)' }}>
+          <p className="av2-section-label" style={{ marginBottom: 6 }}>Instagram Feed</p>
+          <p style={{ fontSize: '0.86rem', color: 'var(--v3-ink)', margin: '0 0 6px', fontWeight: 600 }}>
+            💎 Auto-sync coming soon (Option A — Basic Display API)
+          </p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--v3-ink-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
+            Instagram disabled unauthenticated public embeds in late 2024. Your home page IG feed currently uses your gallery images + a Follow on Instagram CTA. To enable auto-sync of your latest 25 IG posts, follow the setup PDF:
+          </p>
+          <p style={{ fontSize: '0.8rem', margin: '0 0 14px' }}>
+            <span style={{ background: '#fff', padding: '6px 10px', borderRadius: 6, fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--v3-ink)' }}>
+              docs/instagram-option-a-setup.pdf
+            </span>
           </p>
 
-          {instagramPosts.map((url, idx) => (
-            <div key={idx} className="v3-bio-row">
-              <input
-                style={{ flex: 1 }}
-                placeholder="https://www.instagram.com/p/XYZ123/"
-                value={url}
-                onChange={(e) => updateIg(idx, e.target.value)}
-              />
-              <button onClick={() => removeIg(idx)} className="av2-tag-btn red" aria-label="Remove">✕</button>
+          <details style={{ fontSize: '0.78rem', color: 'var(--v3-ink-soft)' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+              Old: manual Instagram post URLs (kept for reference, currently inactive)
+            </summary>
+            <div style={{ marginTop: 12 }}>
+              <p style={{ margin: '0 0 10px' }}>
+                These URLs are saved but Instagram is no longer serving public embed content for them. Re-enabled automatically once Option A is configured.
+              </p>
+              <button onClick={addIg}
+                style={{ background: 'var(--v3-muted)', border: 'none', color: '#fff', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 700, marginBottom: 10 }}>
+                + Add Post URL
+              </button>
+              {instagramPosts.map((url, idx) => (
+                <div key={idx} className="v3-bio-row">
+                  <input
+                    style={{ flex: 1 }}
+                    placeholder="https://www.instagram.com/p/XYZ123/"
+                    value={url}
+                    onChange={(e) => updateIg(idx, e.target.value)}
+                  />
+                  <button onClick={() => removeIg(idx)} className="av2-tag-btn red" aria-label="Remove">✕</button>
+                </div>
+              ))}
             </div>
-          ))}
+          </details>
         </div>
 
         <div className="av2-save-bar">
