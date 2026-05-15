@@ -1740,6 +1740,13 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   border-color: var(--v3-terracotta);
   background: var(--v3-cream-deep);
 }
+.v3-admin .av2-upload-area.is-dragover {
+  border-color: var(--v3-terracotta);
+  background: linear-gradient(135deg, #FBE3E0 0%, #F5D3C2 100%);
+  transform: scale(1.01);
+  box-shadow: 0 8px 28px rgba(199, 90, 62, 0.18);
+}
+.v3-admin .av2-upload-area.is-dragover * { pointer-events: none; }
 .v3-admin .av2-img-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
