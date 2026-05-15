@@ -104,20 +104,98 @@ router.get('/:slug/link/:linkIdx', async (req, res) => {
   }
 });
 
-// Creator — list subscribers
+// Creator — list subscribers with per-fan spend + activity
 router.get('/:slug/subscribers', requireAuth, requireCreator, async (req, res) => {
   try {
     const creator = await Creator.findOne({ where: { slug: req.params.slug } });
     if (!creator || creator.id !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
 
+    const { User, Message } = require('../models');
+
     const subscribers = await Subscription.findAll({
       where: { creatorId: creator.id },
-      include: [{ model: require('../models').User, attributes: ['id', 'username', 'email', 'createdAt'] }],
+      include: [{ model: User, attributes: ['id', 'username', 'email', 'createdAt', 'lastLoginAt'] }],
       order: [['createdAt', 'DESC']],
     });
-    res.json(subscribers);
+
+    // Aggregate per-fan spend on this creator
+    const userIds = subscribers.map(s => s.userId);
+    const txns = await Transaction.findAll({
+      where: { userId: userIds, creatorId: creator.id },
+      attributes: ['userId', 'type', 'amount', 'createdAt'],
+    });
+    const spendByUser = {};
+    const countByUser = {};
+    const lastTxnByUser = {};
+    for (const t of txns) {
+      const u = t.userId;
+      spendByUser[u] = (spendByUser[u] || 0) + parseFloat(t.amount || 0);
+      countByUser[u] = (countByUser[u] || 0) + 1;
+      if (!lastTxnByUser[u] || t.createdAt > lastTxnByUser[u]) lastTxnByUser[u] = t.createdAt;
+    }
+
+    // Last message activity (any direction)
+    const msgs = await Message.findAll({
+      where: { creatorId: creator.id, fanId: userIds },
+      attributes: ['fanId', 'sentAt'],
+      order: [['sentAt', 'DESC']],
+    });
+    const lastMsgByUser = {};
+    const msgCountByUser = {};
+    for (const m of msgs) {
+      if (!lastMsgByUser[m.fanId]) lastMsgByUser[m.fanId] = m.sentAt;
+      msgCountByUser[m.fanId] = (msgCountByUser[m.fanId] || 0) + 1;
+    }
+
+    const fans = subscribers.map(sub => {
+      const u = sub.userId;
+      return {
+        subscriptionId: sub.id,
+        tier: sub.tier,
+        status: sub.status,
+        joinedAt: sub.createdAt,
+        fan: sub.User ? {
+          id: sub.User.id,
+          username: sub.User.username,
+          email: sub.User.email,
+          createdAt: sub.User.createdAt,
+          lastLoginAt: sub.User.lastLoginAt,
+        } : null,
+        totalSpent: spendByUser[u] || 0,
+        purchaseCount: countByUser[u] || 0,
+        lastPurchaseAt: lastTxnByUser[u] || null,
+        messageCount: msgCountByUser[u] || 0,
+        lastMessageAt: lastMsgByUser[u] || null,
+      };
+    });
+
+    res.json(fans);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch subscribers', detail: err.message });
+  }
+});
+
+// Creator — full transaction history with optional filters
+router.get('/:slug/transactions', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await Creator.findOne({ where: { slug: req.params.slug } });
+    if (!creator || creator.id !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+
+    const { User } = require('../models');
+    const where = { creatorId: creator.id };
+    if (req.query.type) where.type = req.query.type;
+    if (req.query.userId) where.userId = req.query.userId;
+
+    const txns = await Transaction.findAll({
+      where,
+      include: [{ model: User, attributes: ['id', 'username', 'email'] }],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(req.query.limit, 10) || 100,
+    });
+
+    res.json(txns);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch transactions', detail: err.message });
   }
 });
 

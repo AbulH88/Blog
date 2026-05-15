@@ -5,6 +5,7 @@ import {
   CREATOR_SLUG, getCreatorAnalytics,
   getCollections, createCollection, updateCollection, deleteCollection,
   assignPostToCollection, removePostFromCollection,
+  getFans, getCreatorTransactions,
 } from '../api';
 import AdminMessages from './AdminMessages';
 import AdminBroadcast from './AdminBroadcast';
@@ -70,6 +71,12 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
   const [bundleStatus, setBundleStatus] = useState('');
   const [assigningPostId, setAssigningPostId] = useState<number | null>(null);
 
+  // Audience tab state
+  const [fans, setFans] = useState<any[]>([]);
+  const [creatorTxns, setCreatorTxns] = useState<any[]>([]);
+  const [audienceFilter, setAudienceFilter] = useState('');
+  const [audienceSort, setAudienceSort] = useState<'spend' | 'recent' | 'joined'>('spend');
+
   const navigate = useNavigate();
 
   // Auth guard + initial analytics load
@@ -84,6 +91,11 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
     if (activeTab === 'content') {
       fetchVaultPosts();
       fetchBundles();
+    } else if (activeTab === 'audience') {
+      fetchAudience();
+    } else if (activeTab === 'overview') {
+      // Top spenders pull from the fans endpoint
+      fetchAudience();
     }
   }, [activeTab]);
 
@@ -274,6 +286,18 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
       title: b.title, description: b.description, price: b.price, isPublished: !b.isPublished,
     });
     fetchBundles();
+  };
+
+  // Audience
+  const fetchAudience = async () => {
+    try {
+      const [f, t] = await Promise.all([
+        getFans(),
+        getCreatorTransactions({ limit: 50 }),
+      ]);
+      setFans(Array.isArray(f) ? f : []);
+      setCreatorTxns(Array.isArray(t) ? t : []);
+    } catch { /* ignore */ }
   };
 
   const handleAssignToBundle = async (postId: number, collectionId: number | null) => {
@@ -506,6 +530,45 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                     ))}
                   </div>
                 </>
+              )}
+            </div>
+
+            <div className="v3-card">
+              <div className="v3-card-head">
+                <h3>Top Spenders</h3>
+                <button onClick={() => setActiveTab('audience')}
+                  style={{ background: 'none', border: 'none', color: 'var(--v3-terracotta)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>
+                  See all →
+                </button>
+              </div>
+              {fans.filter(f => f.totalSpent > 0).length === 0 ? (
+                <p style={{ color: 'var(--v3-muted)', fontSize: '0.84rem', margin: 0 }}>
+                  No paying fans yet. Encourage your audience to unlock content!
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[...fans].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 4).map((f) => (
+                    <div key={f.subscriptionId} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <div style={{
+                        width: 36, height: 36, flexShrink: 0, borderRadius: '50%',
+                        background: 'var(--v3-terracotta)', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.78rem', fontWeight: 700,
+                      }}>{(f.fan?.username || '?').slice(0, 2).toUpperCase()}</div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ margin: 0, fontSize: '0.86rem', fontWeight: 600, color: 'var(--v3-ink)' }}>
+                          {f.fan?.username || `Fan #${f.fan?.id}`}
+                        </p>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--v3-muted)' }}>
+                          {f.purchaseCount} purchase{f.purchaseCount === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                      <span style={{ fontWeight: 800, color: 'var(--v3-success)', fontSize: '0.92rem' }}>
+                        ${f.totalSpent.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -847,6 +910,210 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           <button className="v3-btn v3-btn-primary" onClick={handleSave} style={{ padding: '12px 30px' }}>
             Save Changes
           </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAudience = () => {
+    // Sort + filter
+    const q = audienceFilter.trim().toLowerCase();
+    const filtered = fans.filter(f =>
+      !q || f.fan?.username?.toLowerCase().includes(q) || f.fan?.email?.toLowerCase().includes(q)
+    );
+    const sorted = [...filtered].sort((a, b) => {
+      if (audienceSort === 'spend') return b.totalSpent - a.totalSpent;
+      if (audienceSort === 'recent') return new Date(b.lastPurchaseAt || b.lastMessageAt || b.joinedAt).getTime() - new Date(a.lastPurchaseAt || a.lastMessageAt || a.joinedAt).getTime();
+      return new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime();
+    });
+
+    const totalFans = fans.length;
+    const activeFans = fans.filter(f => f.status === 'active').length;
+    const totalRevenue = fans.reduce((s, f) => s + f.totalSpent, 0);
+    const avgSpend = totalFans ? totalRevenue / totalFans : 0;
+    const payingFans = fans.filter(f => f.totalSpent > 0).length;
+
+    const txnLabel = (type: string) => {
+      switch (type) {
+        case 'collection_unlock': return '📦 Bundle unlock';
+        case 'post_unlock':       return '🔓 Post unlock';
+        case 'ppv_message':       return '💌 PPV message';
+        case 'subscription':      return '⭐ Subscription';
+        case 'tip':               return '💝 Tip';
+        default:                  return type;
+      }
+    };
+
+    const initials = (name?: string) =>
+      (name || '?').split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase();
+
+    const fmtDate = (iso?: string) => {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (days === 0) return 'today';
+      if (days === 1) return 'yesterday';
+      if (days < 7) return `${days}d ago`;
+      if (days < 30) return `${Math.floor(days / 7)}w ago`;
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    return (
+      <div>
+        <h1 className="title">AUDIENCE</h1>
+        <p className="welcome">Your fans, what they're buying, and who's most engaged.</p>
+
+        {/* Stat cards */}
+        <div className="v3-stat-grid">
+          <div className="v3-stat pink" style={{ position: 'relative' }}>
+            <span className="label">Total Fans</span>
+            <span className="value">{totalFans}</span>
+            <span style={{ fontSize: '0.78rem' }}>{activeFans} active</span>
+            <div className="icon-bubble">👥</div>
+          </div>
+          <div className="v3-stat dark" style={{ position: 'relative' }}>
+            <span className="label">Paying Fans</span>
+            <span className="value">{payingFans}</span>
+            <span style={{ fontSize: '0.74rem', opacity: 0.7 }}>
+              {totalFans ? `${Math.round((payingFans / totalFans) * 100)}% conversion` : '—'}
+            </span>
+            <div className="icon-bubble" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>💝</div>
+          </div>
+          <div className="v3-stat peach" style={{ position: 'relative' }}>
+            <span className="label">Total Revenue</span>
+            <span className="value">${totalRevenue.toFixed(2)}</span>
+            <span style={{ fontSize: '0.78rem' }}>From this audience</span>
+            <div className="icon-bubble">💰</div>
+          </div>
+          <div className="v3-stat" style={{ background: '#F4E4E0', position: 'relative' }}>
+            <span className="label">Avg per Fan</span>
+            <span className="value">${avgSpend.toFixed(2)}</span>
+            <span style={{ fontSize: '0.78rem', color: 'rgba(0,0,0,0.6)' }}>Lifetime spend</span>
+            <div className="icon-bubble">📊</div>
+          </div>
+        </div>
+
+        {/* Fans table */}
+        <div className="v3-card">
+          <div className="v3-card-head" style={{ alignItems: 'center' }}>
+            <h3>All Fans ({totalFans})</h3>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                placeholder="Search username or email…"
+                value={audienceFilter}
+                onChange={(e) => setAudienceFilter(e.target.value)}
+                style={{
+                  background: '#FFFAF4', border: '1px solid var(--v3-line)',
+                  borderRadius: 8, padding: '7px 12px',
+                  fontFamily: 'inherit', fontSize: '0.82rem',
+                  outline: 'none', minWidth: 220,
+                }}
+              />
+              <select
+                value={audienceSort}
+                onChange={(e) => setAudienceSort(e.target.value as any)}
+                style={{
+                  background: '#FFFAF4', border: '1px solid var(--v3-line)',
+                  borderRadius: 8, padding: '7px 12px',
+                  fontFamily: 'inherit', fontSize: '0.82rem', cursor: 'pointer',
+                }}>
+                <option value="spend">Top spenders first</option>
+                <option value="recent">Most recent activity</option>
+                <option value="joined">Most recently joined</option>
+              </select>
+            </div>
+          </div>
+
+          {sorted.length === 0 ? (
+            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', margin: 0 }}>
+              {q ? 'No fans match that search.' : 'No fans yet. Share your link and start growing your audience ✨'}
+            </p>
+          ) : (
+            <table className="v3-bio-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 50 }}></th>
+                  <th>Fan</th>
+                  <th style={{ width: 110 }}>Spent</th>
+                  <th style={{ width: 90 }}>Purchases</th>
+                  <th style={{ width: 100 }}>Messages</th>
+                  <th style={{ width: 100 }}>Last active</th>
+                  <th style={{ width: 90 }}>Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((f) => (
+                  <tr key={f.subscriptionId}>
+                    <td>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: '50%',
+                        background: 'var(--v3-terracotta)', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.78rem', fontWeight: 700,
+                      }}>{initials(f.fan?.username)}</div>
+                    </td>
+                    <td>
+                      <p style={{ margin: 0, fontWeight: 600, color: 'var(--v3-ink)' }}>
+                        {f.fan?.username || '—'}
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--v3-muted)' }}>
+                        {f.fan?.email}
+                      </p>
+                    </td>
+                    <td style={{ fontWeight: 800, color: f.totalSpent > 0 ? 'var(--v3-success)' : 'var(--v3-muted)' }}>
+                      ${f.totalSpent.toFixed(2)}
+                    </td>
+                    <td>{f.purchaseCount}</td>
+                    <td>{f.messageCount}</td>
+                    <td style={{ fontSize: '0.78rem', color: 'var(--v3-ink-soft)' }}>
+                      {fmtDate(f.lastPurchaseAt || f.lastMessageAt || f.fan?.lastLoginAt)}
+                    </td>
+                    <td style={{ fontSize: '0.78rem', color: 'var(--v3-ink-soft)' }}>
+                      {fmtDate(f.joinedAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Recent purchases activity feed */}
+        <div className="v3-card">
+          <div className="v3-card-head">
+            <h3>Recent Purchases</h3>
+            <span style={{ fontSize: '0.72rem', color: 'var(--v3-muted)' }}>Last {creatorTxns.length}</span>
+          </div>
+          {creatorTxns.length === 0 ? (
+            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', margin: 0 }}>
+              No purchases yet. When fans unlock bundles, posts, or PPV messages they'll show here.
+            </p>
+          ) : (
+            <table className="v3-bio-table">
+              <thead>
+                <tr>
+                  <th>Fan</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th style={{ width: 90 }}>Amount</th>
+                  <th style={{ width: 110 }}>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {creatorTxns.map((t) => (
+                  <tr key={t.id}>
+                    <td style={{ fontWeight: 600 }}>{t.User?.username || `#${t.userId}`}</td>
+                    <td>{txnLabel(t.type)}</td>
+                    <td style={{ color: 'var(--v3-ink-soft)', fontSize: '0.84rem' }}>{t.description || '—'}</td>
+                    <td style={{ fontWeight: 800, color: 'var(--v3-success)' }}>
+                      ${parseFloat(t.amount || 0).toFixed(2)}
+                    </td>
+                    <td style={{ fontSize: '0.78rem', color: 'var(--v3-ink-soft)' }}>{fmtDate(t.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     );
@@ -1376,7 +1643,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         {activeTab === 'gallery'    && renderGallery()}
         {activeTab === 'messages'   && <AdminMessages isDark={isDark} />}
         {activeTab === 'broadcast'  && <AdminBroadcast isDark={isDark} />}
-        {activeTab === 'audience'   && renderPlaceholder('Audience', 'Subscriber list, tiers, segments, and bulk actions.')}
+        {activeTab === 'audience'   && renderAudience()}
         {activeTab === 'branding'   && renderPlaceholder('Branding', 'Logo, colors, fonts, domain — make the site feel like you.')}
         {activeTab === 'settings'   && renderSettings()}
         {activeTab === 'support'    && renderPlaceholder('Support', 'Docs, FAQs, and a direct line to the team.')}

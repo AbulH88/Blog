@@ -96,6 +96,27 @@ export const getCreatorAnalytics = async () => {
   return res.json();
 };
 
+// Creator — list of fans with per-fan spend + activity (used in Audience tab)
+export const getFans = async () => {
+  const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/subscribers`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+// Creator — full transaction history (optionally filtered by type or userId)
+export const getCreatorTransactions = async (opts: { type?: string; userId?: number; limit?: number } = {}) => {
+  const params = new URLSearchParams();
+  if (opts.type) params.set('type', opts.type);
+  if (opts.userId) params.set('userId', String(opts.userId));
+  if (opts.limit) params.set('limit', String(opts.limit));
+  const qs = params.toString();
+  const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/transactions${qs ? `?${qs}` : ''}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
 // V1 compat aliases — used by existing components
 export const getConfig = getCreator;
 export const updateConfig = updateCreator;
