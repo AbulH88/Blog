@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, Creator } = require('../models');
+const { User, Creator, Subscription } = require('../models');
 const { requireAuth } = require('../middleware/authMiddleware');
 require('dotenv').config();
 
@@ -22,6 +22,21 @@ router.post('/register', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await User.create({ email, username, passwordHash });
+
+    // Auto-follow every existing creator (single-tenant for now) so the new
+    // fan immediately shows up in the creator's Messages inbox + sees content.
+    // Freemium model: tier='free', no charge.
+    try {
+      const creators = await Creator.findAll({ attributes: ['id'] });
+      await Promise.all(creators.map(c =>
+        Subscription.create({
+          userId: user.id, creatorId: c.id,
+          tier: 'free', status: 'active', startDate: new Date(),
+        })
+      ));
+    } catch (subErr) {
+      console.warn('auto-follow on register failed:', subErr.message);
+    }
 
     const token = signToken({ userId: user.id, role: 'fan', email: user.email });
     res.status(201).json({ token, user: { id: user.id, username: user.username, email: user.email } });
