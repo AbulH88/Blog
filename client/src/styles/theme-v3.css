@@ -440,24 +440,38 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
 }
 
 /* ───── Mobile rose theme (Chat/Vault) ────────────────────── */
+/* Chat container — mobile single column · desktop wider centered thread */
 .v3-mobile {
   font-family: var(--v3-body);
   background: var(--v3-rose-grad);
   min-height: 100vh;
-  max-width: 540px;
-  margin: 0 auto;
-  position: relative;
-  border-left: 1px solid rgba(199, 90, 62, 0.08);
-  border-right: 1px solid rgba(199, 90, 62, 0.08);
-  box-shadow: 0 0 60px rgba(199, 90, 62, 0.08);
 }
-@media (max-width: 600px) {
-  .v3-mobile { max-width: 100%; border: none; box-shadow: none; }
+@media (min-width: 900px) {
+  .v3-mobile {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 0 0 60px;
+  }
+  /* Chat composer aligned with content frame on desktop */
+  .v3-composer {
+    left: 50%; right: auto; bottom: 24px;
+    transform: translateX(-50%);
+    max-width: 820px;
+    width: calc(100% - 48px);
+    border-radius: 18px;
+    border: 1px solid var(--v3-rose-200);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+  }
 }
-/* The fixed composer/nav should align with the mobile-width frame on desktop */
-@media (min-width: 601px) {
-  .v3-composer { left: 50%; transform: translateX(-50%); right: auto; max-width: 540px; width: 100%; box-sizing: border-box; }
-  .v3-bottom-nav { left: 50%; transform: translateX(-50%); right: auto; max-width: 540px; width: 100%; }
+
+/* Mobile chrome hide rule — Navbar/Footer use this on phone widths only */
+@media (max-width: 899px) {
+  .v3-chrome--mobile-hidden { display: none !important; }
+}
+
+/* Mobile bottom nav — only show on mobile-rose pages at phone widths */
+@media (min-width: 900px) {
+  .v3-bottom-nav { display: none !important; }
 }
 
 .v3-chat-header {
@@ -615,12 +629,36 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   background: linear-gradient(180deg, #FDD8D0 0%, #FBE3E0 35%, #FAF1E1 100%);
   min-height: 100vh;
   padding-bottom: 100px;
-  max-width: 540px;
-  margin: 0 auto;
-  position: relative;
-  box-shadow: 0 0 60px rgba(199, 90, 62, 0.08);
 }
-@media (max-width: 600px) { .v3-vault { max-width: 100%; box-shadow: none; } }
+@media (min-width: 900px) {
+  .v3-vault {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px 36px 60px;
+    background: linear-gradient(180deg, #FDD8D0 0%, #FBE3E0 35%, #FAF1E1 100%);
+  }
+  /* Vault profile header — go horizontal on desktop */
+  .v3-vault-header {
+    background: rgba(255,255,255,0.6);
+    border-radius: 22px;
+    padding: 28px 32px;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.7);
+    margin-bottom: 22px;
+  }
+  .v3-vault-avatar { width: 110px; height: 110px; }
+  .v3-vault-name   { font-size: 1.9rem; }
+  .v3-vault-tagline { font-size: 0.94rem; }
+
+  .v3-vault-card { margin: 0 0 22px; padding: 28px 30px 32px; }
+  /* Wider tile grids on desktop */
+  .v3-vault-card .v3-lock-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+    gap: 18px;
+  }
+  .v3-vault-h1 { font-size: 2.1rem; }
+  .v3-vault-actions { max-width: 480px; margin: 22px auto 0; }
+}
 
 .v3-vault-header {
   padding: 22px 20px 16px;
@@ -1065,14 +1103,60 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   background: #FFF8F2;
   min-height: 100vh;
   padding-bottom: 90px;
-  max-width: 540px;
-  margin: 0 auto;
-  border-left: 1px solid rgba(199, 90, 62, 0.08);
-  border-right: 1px solid rgba(199, 90, 62, 0.08);
-  box-shadow: 0 0 60px rgba(199, 90, 62, 0.06);
 }
-@media (max-width: 600px) {
-  .v3-dash { max-width: 100%; border: none; box-shadow: none; }
+/* Mobile: single column inside the page */
+@media (max-width: 899px) {
+  .v3-dash > .v3-dash-grid { display: block; padding: 0; }
+}
+/* Desktop: wider page, 2-column body layout */
+@media (min-width: 900px) {
+  .v3-dash {
+    padding: 28px 36px 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  /* Bigger, more premium dashboard header on desktop */
+  .v3-dash-header {
+    margin: 0 0 18px;
+    padding: 28px 32px;
+    gap: 22px;
+  }
+  .v3-dash-header .avatar { width: 110px; height: 110px; border-width: 4px; }
+  .v3-dash-header h1 { font-size: 2rem; }
+  .v3-dash-header .creator-line { font-size: 1.2rem; }
+  .v3-dash-header .tagline { font-size: 0.95rem; }
+  /* Wider CTA on desktop */
+  .v3-dash-cta {
+    margin: 0 0 22px;
+    width: 100%;
+    padding: 18px 24px;
+    font-size: 1rem;
+  }
+  /* The 2-column body grid */
+  .v3-dash-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .v3-dash-grid > .v3-dash-left,
+  .v3-dash-grid > .v3-dash-right {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+  }
+  /* Sections in desktop mode lose their compact mobile padding */
+  .v3-dash .v3-dash-section { padding: 0; }
+  /* Latest content grid: wider tiles on desktop */
+  .v3-dash .v3-latest-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  /* Quick Stats — keep the 3-col split */
+  .v3-dash .v3-dash-stats .item .label { font-size: 0.78rem; }
+  /* Recent message preview as a card, not a strip, on desktop */
+  .v3-dash .v3-dash-msg {
+    margin: 0;
+    padding: 16px 18px;
+  }
 }
 
 .v3-dash-header {

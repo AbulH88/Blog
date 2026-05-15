@@ -31,13 +31,14 @@ const Navbar = ({
     navigate('/');
   };
 
-  // Hide chrome on self-styled mobile pages
+  // Mobile-rose pages (Chat / Vault / Dashboard) hide the desktop chrome ONLY
+  // on phone-sized viewports. On tablet+ they get the full navbar so the user
+  // can move around. CSS handles the actual hide via a body class — we still
+  // render the markup so it's available the moment a window resizes wider.
   const isMobileRosePage =
     location.pathname === '/chat' ||
     location.pathname === '/vault' ||
     location.pathname === '/dashboard';
-
-  if (isMobileRosePage) return null;
 
   const handle = instagramHandle || '@cristina_style';
   const logoSrc = logoUrl
@@ -45,7 +46,7 @@ const Navbar = ({
     : '';
 
   return (
-    <>
+    <div className={isMobileRosePage ? 'v3-chrome v3-chrome--mobile-hidden' : 'v3-chrome'}>
       {/* Top terracotta brand bar */}
       <div className="v3-brand-bar">
         {siteTitle?.toUpperCase()} <span style={{ opacity: 0.7, margin: '0 6px' }}>|</span> {handle}
@@ -108,7 +109,7 @@ const Navbar = ({
         fanvueUrl={fanvueUrl}
         creatorName={siteTitle}
       />
-    </>
+    </div>
   );
 };
 

@@ -2,16 +2,15 @@ import { useLocation } from 'react-router-dom';
 
 const Footer = ({ config }: { config: any }) => {
   const location = useLocation();
-  if (
+  const isMobileRosePage =
     location.pathname === '/chat' ||
     location.pathname === '/vault' ||
-    location.pathname === '/dashboard'
-  ) return null;
+    location.pathname === '/dashboard';
 
   const year = new Date().getFullYear();
 
   return (
-    <footer className="v3-footer">
+    <footer className={`v3-footer ${isMobileRosePage ? 'v3-chrome--mobile-hidden' : ''}`}>
       <div className="v3-footer-icons">
         {config.links?.instagram && (
           <a href={config.links.instagram} target="_blank" rel="noreferrer" aria-label="Instagram">
