@@ -7,6 +7,7 @@ import {
 } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
 import JoinPremiumModal from '../components/JoinPremiumModal';
+import VaultTile from '../components/VaultTile';
 
 const fullUrl = (p: string) => (p?.startsWith('http') ? p : `${SERVER_URL}${p}`);
 
@@ -76,42 +77,17 @@ const Vault = ({ config }: { config: any }) => {
       {bundles.length > 0 && (
         <div className="v3-vault-card">
           <h2 className="v3-vault-h2" style={{ marginTop: 0 }}>BUNDLES</h2>
-          <div className="v3-lock-grid">
-            {bundles.slice(0, 6).map(b => {
-              const unlocked = b.isUnlocked;
-              const bg = b.thumbs?.[0];
-              return (
-                <div key={`b-${b.id}`}>
-                  <div className={`v3-lock-tile ${unlocked ? 'unlocked' : ''}`}>
-                    <div className="bg" style={{ backgroundImage: bg ? `url("${fullUrl(bg)}")` : 'none' }} />
-                    {!unlocked && <div className="overlay" />}
-                    {!unlocked
-                      ? <><span className="icon">🔒</span><span className="label">LOCK</span></>
-                      : <span className="icon" style={{ background: 'rgba(255,255,255,0.6)', padding: '2px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 700 }}>✓ Unlocked</span>}
-                    <span className="type">📦 {b.postCount}</span>
-                  </div>
-                  <p className="v3-lock-tile-caption">
-                    {b.title}<br/>
-                    <span style={{ color: 'var(--v3-terracotta)', fontWeight: 700 }}>${parseFloat(b.price).toFixed(2)}</span>
-                  </p>
-                  {!unlocked && (
-                    <button
-                      disabled={unlockingId === b.id}
-                      onClick={() => handleUnlockBundle(b.id)}
-                      style={{
-                        marginTop: 4, width: '100%',
-                        padding: '6px 8px', borderRadius: 16,
-                        border: 'none', cursor: 'pointer',
-                        background: 'var(--v3-terracotta)', color: '#fff',
-                        fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0.6,
-                        opacity: unlockingId === b.id ? 0.6 : 1,
-                      }}>
-                      {unlockingId === b.id ? 'Unlocking…' : 'Unlock'}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          <div className="v3-lock-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+            {bundles.slice(0, 6).map(b => (
+              <VaultTile
+                key={`b-${b.id}`}
+                variant="bundle"
+                bundle={b}
+                bundlePosts={b.posts || []}
+                onUnlock={handleUnlockBundle}
+                unlocking={unlockingId === b.id}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -129,46 +105,16 @@ const Vault = ({ config }: { config: any }) => {
             No content posted yet — check back soon ✨
           </p>
         ) : (
-          <div className="v3-lock-grid">
-            {standalone.slice(0, 12).map(p => {
-              const locked = !!p.isLocked;
-              const thumb = p.mediaUrls?.[0];
-              const isVideo = p.mediaType === 'video';
-              const price = parseFloat(p.price || 0);
-              return (
-                <div key={p.id}>
-                  <div className={`v3-lock-tile ${!locked ? 'unlocked' : ''}`}>
-                    <div className="bg" style={{ backgroundImage: thumb ? `url("${fullUrl(thumb)}")` : 'none' }} />
-                    {locked && <div className="overlay" />}
-                    {locked && (
-                      <>
-                        <span className="icon">🔒</span>
-                        <span className="label">LOCK</span>
-                      </>
-                    )}
-                    <span className="type">
-                      {locked ? (price > 0 ? `$${price.toFixed(2)}` : '🔒') : (isVideo ? '🎬 Video' : '📷 Free')}
-                    </span>
-                  </div>
-                  <p className="v3-lock-tile-caption">{p.title || p.caption?.slice(0, 28) || 'Untitled'}</p>
-                  {locked && price > 0 && (
-                    <button
-                      disabled={unlockingId === p.id}
-                      onClick={() => handleUnlockPost(p.id)}
-                      style={{
-                        marginTop: 4, width: '100%',
-                        padding: '6px 8px', borderRadius: 16,
-                        border: 'none', cursor: 'pointer',
-                        background: 'var(--v3-gold)', color: '#fff',
-                        fontSize: '0.68rem', fontWeight: 700, letterSpacing: 0.6,
-                        opacity: unlockingId === p.id ? 0.6 : 1,
-                      }}>
-                      {unlockingId === p.id ? 'Unlocking…' : `Unlock $${price.toFixed(2)}`}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          <div className="v3-lock-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+            {standalone.slice(0, 12).map(p => (
+              <VaultTile
+                key={p.id}
+                variant="post"
+                post={p}
+                onUnlock={handleUnlockPost}
+                unlocking={unlockingId === p.id}
+              />
+            ))}
           </div>
         )}
 

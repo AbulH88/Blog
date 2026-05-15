@@ -96,7 +96,7 @@ function App() {
                 <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
                 <Route path="/vault" element={<Vault config={config} />} />
                 <Route path="/blog" element={<Blog blog={config.blog} />} />
-                <Route path="/about" element={<About bio={config.bio} />} />
+                <Route path="/about" element={<About config={config} />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register config={config} />} />
                 <Route path="/dashboard" element={<FanDashboard />} />
