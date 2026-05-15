@@ -34,6 +34,9 @@ const Creator = sequelize.define('Creator', {
   // Fanvue link — outbound CTA target for the "Join Premium" modal
   fanvueUrl: { type: DataTypes.STRING, allowNull: true },
 
+  // Brand — logo image URL (shown in navbar + admin sidebar in place of wordmark)
+  logoUrl: { type: DataTypes.STRING, allowNull: true },
+
   // Bio Builder — array of { kind, title, subtitle, icon, href }
   featuredLinks: { type: DataTypes.JSON, defaultValue: [] },
   // Bio Builder — array of Instagram post URLs displayed in IG feed grid
