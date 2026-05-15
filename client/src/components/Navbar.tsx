@@ -31,15 +31,16 @@ const Navbar = ({
     navigate('/');
   };
 
-  // Chrome visibility:
-  // - /dashboard and /chat: hidden on all sizes — they each have their own
-  //   shell (sidebar on desktop, immersive on mobile)
-  // - /vault: hide chrome on mobile (immersive), show on desktop
-  const isImmersiveMobile = location.pathname === '/vault';
+  // Chrome visibility: /dashboard, /chat, /vault all have their own shells
+  // (sidebar on desktop, immersive layout on mobile). Global navbar/footer
+  // never renders on those pages.
   const isFullyHidden =
-    location.pathname === '/dashboard' || location.pathname === '/chat';
+    location.pathname === '/dashboard' ||
+    location.pathname === '/chat' ||
+    location.pathname === '/vault';
 
   if (isFullyHidden) return null;
+  const isImmersiveMobile = false;
 
   const handle = instagramHandle || '@cristina_style';
   const logoSrc = logoUrl

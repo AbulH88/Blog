@@ -457,6 +457,50 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   .v3-bottom-nav { display: none !important; }
 }
 
+/* ───── Vault SHELL (desktop) ─────────────────────────────────
+   Same sidebar pattern as Fan Dashboard / Chat. Renders inside
+   .v3-vault-shell wrapper on desktop. Mobile keeps .v3-vault. */
+.v3-vault-shell {
+  display: none;
+  background: var(--v3-cream);
+  font-family: var(--v3-body);
+  min-height: 100vh;
+}
+@media (min-width: 900px) {
+  .v3-vault-shell { display: flex; }
+  .v3-vault-mobile { display: none; }
+}
+.v3-vault-main {
+  flex: 1;
+  background: linear-gradient(180deg, #FDD8D0 0%, #FBE3E0 35%, #FAF1E1 100%);
+  padding: 28px 36px 60px;
+  min-width: 0;
+}
+.v3-vault-main .v3-vault-header {
+  background: rgba(255,255,255,0.6);
+  border-radius: 20px;
+  padding: 28px 32px;
+  margin-bottom: 22px;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.7);
+}
+.v3-vault-main .v3-vault-header .v3-vault-avatar {
+  width: 100px; height: 100px;
+}
+.v3-vault-main .v3-vault-name { font-size: 1.9rem; }
+.v3-vault-main .v3-vault-tagline { font-size: 0.94rem; }
+.v3-vault-main .v3-vault-card { margin-bottom: 22px; }
+.v3-vault-main .v3-vault-h1 { font-size: 2.1rem; }
+.v3-vault-main .v3-vault-card .v3-lock-grid {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+  gap: 18px;
+}
+.v3-vault-main .v3-vault-actions {
+  margin-top: 0;
+  max-width: 520px;
+}
+.v3-vault-shell .v3-bottom-nav { display: none !important; }
+
 /* ───── Chat SHELL (desktop) ──────────────────────────────────
    Same sidebar pattern as the Fan Dashboard. Renders inside
    .v3-chat-shell wrapper on desktop. Mobile keeps .v3-mobile. */
