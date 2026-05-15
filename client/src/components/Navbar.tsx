@@ -32,13 +32,12 @@ const Navbar = ({
   };
 
   // Chrome visibility:
-  // - /chat and /vault: hide chrome on mobile (immersive), show on desktop
-  //   (so users can navigate)
-  // - /dashboard: hide chrome on ALL sizes — the page has its own admin-style
-  //   sidebar shell on desktop, and its own mobile layout
-  const isImmersiveMobile =
-    location.pathname === '/chat' || location.pathname === '/vault';
-  const isFullyHidden = location.pathname === '/dashboard';
+  // - /dashboard and /chat: hidden on all sizes — they each have their own
+  //   shell (sidebar on desktop, immersive on mobile)
+  // - /vault: hide chrome on mobile (immersive), show on desktop
+  const isImmersiveMobile = location.pathname === '/vault';
+  const isFullyHidden =
+    location.pathname === '/dashboard' || location.pathname === '/chat';
 
   if (isFullyHidden) return null;
 

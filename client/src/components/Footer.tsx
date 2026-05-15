@@ -2,11 +2,10 @@ import { useLocation } from 'react-router-dom';
 
 const Footer = ({ config }: { config: any }) => {
   const location = useLocation();
-  // Dashboard has its own shell — hide footer entirely there
-  if (location.pathname === '/dashboard') return null;
+  // Dashboard + Chat have their own shells — hide footer entirely there
+  if (location.pathname === '/dashboard' || location.pathname === '/chat') return null;
 
-  const isImmersiveMobile =
-    location.pathname === '/chat' || location.pathname === '/vault';
+  const isImmersiveMobile = location.pathname === '/vault';
 
   const year = new Date().getFullYear();
 
