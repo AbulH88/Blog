@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  getPosts, likePost, CREATOR_SLUG,
-  getPublicCollections, unlockCollection, SERVER_URL,
+  getPosts, CREATOR_SLUG, SERVER_URL,
+  getPublicCollections, unlockCollection,
+  unlockPost,
 } from '../api';
-import PostCard from '../components/PostCard';
+import MobileBottomNav from '../components/MobileBottomNav';
+import JoinPremiumModal from '../components/JoinPremiumModal';
+
+const fullUrl = (p: string) => (p?.startsWith('http') ? p : `${SERVER_URL}${p}`);
 
 const Vault = ({ config }: { config: any }) => {
   const [posts, setPosts] = useState<any[]>([]);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [bundles, setBundles] = useState<any[]>([]);
   const [unlockingId, setUnlockingId] = useState<number | null>(null);
+  const [joinOpen, setJoinOpen] = useState(false);
   const navigate = useNavigate();
+
+  const isLoggedIn = !!localStorage.getItem('fanToken');
 
   const refresh = async () => {
     const [postsData, bundleData] = await Promise.all([
@@ -20,172 +25,90 @@ const Vault = ({ config }: { config: any }) => {
       getPublicCollections(CREATOR_SLUG),
     ]);
     setPosts(postsData.posts || []);
-    setIsSubscribed(postsData.isSubscribed || false);
     setBundles(Array.isArray(bundleData) ? bundleData : []);
-    setLoading(false);
   };
 
   useEffect(() => { refresh(); }, []);
 
-  const handleLike = async (id: number) => {
-    await likePost(id);
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, likesCount: p.likesCount + 1 } : p));
-  };
-
   const handleUnlockBundle = async (bundleId: number) => {
-    if (!localStorage.getItem('fanToken')) { navigate('/login'); return; }
+    if (!isLoggedIn) { setJoinOpen(true); return; }
     setUnlockingId(bundleId);
     const res = await unlockCollection(bundleId);
     setUnlockingId(null);
-    if (res?.success) {
-      // Refresh both posts (gating changes) and bundles (isUnlocked flag)
-      await refresh();
-    } else {
-      alert(res?.error || 'Unlock failed');
-    }
+    if (res?.success) await refresh();
+    else alert(res?.error || 'Unlock failed');
   };
 
-  const lockedCount = posts.filter(p => p.isLocked).length;
-  const fullUrl = (p: string) => (p?.startsWith('http') ? p : `${SERVER_URL}${p}`);
+  const handleUnlockPost = async (postId: number) => {
+    if (!isLoggedIn) { setJoinOpen(true); return; }
+    setUnlockingId(postId);
+    const res = await unlockPost(postId);
+    setUnlockingId(null);
+    if (res?.success) await refresh();
+    else alert(res?.error || 'Unlock failed');
+  };
+
+  const handle = (config?.links?.instagram?.split('/').filter(Boolean).pop()) || (config?.siteTitle?.toLowerCase() || 'cristina') + '_official';
+  const avatar = config?.images?.hero || config?.images?.heroSlider?.[0];
+  const tagline = config?.homeBio || 'Fashion | Travel | Lifestyle ✨ | Sharing my unfiltered life! Unseen content & more…';
+
+  // Mixed feed: standalone posts only (bundled posts shown via bundle card)
+  const standalone = posts.filter(p => !p.collectionId);
 
   return (
-    <div style={{ padding: '60px 0' }}>
-
+    <div className="v3-vault">
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-        <h1 className="section-title">The Vault</h1>
-        <p style={{ color: 'var(--secondary)', fontSize: '0.95rem', maxWidth: 480, margin: '0 auto' }}>
-          {isSubscribed
-            ? `You have full access. Enjoy ${posts.length} exclusive posts.`
-            : `${posts.filter(p => !p.isPremium).length} free posts available. Subscribe to unlock ${lockedCount} exclusive posts.`}
-        </p>
-
-        {!isSubscribed && lockedCount > 0 && (
-          <Link
-            to="/vip"
-            className="btn btn-primary"
-            style={{ display: 'inline-block', marginTop: 20, padding: '12px 32px', fontSize: '0.9rem' }}
-          >
-            Unlock All Content — ${config?.subscriptionPrice}/mo
-          </Link>
-        )}
+      <div className="v3-vault-header">
+        <div className="v3-vault-avatar">
+          {avatar && <img src={fullUrl(avatar)} alt="" />}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <h2 className="v3-vault-name">
+            {(config?.siteTitle || 'CRISTINA').toUpperCase()}
+            <span className="v3-verified" title="Verified">✓</span>
+          </h2>
+          <p className="v3-vault-handle">@{handle}</p>
+          <p className="v3-vault-tagline">{tagline}</p>
+        </div>
       </div>
 
-      {/* Subscription banner for non-subscribers */}
-      {!isSubscribed && lockedCount > 0 && (
-        <div style={{
-          background: 'linear-gradient(135deg, #1a1a1a, #111)',
-          border: '1px solid #2a2a2a',
-          borderRadius: 12,
-          padding: '24px 28px',
-          marginBottom: 40,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}>
-          <div>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem' }}>🔒 {lockedCount} posts locked</p>
-            <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--secondary)' }}>
-              Subscribe to access the full Vault — exclusive photos, videos, and more.
-            </p>
-          </div>
-          <Link to="/vip" className="btn btn-primary" style={{ padding: '10px 24px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-            Join — ${config?.subscriptionPrice}/mo
-          </Link>
-        </div>
-      )}
-
-      {/* Bundles */}
+      {/* Bundles strip */}
       {bundles.length > 0 && (
-        <div style={{ marginBottom: 50 }}>
-          <h2 style={{ fontSize: '1.4rem', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18, color: 'var(--primary)' }}>
-            Bundles
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-            {bundles.map(b => {
-              const unlocked = b.isUnlocked || isSubscribed;
-              const thumbs: string[] = b.thumbs || [];
+        <div className="v3-vault-card">
+          <h2 className="v3-vault-h2" style={{ marginTop: 0 }}>BUNDLES</h2>
+          <div className="v3-lock-grid">
+            {bundles.slice(0, 6).map(b => {
+              const unlocked = b.isUnlocked;
+              const bg = b.thumbs?.[0];
               return (
-                <div key={b.id} style={{
-                  position: 'relative', background: '#111', borderRadius: 12,
-                  overflow: 'hidden', border: '1px solid #1f1f1f',
-                  display: 'flex', flexDirection: 'column',
-                }}>
-                  {/* Thumbnail mosaic */}
-                  <div style={{ position: 'relative', aspectRatio: '4/3', background: '#0d0d0d' }}>
-                    {thumbs.length > 0 ? (
-                      <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
-                        {[0, 1, 2, 3].map(i => (
-                          <div key={i} style={{ background: '#1a1a1a', overflow: 'hidden' }}>
-                            {thumbs[i] && (
-                              <img src={fullUrl(thumbs[i])} alt=""
-                                style={{
-                                  width: '100%', height: '100%', objectFit: 'cover',
-                                  filter: unlocked ? 'none' : 'blur(18px)',
-                                  transform: unlocked ? 'none' : 'scale(1.1)',
-                                }} />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '2.2rem' }}>
-                        📦
-                      </div>
-                    )}
-
-                    {/* Lock overlay */}
-                    {!unlocked && (
-                      <div style={{
-                        position: 'absolute', inset: 0,
-                        background: 'linear-gradient(180deg, rgba(0,0,0,0.3), rgba(0,0,0,0.75))',
-                        display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center', gap: 14, padding: 18,
-                      }}>
-                        <span style={{ fontSize: '1.8rem' }}>🔒</span>
-                        <button
-                          disabled={unlockingId === b.id}
-                          onClick={() => handleUnlockBundle(b.id)}
-                          className="btn btn-primary"
-                          style={{ padding: '10px 22px', fontSize: '0.82rem', letterSpacing: 1, opacity: unlockingId === b.id ? 0.6 : 1 }}>
-                          {unlockingId === b.id ? 'Unlocking…' : `Unlock Bundle — $${parseFloat(b.price).toFixed(2)}`}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Unlocked badge */}
-                    {unlocked && (
-                      <span style={{
-                        position: 'absolute', top: 10, right: 10,
-                        background: '#4ade80', color: '#000',
-                        padding: '3px 9px', borderRadius: 20,
-                        fontSize: '0.62rem', letterSpacing: 1, textTransform: 'uppercase', fontWeight: 700,
-                      }}>
-                        ✓ Unlocked
-                      </span>
-                    )}
+                <div key={`b-${b.id}`}>
+                  <div className={`v3-lock-tile ${unlocked ? 'unlocked' : ''}`}>
+                    <div className="bg" style={{ backgroundImage: bg ? `url("${fullUrl(bg)}")` : 'none' }} />
+                    {!unlocked && <div className="overlay" />}
+                    {!unlocked
+                      ? <><span className="icon">🔒</span><span className="label">LOCK</span></>
+                      : <span className="icon" style={{ background: 'rgba(255,255,255,0.6)', padding: '2px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 700 }}>✓ Unlocked</span>}
+                    <span className="type">📦 {b.postCount}</span>
                   </div>
-
-                  {/* Info */}
-                  <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--primary)' }}>
-                      {b.title}
-                    </h4>
-                    {b.description && (
-                      <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--secondary)', lineHeight: 1.5,
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {b.description}
-                      </p>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 6, fontSize: '0.74rem', color: '#666' }}>
-                      <span>{b.postCount} post{b.postCount === 1 ? '' : 's'}</span>
-                      <span style={{ color: unlocked ? '#4ade80' : 'var(--primary)', fontWeight: 700 }}>
-                        ${parseFloat(b.price).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
+                  <p className="v3-lock-tile-caption">
+                    {b.title}<br/>
+                    <span style={{ color: 'var(--v3-terracotta)', fontWeight: 700 }}>${parseFloat(b.price).toFixed(2)}</span>
+                  </p>
+                  {!unlocked && (
+                    <button
+                      disabled={unlockingId === b.id}
+                      onClick={() => handleUnlockBundle(b.id)}
+                      style={{
+                        marginTop: 4, width: '100%',
+                        padding: '6px 8px', borderRadius: 16,
+                        border: 'none', cursor: 'pointer',
+                        background: 'var(--v3-terracotta)', color: '#fff',
+                        fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0.6,
+                        opacity: unlockingId === b.id ? 0.6 : 1,
+                      }}>
+                      {unlockingId === b.id ? 'Unlocking…' : 'Unlock'}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -193,25 +116,98 @@ const Vault = ({ config }: { config: any }) => {
         </div>
       )}
 
-      {/* Post grid */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--secondary)' }}>Loading…</div>
-      ) : posts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 0' }}>
-          <p style={{ fontSize: '1.5rem', marginBottom: 12 }}>✨</p>
-          <p style={{ color: 'var(--secondary)' }}>No posts yet. Check back soon.</p>
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 20,
-        }}>
-          {posts.map(post => (
-            <PostCard key={post.id} post={post} onLike={handleLike} />
-          ))}
-        </div>
-      )}
+      {/* Locked vault */}
+      <div className="v3-vault-card">
+        <h1 className="v3-vault-h1">EXCLUSIVE IMAGE &amp; VIDEO VAULT</h1>
+        <h2 className="v3-vault-h2">UNLOCK MY PRIVATE WORLD</h2>
+        <p className="v3-vault-sub">
+          Some content is free — others are unlock-anytime. Enjoy what speaks to you.
+        </p>
+
+        {standalone.length === 0 ? (
+          <p style={{ textAlign: 'center', color: 'var(--v3-muted)', fontSize: '0.86rem', padding: '32px 0' }}>
+            No content posted yet — check back soon ✨
+          </p>
+        ) : (
+          <div className="v3-lock-grid">
+            {standalone.slice(0, 12).map(p => {
+              const locked = !!p.isLocked;
+              const thumb = p.mediaUrls?.[0];
+              const isVideo = p.mediaType === 'video';
+              const price = parseFloat(p.price || 0);
+              return (
+                <div key={p.id}>
+                  <div className={`v3-lock-tile ${!locked ? 'unlocked' : ''}`}>
+                    <div className="bg" style={{ backgroundImage: thumb ? `url("${fullUrl(thumb)}")` : 'none' }} />
+                    {locked && <div className="overlay" />}
+                    {locked && (
+                      <>
+                        <span className="icon">🔒</span>
+                        <span className="label">LOCK</span>
+                      </>
+                    )}
+                    <span className="type">
+                      {locked ? (price > 0 ? `$${price.toFixed(2)}` : '🔒') : (isVideo ? '🎬 Video' : '📷 Free')}
+                    </span>
+                  </div>
+                  <p className="v3-lock-tile-caption">{p.title || p.caption?.slice(0, 28) || 'Untitled'}</p>
+                  {locked && price > 0 && (
+                    <button
+                      disabled={unlockingId === p.id}
+                      onClick={() => handleUnlockPost(p.id)}
+                      style={{
+                        marginTop: 4, width: '100%',
+                        padding: '6px 8px', borderRadius: 16,
+                        border: 'none', cursor: 'pointer',
+                        background: 'var(--v3-gold)', color: '#fff',
+                        fontSize: '0.68rem', fontWeight: 700, letterSpacing: 0.6,
+                        opacity: unlockingId === p.id ? 0.6 : 1,
+                      }}>
+                      {unlockingId === p.id ? 'Unlocking…' : `Unlock $${price.toFixed(2)}`}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!isLoggedIn && (
+          <button className="v3-subscribe-cta" onClick={() => setJoinOpen(true)}>
+            <span>GET PREMIUM ACCESS</span>
+            <span>FREE ✨</span>
+          </button>
+        )}
+
+        {isLoggedIn && (
+          <Link to="/chat" className="v3-subscribe-cta" style={{ textDecoration: 'none' }}>
+            <span>💬 MESSAGE {(config?.siteTitle || 'CRISTINA').toUpperCase()} DIRECTLY</span>
+            <span>→</span>
+          </Link>
+        )}
+      </div>
+
+      {/* Quick actions */}
+      <div className="v3-vault-actions">
+        {!isLoggedIn ? (
+          <Link to="/login">Login</Link>
+        ) : (
+          <Link to="/dashboard">My Dashboard</Link>
+        )}
+        {config?.links?.instagram
+          ? <a href={config.links.instagram} target="_blank" rel="noreferrer">Follow on Instagram</a>
+          : <a href="#">Follow on Instagram</a>}
+        <Link to="/about">About Me</Link>
+      </div>
+
+      <MobileBottomNav />
+
+      <JoinPremiumModal
+        open={joinOpen}
+        onClose={() => setJoinOpen(false)}
+        fanvueUrl={config?.fanvueUrl}
+        creatorName={config?.siteTitle}
+      />
     </div>
   );
 };

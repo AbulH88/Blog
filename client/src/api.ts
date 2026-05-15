@@ -42,6 +42,9 @@ const normalize = (creator: any) => ({
   subscriptionPrice: creator.subscriptionPrice,
   subscriptionPricePremium: creator.subscriptionPricePremium,
   welcomeMessage: creator.welcomeMessage,
+  fanvueUrl: creator.fanvueUrl || '',
+  featuredLinks: creator.featuredLinks || [],
+  instagramPosts: creator.instagramPosts || [],
 });
 
 const denormalize = (config: any) => {
@@ -59,6 +62,9 @@ const denormalize = (config: any) => {
     blog: config.blog || [],
     faq: config.faq || [],
     mustHaves: config.mustHaves || [],
+    fanvueUrl: config.fanvueUrl || null,
+    featuredLinks: config.featuredLinks || [],
+    instagramPosts: config.instagramPosts || [],
   };
   if (config.newPassword) data.newPassword = config.newPassword;
   return data;
@@ -209,6 +215,20 @@ export const deletePost = async (id: number) => {
   const res = await fetch(`${API_URL}/posts/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const getInstagramFeed = async (slug: string) => {
+  const res = await fetch(`${API_URL}/instagram/${slug}`);
+  return res.json();
+};
+
+export const unlockPost = async (id: number) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/posts/${id}/unlock`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}` },
   });
   return res.json();
 };

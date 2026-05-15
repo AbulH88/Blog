@@ -5,57 +5,40 @@ const { requireAuth } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 // POST /api/subscriptions/subscribe
+// Freemium model — joining is free. This now creates a "follower" record
+// (Subscription { tier: 'free' }) so the creator's inbox + analytics still work,
+// but NO payment is taken. Revenue happens via per-bundle, per-post, and PPV.
 router.post('/subscribe', requireAuth, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
 
-    const { creatorSlug, tier = 'basic' } = req.body;
+    const { creatorSlug } = req.body;
     if (!creatorSlug) return res.status(400).json({ error: 'creatorSlug required' });
 
     const creator = await Creator.findOne({ where: { slug: creatorSlug } });
     if (!creator) return res.status(404).json({ error: 'Creator not found' });
 
-    const price = tier === 'premium'
-      ? parseFloat(creator.subscriptionPricePremium)
-      : parseFloat(creator.subscriptionPrice);
-
-    const renewalDate = new Date();
-    renewalDate.setMonth(renewalDate.getMonth() + 1);
-
     const existing = await Subscription.findOne({
       where: { userId: req.user.userId, creatorId: creator.id },
     });
 
-    if (existing?.status === 'active') {
-      return res.status(409).json({ error: 'Already subscribed' });
-    }
-
     let subscription;
     if (existing) {
-      await existing.update({ status: 'active', tier, startDate: new Date(), renewalDate, cancelledAt: null });
+      await existing.update({ status: 'active', tier: 'free', startDate: new Date(), cancelledAt: null });
       subscription = existing;
     } else {
       subscription = await Subscription.create({
         userId: req.user.userId,
         creatorId: creator.id,
-        tier,
+        tier: 'free',
         status: 'active',
         startDate: new Date(),
-        renewalDate,
       });
     }
 
-    await Transaction.create({
-      userId: req.user.userId,
-      creatorId: creator.id,
-      type: 'subscription',
-      amount: price,
-      description: `${tier} subscription to ${creator.displayName}`,
-    });
-
-    res.status(201).json({ success: true, subscription, price });
+    res.status(201).json({ success: true, subscription });
   } catch (err) {
-    res.status(500).json({ error: 'Subscribe failed', detail: err.message });
+    res.status(500).json({ error: 'Follow failed', detail: err.message });
   }
 });
 

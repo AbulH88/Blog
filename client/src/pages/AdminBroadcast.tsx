@@ -69,12 +69,13 @@ const AdminBroadcast = ({ isDark }: { isDark: boolean }) => {
   };
 
   const C = {
-    text:    isDark ? '#fff'    : '#111',
-    muted:   isDark ? '#666'    : '#888',
-    faint:   isDark ? '#444'    : '#bbb',
-    border:  isDark ? '#1a1a1a' : '#e8e8e8',
-    inputBg: isDark ? '#0d0d0d' : '#f8f8f8',
+    text:    'var(--v3-ink)',
+    muted:   'var(--v3-ink-soft)',
+    faint:   'var(--v3-muted)',
+    border:  'var(--v3-line)',
+    inputBg: '#FFFAF4',
   };
+  void isDark;
 
   return (
     <div style={{ maxWidth: 640 }}>
@@ -126,8 +127,8 @@ const AdminBroadcast = ({ isDark }: { isDark: boolean }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <button onClick={() => setIsPPV(p => !p)}
             style={{
-              background: isPPV ? '#7c3aed' : 'none',
-              border: `1px solid ${isPPV ? '#7c3aed' : C.border}`,
+              background: isPPV ? 'var(--v3-terracotta)' : 'none',
+              border: `1px solid ${isPPV ? 'var(--v3-terracotta)' : C.border}`,
               borderRadius: 6, padding: '6px 14px', cursor: 'pointer',
               color: isPPV ? '#fff' : C.muted, fontSize: '0.78rem', fontWeight: 600,
             }}>🔒 PPV</button>
@@ -149,7 +150,7 @@ const AdminBroadcast = ({ isDark }: { isDark: boolean }) => {
           style={{
             width: '100%', padding: '14px',
             fontSize: '0.88rem', letterSpacing: 1,
-            background: canSend ? '#7c3aed' : C.border,
+            background: canSend ? 'var(--v3-terracotta)' : C.border,
             opacity: canSend ? 1 : 0.6, cursor: canSend ? 'pointer' : 'not-allowed',
           }}
         >

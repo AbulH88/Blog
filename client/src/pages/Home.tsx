@@ -1,172 +1,115 @@
-import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { SERVER_URL } from '../api';
+import SocialIcons from '../components/SocialIcons';
+import HeroSlider from '../components/HeroSlider';
+import InstagramFeed from '../components/InstagramFeed';
+
+interface Tile {
+  kind: 'terracotta' | 'navy';
+  icon: string;
+  title: string;
+  subtitle?: string;
+  extra?: string;
+  href: string;
+}
 
 const Home = ({ config }: { config: any }) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const revealRefs = useRef<HTMLDivElement[]>([]);
-  
-  const getFullUrl = (path: string) => path.startsWith('http') ? path : `${SERVER_URL}${path}`;
+  const fullUrl = (p: string) => (p?.startsWith('http') ? p : `${SERVER_URL}${p}`);
+  void fullUrl;
 
-  const slides = config.images.heroSlider && config.images.heroSlider.length > 0 
-    ? config.images.heroSlider 
-    : ['https://via.placeholder.com/1200x1920'];
+  const ig = config?.links?.instagram || '';
+  const tk = config?.links?.tiktok || '';
+  const yt = config?.links?.youtube || '';
 
-  const previewImages = config.images.gallery?.slice(0, 3) || [];
-  const featuredPosts = config.blog?.slice(0, 2) || [];
+  // Default tiles fall back if creator hasn't customised in Bio Builder
+  const defaultTiles: Tile[] = [
+    { kind: 'terracotta', icon: 'instagram', title: 'INSTAGRAM', subtitle: 'Follow', href: ig },
+    { kind: 'navy',       icon: 'tiktok',    title: 'TIKTOK',    subtitle: 'Watch',  href: tk },
+    { kind: 'terracotta', icon: 'youtube',   title: 'YOUTUBE',   subtitle: 'Latest videos', href: yt },
+    { kind: 'navy',       icon: 'shopping',  title: 'SHOP',      subtitle: 'My favorites',  href: '' },
+    { kind: 'navy',       icon: 'document',  title: 'BLOG',      subtitle: 'Stories', href: '/blog' },
+    { kind: 'terracotta', icon: 'handshake', title: 'COLLABS',   subtitle: 'Work with me', href: '' },
+  ];
 
-  useEffect(() => {
-    if (slides.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [slides.length]);
+  const tiles: Tile[] = (config?.featuredLinks?.length ? config.featuredLinks : defaultTiles)
+    .filter((t: Tile) => !!t.title && !!t.href);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('active');
-        }
-      });
-    }, { threshold: 0.1 });
+  const heroImages: string[] = config?.images?.heroSlider?.length
+    ? config.images.heroSlider
+    : (config?.images?.hero ? [config.images.hero] : []);
 
-    const currentRefs = revealRefs.current;
-    currentRefs.forEach(ref => {
-      if (ref) observer.observe(ref);
-    });
-
-    return () => {
-      currentRefs.forEach(ref => {
-        if (ref) observer.unobserve(ref);
-      });
-    };
-  }, []);
-
-  const addToRefs = (el: HTMLDivElement | null) => {
-    if (el && !revealRefs.current.includes(el)) {
-      revealRefs.current.push(el);
-    }
-  };
+  const bio = config?.homeBio || config?.heroSubtitle || '';
 
   return (
-    <div className="home-content">
-      
-      {/* 1. Cinematic Hero Slider */}
-      <div className="full-page-slider">
-        {slides.map((slide: string, index: number) => (
-          <img 
-            key={index}
-            src={getFullUrl(slide)} 
-            className={`slider-image ${index === currentSlide ? 'active' : ''}`}
-            loading={index === 0 ? 'eager' : 'lazy'}
-            alt=""
-          />
-        ))}
-        
-        <div className="slider-overlay">
-          <h1 style={{ fontFamily: '"Playfair Display", serif', letterSpacing: '12px' }}>{config.heroTitle}</h1>
-          <p style={{ fontStyle: 'italic', opacity: 0.8 }}>{config.heroSubtitle}</p>
-          <div className="cta-group">
-            <Link to="/gallery" className="btn btn-primary" style={{ border: 'none' }}>Explore My World</Link>
-          </div>
+    <div style={{ background: 'var(--v3-cream)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+
+      {/* Decorative leaves */}
+      <svg className="v3-leaf" style={{ left: -20, top: 720, width: 180 }} viewBox="0 0 100 200" fill="none" aria-hidden>
+        <path d="M30 10 Q60 60 30 120 Q0 60 30 10 Z" fill="#B8924F" opacity="0.35"/>
+        <path d="M50 60 Q80 110 50 170 Q20 110 50 60 Z" fill="#B8924F" opacity="0.25"/>
+      </svg>
+      <svg className="v3-leaf" style={{ right: 10, top: 700, width: 200 }} viewBox="0 0 200 200" fill="none" aria-hidden>
+        <path d="M180 20 Q90 80 100 180 Q180 130 180 20 Z" fill="#2C3E5C" opacity="0.25"/>
+      </svg>
+      <svg className="v3-leaf" style={{ left: -10, bottom: 80, width: 160 }} viewBox="0 0 100 200" fill="none" aria-hidden>
+        <path d="M40 30 Q70 90 40 170 Q10 90 40 30 Z" fill="#B8924F" opacity="0.25"/>
+      </svg>
+
+      {/* Hero */}
+      <section className="v3-hero">
+        <div className="v3-hero-frame">
+          <HeroSlider images={heroImages} alt={config?.siteTitle} />
         </div>
+      </section>
 
-        <div className="scroll-indicator">
-           <div className="mouse"><div className="wheel"></div></div>
-           <span style={{ fontSize: '0.6rem', letterSpacing: '3px', textTransform: 'uppercase' }}>Scroll</span>
-        </div>
+      {/* Welcome + Featured links | Instagram feed */}
+      <section className="v3-content-grid">
+        <div className="v3-welcome">
+          <h1>WELCOME TO MY WORLD!</h1>
+          <p className="tagline">LIFESTYLE • TRAVEL • FASHION • CREATIVITY</p>
+          <p className="bio">
+            {bio || `Hi, I'm ${config?.siteTitle || 'Cristina'}! 🌿 Sharing my journey, favorite moments, style finds, and travel adventures with you. Let's connect and inspire each other! ✨`}
+          </p>
 
-        {slides.length > 1 && (
-          <div className="slider-dots">
-            {slides.map((_: any, index: number) => (
-              <div 
-                key={index} 
-                className={`dot ${index === currentSlide ? 'active' : ''}`}
-                onClick={() => setCurrentSlide(index)}
-              ></div>
-            ))}
-          </div>
-        )}
-      </div>
+          <p className="v3-section-label">FEATURED LINKS</p>
 
-      <div className="container">
-        
-        {/* 2. Bio Section */}
-        <div className="reveal home-bio" ref={addToRefs}>
-          <div style={{ width: '40px', height: '1px', background: 'var(--primary)', margin: '0 auto 30px' }}></div>
-          <p>{config.homeBio}</p>
-          <div style={{ width: '40px', height: '1px', background: 'var(--primary)', margin: '30px auto 0' }}></div>
-        </div>
-
-        {/* 3. Latest Visuals */}
-        <section className="reveal featured-preview" ref={addToRefs}>
-          <h2 className="section-title">Latest Visuals</h2>
-          <div className="gallery-grid">
-            {previewImages.map((img: string, idx: number) => (
-              <div key={idx} className="gallery-item">
-                <img src={getFullUrl(img)} alt={`Visual ${idx}`} loading="lazy" />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 4. Must Haves (Influencer Gear) */}
-        {config.settings?.showMustHaves && config.mustHaves && (
-          <section className="reveal" ref={addToRefs} style={{ marginTop: '100px' }}>
-            <h2 className="section-title">My Essentials</h2>
-            <div className="must-haves-grid">
-              {config.mustHaves.map((item: any, idx: number) => (
-                <div key={idx} className="product-card">
-                  <img src={item.image} alt={item.name} />
-                  <h5>{item.name}</h5>
-                  <a href={item.link} className="btn-link" style={{ fontSize: '0.7rem', textDecoration: 'underline', marginTop: '10px', display: 'block' }}>Shop Item</a>
-                </div>
-              ))}
+          {tiles.length === 0 ? (
+            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem' }}>
+              No featured links yet — set them in Admin → Bio Builder.
+            </p>
+          ) : (
+            <div className="v3-link-grid">
+              {tiles.map((t, i) => {
+                const isExternal = t.href?.startsWith('http');
+                const inner = (
+                  <>
+                    <span className="icon" aria-hidden>
+                      <SocialIcons name={t.icon} size={28} />
+                    </span>
+                    <span className="title">{t.title}</span>
+                    {t.subtitle && <span className="subtitle">{t.subtitle}</span>}
+                    {t.extra && <span className="subtitle" style={{ fontWeight: 700, marginTop: -2 }}>{t.extra}</span>}
+                  </>
+                );
+                return isExternal ? (
+                  <a key={i} href={t.href} target="_blank" rel="noreferrer" className={`v3-link-tile ${t.kind}`}>
+                    {inner}
+                  </a>
+                ) : (
+                  <Link key={i} to={t.href || '#'} className={`v3-link-tile ${t.kind}`}>
+                    {inner}
+                  </Link>
+                );
+              })}
             </div>
-          </section>
-        )}
-
-        {/* 5. FAQ (Engagement) */}
-        {config.settings?.showFaq && config.faq && (
-          <section className="reveal" ref={addToRefs} style={{ marginTop: '100px' }}>
-            <h2 className="section-title">Common Questions</h2>
-            <div className="faq-container">
-              {config.faq.map((item: any, idx: number) => (
-                <div key={idx} className="faq-item">
-                  <h4>{item.q}</h4>
-                  <p>{item.a}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 6. Featured Blog Posts */}
-        {featuredPosts.length > 0 && (
-          <section className="reveal featured-blog" ref={addToRefs}>
-             <h2 className="section-title">Personal Diaries</h2>
-             <div className="blog-grid">
-                {featuredPosts.map((post: any) => (
-                  <div key={post.id} className="blog-mini-card">
-                     <h4>{post.title}</h4>
-                     <p style={{ fontSize: '0.9rem', color: 'var(--secondary)', marginBottom: '20px' }}>{post.excerpt}</p>
-                     <Link to="/blog" style={{ fontSize: '0.7rem', letterSpacing: '2px', textTransform: 'uppercase', textDecoration: 'underline' }}>Read Entry</Link>
-                  </div>
-                ))}
-             </div>
-          </section>
-        )}
-
-        {/* 7. Main Funnel CTA */}
-        <div className="reveal cta-group" ref={addToRefs} style={{ margin: '120px 0' }}>
-           <div style={{ textAlign: 'center' }}>
-              <h2 style={{ fontSize: '2rem', letterSpacing: '5px', marginBottom: '30px' }}>JOIN THE CLUB</h2>
-              <Link to="/vip" className="btn btn-primary">Get Exclusive Access 🔒</Link>
-           </div>
+          )}
         </div>
-      </div>
+
+        <InstagramFeed
+          slug={config?.slug || 'cristina'}
+          fallbackImages={config?.images?.gallery || []}
+        />
+      </section>
     </div>
   );
 };

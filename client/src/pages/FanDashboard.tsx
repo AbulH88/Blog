@@ -1,99 +1,191 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getMySubscriptions, getMyTransactions, unsubscribe, CREATOR_SLUG } from '../api';
+import {
+  CREATOR_SLUG, SERVER_URL,
+  getPosts, getPublicCollections, getChatHistory, getCreator,
+} from '../api';
+import MobileBottomNav from '../components/MobileBottomNav';
+
+const fullUrl = (p?: string | null) => {
+  if (!p) return '';
+  if (p.startsWith('http')) return p;
+  return p.startsWith('/') ? `${SERVER_URL}${p}` : `${SERVER_URL}/${p}`;
+};
+
+const fmtTime = (iso?: string) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
 
 const FanDashboard = () => {
-  const [subs, setSubs] = useState<any[]>([]);
-  const [txns, setTxns] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
   const fanUser = JSON.parse(localStorage.getItem('fanUser') || 'null');
+
+  const [creator, setCreator] = useState<any>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [bundles, setBundles] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!localStorage.getItem('fanToken')) { navigate('/login'); return; }
-    const load = async () => {
-      const [s, t] = await Promise.all([getMySubscriptions(), getMyTransactions()]);
-      setSubs(s || []);
-      setTxns(t || []);
+
+    (async () => {
+      const [c, p, b, m] = await Promise.all([
+        getCreator().catch(() => null),
+        getPosts(CREATOR_SLUG).catch(() => ({ posts: [] })),
+        getPublicCollections(CREATOR_SLUG).catch(() => []),
+        getChatHistory(CREATOR_SLUG).catch(() => []),
+      ]);
+      setCreator(c);
+      setPosts(p?.posts || []);
+      setBundles(Array.isArray(b) ? b : []);
+      setMessages(Array.isArray(m) ? m : []);
       setLoading(false);
-    };
-    load();
+    })();
   }, [navigate]);
 
-  const handleUnsubscribe = async (slug: string) => {
-    if (!window.confirm('Cancel this subscription?')) return;
-    await unsubscribe(slug);
-    setSubs(prev => prev.filter(s => s.Creator?.slug !== slug));
-  };
+  if (loading) {
+    return (
+      <div className="v3-dash" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <p style={{ color: 'var(--v3-ink-soft)' }}>Loading…</p>
+      </div>
+    );
+  }
 
-  const handleLogout = () => {
-    localStorage.removeItem('fanToken');
-    localStorage.removeItem('fanUser');
-    navigate('/');
-  };
+  // ── Derived data ───────────────────────────────────────────
+  const firstName = (fanUser?.username || 'there').split(/\s+/)[0];
+  const creatorName = creator?.siteTitle || 'Creator';
+  const avatar = creator?.images?.hero || creator?.images?.heroSlider?.[0];
+  const tagline = creator?.homeBio?.split('.')[0] || 'Curating a beautiful life, with you.';
 
-  if (loading) return <div className="loading">Loading…</div>;
+  // Stats derived from existing data (no extra endpoints needed)
+  const postsUnlocked = posts.filter(p => !p.isLocked).length;
+  const bundlesOwned = bundles.filter(b => b.isUnlocked).length;
+  const ppvReceived = messages.filter(m => m.senderType === 'creator' && m.isPPV).length;
+
+  // Most recent creator message
+  const latestCreatorMsg = [...messages].reverse().find(m => m.senderType === 'creator');
+
+  // Locked bundles (not yet unlocked) for the horizontal row
+  const lockedBundles = bundles.filter(b => !b.isUnlocked);
+  const latestPosts = posts.slice(0, 6);
 
   return (
-    <div style={{ padding: '80px 20px', maxWidth: 680, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <h1 style={{ margin: '0 0 6px' }}>My Account</h1>
-          <p style={{ margin: 0, color: 'var(--secondary)', fontSize: '0.9rem' }}>{fanUser?.email}</p>
+    <div className="v3-dash">
+      {/* Header */}
+      <div className="v3-dash-header">
+        <div className="avatar">
+          {avatar && <img src={fullUrl(avatar)} alt="" />}
         </div>
-        <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '8px 20px', fontSize: '0.8rem', color: '#aaa' }}>
-          Sign out
-        </button>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1>Hi, {firstName}!</h1>
+          <p className="creator-line">
+            {creatorName}
+            <span className="v3-verified">✓</span>
+          </p>
+          <p className="tagline">{tagline}</p>
+        </div>
       </div>
 
-      {/* Active memberships */}
-      <section style={{ marginBottom: 40 }}>
-        <h3 style={{ marginBottom: 16, fontSize: '0.8rem', letterSpacing: 3, textTransform: 'uppercase', color: 'var(--secondary)' }}>Active Memberships</h3>
-        {subs.length === 0 ? (
-          <div style={{ padding: '28px 24px', background: '#111', border: '1px solid #2a2a2a', borderRadius: 12, textAlign: 'center' }}>
-            <p style={{ margin: '0 0 16px', color: 'var(--secondary)' }}>No active memberships</p>
-            <Link to="/vip" className="btn btn-primary" style={{ padding: '10px 24px', fontSize: '0.85rem' }}>Join the Club</Link>
+      {/* Primary CTA — Message creator */}
+      <Link to="/chat" className="v3-dash-cta">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+        </svg>
+        <span>Message {creatorName} Directly</span>
+      </Link>
+
+      {/* Quick Stats */}
+      <section className="v3-dash-section">
+        <h3>Quick Stats</h3>
+        <div className="v3-dash-stats">
+          <div className="item">
+            <span className="val">{postsUnlocked}</span>
+            <span className="label">Posts<br/>Unlocked</span>
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {subs.map(sub => (
-              <div key={sub.id} style={{ padding: '18px 20px', background: '#111', border: '1px solid #2a2a2a', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <p style={{ margin: 0, fontWeight: 700 }}>{sub.Creator?.displayName || sub.Creator?.slug}</p>
-                  <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--secondary)', textTransform: 'capitalize' }}>
-                    {sub.tier} · renews {new Date(sub.renewalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <Link to="/vault" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Open Vault</Link>
-                  <button onClick={() => handleUnsubscribe(sub.Creator?.slug || CREATOR_SLUG)} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem', color: '#f87171', borderColor: '#f87171' }}>Cancel</button>
-                </div>
-              </div>
-            ))}
+          <div className="item">
+            <span className="val">{bundlesOwned}</span>
+            <span className="label">Bundles<br/>Owned</span>
           </div>
-        )}
+          <div className="item">
+            <span className="val">{ppvReceived}</span>
+            <span className="label">PPV Messages<br/>Received</span>
+          </div>
+        </div>
       </section>
 
-      {/* Spending history */}
-      <section>
-        <h3 style={{ marginBottom: 16, fontSize: '0.8rem', letterSpacing: 3, textTransform: 'uppercase', color: 'var(--secondary)' }}>Spending History</h3>
-        {txns.length === 0 ? (
-          <p style={{ color: '#555', fontSize: '0.85rem' }}>No transactions yet.</p>
-        ) : (
-          <div style={{ border: '1px solid #2a2a2a', borderRadius: 12, overflow: 'hidden' }}>
-            {txns.map((t, i) => (
-              <div key={t.id} style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', borderBottom: i < txns.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.88rem' }}>{t.description}</p>
-                  <p style={{ margin: '3px 0 0', fontSize: '0.75rem', color: '#555' }}>{new Date(t.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+      {/* Locked bundles */}
+      {lockedBundles.length > 0 && (
+        <section className="v3-dash-section">
+          <h3>
+            Locked Content Bundles
+            <Link to="/vault" className="chevron" aria-label="See all">›</Link>
+          </h3>
+          <div className="v3-bundle-row">
+            {lockedBundles.map(b => {
+              const art = b.thumbs?.[0];
+              return (
+                <div key={b.id} className="v3-bundle-card">
+                  <div className="lock">🔒</div>
+                  <div className="art" style={{ backgroundImage: art ? `url("${fullUrl(art)}")` : undefined, filter: 'blur(4px) brightness(0.9)' }} />
+                  <p className="title">{b.title}</p>
+                  <p className="price">${parseFloat(b.price).toFixed(0)}</p>
+                  <button onClick={() => navigate('/vault')}>Unlock Bundle</button>
                 </div>
-                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>${parseFloat(t.amount).toFixed(2)}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
+
+      {/* Latest content */}
+      {latestPosts.length > 0 && (
+        <section className="v3-dash-section">
+          <h3>Latest Content</h3>
+          <div className="v3-latest-grid">
+            {latestPosts.map(p => {
+              const thumb = p.mediaUrls?.[0];
+              const locked = p.isLocked;
+              const price = parseFloat(p.price || 0);
+              return (
+                <Link key={p.id} to="/vault" className={`v3-latest-tile ${locked ? 'locked' : ''}`}>
+                  <div className="bg" style={{ background: thumb ? `url("${fullUrl(thumb)}") center/cover` : '#e8d5c4' }} />
+                  {!locked && <span className="pill">FREE</span>}
+                  <span className="heart">♡</span>
+                  {locked && (
+                    <>
+                      <span className="lock-icon">🔒</span>
+                      <button className="unlock" onClick={(e) => { e.preventDefault(); navigate('/vault'); }}>
+                        <span className="amt">${price > 0 ? price.toFixed(0) : '?'}</span>
+                        <span>Unlock</span>
+                      </button>
+                    </>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Recent message preview */}
+      {latestCreatorMsg && (
+        <Link to="/chat" className="v3-dash-msg" style={{ textDecoration: 'none' }}>
+          <div className="avatar">
+            {avatar && <img src={fullUrl(avatar)} alt="" />}
+          </div>
+          <div className="text">
+            {latestCreatorMsg.isPPV
+              ? '🔒 Sent you a PPV message — tap to view'
+              : (latestCreatorMsg.content || '📎 Sent media')}
+          </div>
+          <span className="time">{fmtTime(latestCreatorMsg.sentAt)}</span>
+        </Link>
+      )}
+
+      <MobileBottomNav />
     </div>
   );
 };

@@ -30,12 +30,10 @@ const decodeFan = (authHeader) => {
   } catch { return null; }
 };
 
-const getSubscriptionStatus = async (authHeader, creatorId) => {
-  const fan = decodeFan(authHeader);
-  if (!fan) return false;
-  const sub = await Subscription.findOne({ where: { userId: fan.userId, creatorId, status: 'active' } });
-  return !!sub;
-};
+// Freemium model — there is no "subscribed-unlocks-everything" tier.
+// The Subscription record now exists only as a "follower" record (free).
+// Posts unlock individually via Transaction { type: 'post_unlock' } or
+// as part of a bundle via Transaction { type: 'collection_unlock' }.
 
 const getUnlockedCollections = async (authHeader) => {
   const fan = decodeFan(authHeader);
@@ -47,6 +45,25 @@ const getUnlockedCollections = async (authHeader) => {
   return new Set(unlocks.map(u => u.referenceId).filter(Boolean));
 };
 
+const getUnlockedPosts = async (authHeader) => {
+  const fan = decodeFan(authHeader);
+  if (!fan) return new Set();
+  const unlocks = await Transaction.findAll({
+    where: { userId: fan.userId, type: 'post_unlock' },
+    attributes: ['referenceId'],
+  });
+  return new Set(unlocks.map(u => u.referenceId).filter(Boolean));
+};
+
+// Kept for `isSubscribed` flag in feed response so old clients don't break,
+// but it now just reports whether the fan is "following" (has any sub record).
+const getFollowStatus = async (authHeader, creatorId) => {
+  const fan = decodeFan(authHeader);
+  if (!fan) return false;
+  const sub = await Subscription.findOne({ where: { userId: fan.userId, creatorId, status: 'active' } });
+  return !!sub;
+};
+
 // GET /api/posts/:creatorSlug — public feed
 // Premium mediaUrls are stripped for non-subscribers; isLocked flag added
 router.get('/:creatorSlug', async (req, res) => {
@@ -54,9 +71,10 @@ router.get('/:creatorSlug', async (req, res) => {
     const creator = await Creator.findOne({ where: { slug: req.params.creatorSlug } });
     if (!creator) return res.status(404).json({ error: 'Creator not found' });
 
-    const [isSubscribed, unlockedCollections] = await Promise.all([
-      getSubscriptionStatus(req.headers.authorization, creator.id),
+    const [isFollowing, unlockedCollections, unlockedPosts] = await Promise.all([
+      getFollowStatus(req.headers.authorization, creator.id),
       getUnlockedCollections(req.headers.authorization),
+      getUnlockedPosts(req.headers.authorization),
     ]);
     const now = new Date();
 
@@ -73,20 +91,29 @@ router.get('/:creatorSlug', async (req, res) => {
       })
       .map(p => {
         const post = p.toJSON();
-        if (isSubscribed) return { ...post, isLocked: false };
-        // Collection post — check bundle unlock
+        // Post is paid if it's premium OR has a price > 0 OR belongs to a bundle
+        const price = parseFloat(post.price || 0);
+        const isPaid = post.isPremium || price > 0 || !!post.collectionId;
+
+        // Unlocked paths
+        if (!isPaid) return { ...post, isLocked: false };
         if (post.collectionId && unlockedCollections.has(post.collectionId)) {
           return { ...post, isLocked: false };
         }
-        const locked = post.isPremium || !!post.collectionId;
+        if (unlockedPosts.has(post.id)) {
+          return { ...post, isLocked: false };
+        }
+        // Locked — strip media URLs
         return {
           ...post,
-          mediaUrls: locked ? [] : post.mediaUrls,
-          isLocked: locked,
+          mediaUrls: [],
+          isLocked: true,
         };
       });
 
-    res.json({ posts: feed, isSubscribed });
+    // `isSubscribed` field kept for backwards-compat with old clients —
+    // now means "fan has a follower record" (always false if logged out).
+    res.json({ posts: feed, isSubscribed: isFollowing });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch posts', detail: err.message });
   }
@@ -149,6 +176,44 @@ router.delete('/:id', requireAuth, requireCreator, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete post', detail: err.message });
+  }
+});
+
+// POST /api/posts/:id/unlock — fan pays the post's price to unlock it
+router.post('/:id/unlock', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+
+    const post = await Post.findByPk(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+
+    const price = parseFloat(post.price || 0);
+    const isPaid = post.isPremium || price > 0 || !!post.collectionId;
+    if (!isPaid) return res.status(400).json({ error: 'Post is free' });
+
+    // Already unlocked?
+    const existing = await Transaction.findOne({
+      where: { userId: req.user.userId, type: 'post_unlock', referenceId: post.id },
+    });
+    if (existing) return res.json({ success: true, alreadyUnlocked: true, post });
+
+    // Bundle posts can only be unlocked by buying the bundle
+    if (post.collectionId) {
+      return res.status(400).json({ error: 'This post is part of a bundle — unlock the bundle to access it.' });
+    }
+
+    await Transaction.create({
+      userId: req.user.userId,
+      creatorId: post.creatorId,
+      type: 'post_unlock',
+      amount: price,
+      referenceId: post.id,
+      description: `Post unlock: ${post.title || post.id}`,
+    });
+
+    res.json({ success: true, post });
+  } catch (err) {
+    res.status(500).json({ error: 'Unlock failed', detail: err.message });
   }
 });
 

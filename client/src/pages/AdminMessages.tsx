@@ -209,19 +209,20 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
     }
   };
 
-  // ── Theme tokens ─────────────────────────────────────────────
+  // ── Theme tokens (v3 — cream/terracotta, ignores isDark) ─────
   const C = {
-    bg:        isDark ? '#0a0a0a' : '#fafafa',
-    panelBg:   isDark ? '#0a0a0a' : '#fff',
-    border:    isDark ? '#1a1a1a' : '#e8e8e8',
-    text:      isDark ? '#fff'    : '#111',
-    muted:     isDark ? '#666'    : '#888',
-    faint:     isDark ? '#444'    : '#bbb',
-    rowHover:  isDark ? '#141414' : '#f5f5f5',
-    rowActive: isDark ? '#141414' : '#f0eaff',
-    inputBg:   isDark ? '#0d0d0d' : '#f8f8f8',
-    msgFan:    isDark ? '#1a1a1a' : '#f0f0f0',
+    bg:        '#FFF8F2',
+    panelBg:   '#fff',
+    border:    'var(--v3-line)',
+    text:      'var(--v3-ink)',
+    muted:     'var(--v3-ink-soft)',
+    faint:     'var(--v3-muted)',
+    rowHover:  'var(--v3-cream-deep)',
+    rowActive: '#FBE3E0',
+    inputBg:   '#FFFAF4',
+    msgFan:    'var(--v3-cream-deep)',
   };
+  void isDark;
 
   const active = inbox.find(r => r.fanId === activeFanId);
 
@@ -245,7 +246,7 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                 style={{
                   padding: '12px 14px', cursor: 'pointer',
                   borderBottom: `1px solid ${C.border}`,
-                  borderLeft: isActive ? '3px solid #7c3aed' : '3px solid transparent',
+                  borderLeft: isActive ? '3px solid var(--v3-terracotta)' : '3px solid transparent',
                   background: isActive ? C.rowActive : 'transparent',
                   display: 'flex', gap: 10, alignItems: 'center',
                 }}
@@ -253,7 +254,7 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                 onMouseLeave={e => { if (!isActive) (e.currentTarget.style.background = 'transparent'); }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                  background: '#7c3aed', color: '#fff', display: 'flex',
+                  background: 'var(--v3-terracotta)', color: '#fff', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
                   fontSize: '0.78rem', fontWeight: 700,
                 }}>{initials(row.fan?.username || '?')}</div>
@@ -295,7 +296,7 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
             {/* Header */}
             <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
-                width: 38, height: 38, borderRadius: '50%', background: '#7c3aed',
+                width: 38, height: 38, borderRadius: '50%', background: 'var(--v3-terracotta)',
                 color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '0.82rem', fontWeight: 700,
               }}>{initials(active.fan?.username || '?')}</div>
@@ -304,7 +305,7 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                   <span style={{ fontWeight: 700, fontSize: '0.95rem', color: C.text }}>{active.fan?.username}</span>
                   {active.subscriptionTier && (
                     <span style={{
-                      background: active.subscriptionTier === 'premium' ? '#f59e0b' : '#7c3aed',
+                      background: active.subscriptionTier === 'premium' ? '#f59e0b' : 'var(--v3-terracotta)',
                       color: '#fff', borderRadius: 6, padding: '2px 8px',
                       fontSize: '0.66rem', fontWeight: 700, textTransform: 'capitalize', letterSpacing: 1,
                     }}>{active.subscriptionTier}</span>
@@ -334,7 +335,7 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                       padding: locked ? 0 : (msg.mediaUrl ? 4 : '9px 13px'),
                       fontSize: '0.88rem', lineHeight: 1.45,
                       borderRadius: mine ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-                      background: mine ? '#7c3aed' : C.msgFan,
+                      background: mine ? 'var(--v3-terracotta)' : C.msgFan,
                       color: mine ? '#fff' : C.text,
                       wordBreak: 'break-word', overflow: 'hidden',
                     }}>
@@ -409,8 +410,8 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                   }}>{uploading ? '… uploading' : '📎 Attach'}</button>
                 <button onClick={() => setIsPPV(p => !p)}
                   style={{
-                    background: isPPV ? '#7c3aed' : 'none',
-                    border: `1px solid ${isPPV ? '#7c3aed' : C.border}`,
+                    background: isPPV ? 'var(--v3-terracotta)' : 'none',
+                    border: `1px solid ${isPPV ? 'var(--v3-terracotta)' : C.border}`,
                     borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
                     color: isPPV ? '#fff' : C.muted, fontSize: '0.76rem', fontWeight: 600,
                   }}>🔒 PPV</button>
@@ -441,7 +442,7 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                 <button onClick={send} disabled={!canSend()}
                   style={{
                     width: 38, height: 38, borderRadius: '50%', border: 'none',
-                    background: canSend() ? '#7c3aed' : C.border,
+                    background: canSend() ? 'var(--v3-terracotta)' : C.border,
                     color: '#fff', cursor: canSend() ? 'pointer' : 'not-allowed',
                     fontSize: '1rem', flexShrink: 0,
                   }}>↑</button>

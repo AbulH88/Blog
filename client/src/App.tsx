@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { getCreator } from './api';
 import './styles/main.css';
+import './styles/theme-v3.css';
 
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -10,7 +11,6 @@ import AgeGate from './components/AgeGate';
 import Home from './pages/Home';
 import Gallery from './pages/Gallery';
 import Vault from './pages/Vault';
-import VIP from './pages/VIP';
 import Blog from './pages/Blog';
 import About from './pages/About';
 import Admin from './pages/Admin';
@@ -36,17 +36,16 @@ function App() {
   };
 
   useEffect(() => {
+    // V3 theme — apply globally
+    document.body.classList.add('v3');
+
     const fetchConfig = async () => {
       const data = await getCreator();
       setConfig(data);
 
-      if (data.theme) {
-        const root = document.documentElement;
-        root.style.setProperty('--primary', data.theme.primaryColor || '#ffffff');
-        root.style.setProperty('--bg', data.theme.backgroundColor || '#0a0a0a');
-        root.style.setProperty('--accent', data.theme.accentColor || '#ffffff');
-        document.body.style.fontFamily = data.theme.fontFamily || "'Didot', serif";
-      }
+      // V3 ignores creator-supplied colors so the brand stays consistent.
+      // (Future: re-introduce per-creator color overrides as CSS var sets.)
+
 
       if (data.seo) {
         document.title = data.seo.metaTitle || data.siteTitle;
@@ -90,13 +89,12 @@ function App() {
           </Routes>
         ) : (
           <>
-            <Navbar siteTitle={config.siteTitle} />
+            <Navbar siteTitle={config.siteTitle} fanvueUrl={config.fanvueUrl} />
             <main className="container">
               <Routes>
                 <Route path="/" element={<Home config={config} />} />
                 <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
                 <Route path="/vault" element={<Vault config={config} />} />
-                <Route path="/vip" element={<VIP config={config} />} />
                 <Route path="/blog" element={<Blog blog={config.blog} />} />
                 <Route path="/about" element={<About bio={config.bio} />} />
                 <Route path="/login" element={<Login />} />
