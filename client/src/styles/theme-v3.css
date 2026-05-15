@@ -1861,6 +1861,68 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
 .v3-bio-row input:focus,
 .v3-bio-row select:focus { border-color: var(--v3-terracotta); }
 
+/* ───── Admin dashboard — Bio Links + 2-col layout ──────── */
+.v3-dash-cols {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.v3-dash-right { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+@media (max-width: 1100px) {
+  .v3-dash-cols { grid-template-columns: 1fr; }
+}
+
+.v3-bio-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.v3-bio-table thead th {
+  text-align: left;
+  font-size: 0.74rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--v3-muted);
+  font-weight: 700;
+  padding: 8px 10px 12px;
+  border-bottom: 1px solid var(--v3-line);
+}
+.v3-bio-table tbody td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--v3-line);
+  vertical-align: middle;
+}
+.v3-bio-table tbody tr:hover { background: var(--v3-cream-deep); }
+.v3-bio-table tbody tr:last-child td { border-bottom: none; }
+
+.v3-bio-table .drag-handle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  color: var(--v3-muted);
+  padding-top: 12px;
+}
+.v3-bio-table .drag-handle button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.6rem;
+  color: var(--v3-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.v3-bio-table .drag-handle button:hover:not(:disabled) {
+  background: var(--v3-cream-deep);
+  color: var(--v3-ink);
+}
+.v3-bio-table .drag-handle button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* ───── Gallery page ──────────────────────────────────────── */
 .v3-gallery {
   background: var(--v3-terracotta);

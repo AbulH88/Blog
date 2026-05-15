@@ -69,7 +69,7 @@ const Navbar = ({
           <Link to="/">Home</Link>
           <Link to="/about">About</Link>
           {/* Shop — coming soon, hidden for now */}
-          <Link to="/gallery">Travel</Link>
+          <Link to="/gallery">Gallery</Link>
           <Link to="/blog">Blog</Link>
         </div>
 

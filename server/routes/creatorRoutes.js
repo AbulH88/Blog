@@ -83,6 +83,27 @@ router.get('/:slug/analytics', requireAuth, requireCreator, async (req, res) => 
   }
 });
 
+// Public — Bio Link click tracker → increments clickCount + redirects out
+// Usage: GET /api/creator/:slug/link/:linkIdx → 302 to the link's URL
+router.get('/:slug/link/:linkIdx', async (req, res) => {
+  try {
+    const creator = await Creator.findOne({ where: { slug: req.params.slug } });
+    if (!creator) return res.status(404).send('Creator not found');
+
+    const idx = parseInt(req.params.linkIdx, 10);
+    const links = Array.isArray(creator.featuredLinks) ? [...creator.featuredLinks] : [];
+    if (!links[idx]) return res.status(404).send('Link not found');
+
+    const link = { ...links[idx], clickCount: (links[idx].clickCount || 0) + 1 };
+    links[idx] = link;
+    await creator.update({ featuredLinks: links });
+
+    return res.redirect(link.href || '/');
+  } catch (err) {
+    return res.status(500).send('Click tracker failed: ' + err.message);
+  }
+});
+
 // Creator — list subscribers
 router.get('/:slug/subscribers', requireAuth, requireCreator, async (req, res) => {
   try {
