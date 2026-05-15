@@ -41,9 +41,9 @@ const Footer = ({ config }: { config: any }) => {
       <p className="copy">© {year} {config.siteTitle?.toUpperCase()}. ALL RIGHTS RESERVED.</p>
 
       <div className="v3-footer-links">
-        <a href="#">Privacy Policy</a>
-        <a href="#">Terms</a>
-        <a href="#">Contact</a>
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms</a>
+        <a href="/2257">2257</a>
       </div>
     </footer>
   );

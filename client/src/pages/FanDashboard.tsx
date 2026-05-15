@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   CREATOR_SLUG, SERVER_URL,
   getPosts, getPublicCollections, getChatHistory, getCreator,
-  getMyTransactions,
+  getMyTransactions, unsubscribe,
 } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
 
@@ -54,6 +54,20 @@ const FanDashboard = () => {
     localStorage.removeItem('fanToken');
     localStorage.removeItem('fanUser');
     navigate('/');
+  };
+
+  const handleCancelAccount = async () => {
+    const confirmed = window.confirm(
+      'Cancel your account?\n\n' +
+      '• Any content you have unlocked remains accessible until you log out.\n' +
+      '• You will not be charged for anything after cancellation.\n' +
+      '• You can re-activate by signing back in any time.\n\n' +
+      'Continue?'
+    );
+    if (!confirmed) return;
+    try { await unsubscribe(CREATOR_SLUG); } catch { /* ignore */ }
+    alert("You're all set. We've stopped any future charges. Thanks for being part of " + (creator?.siteTitle || 'the community') + ' 💌');
+    handleSignOut();
   };
 
   if (loading) {
@@ -130,6 +144,19 @@ const FanDashboard = () => {
             style={{ background: 'none', border: 'none', color: 'var(--v3-muted)' }}>
             Sign Out
           </button>
+          <button onClick={handleCancelAccount}
+            style={{
+              background: 'none', border: 'none', color: 'var(--v3-danger)',
+              fontSize: '0.74rem', cursor: 'pointer', padding: '8px 0',
+              fontFamily: 'inherit', textAlign: 'center', width: '100%',
+            }}>
+            Cancel my account
+          </button>
+          <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center', fontSize: '0.7rem' }}>
+            <Link to="/terms" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>Terms</Link>
+            <Link to="/privacy" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>Privacy</Link>
+            <Link to="/2257" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>2257</Link>
+          </div>
         </div>
       </aside>
 

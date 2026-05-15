@@ -18,6 +18,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import FanDashboard from './pages/FanDashboard';
 import Chat from './pages/Chat';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+import Compliance2257 from './pages/Compliance2257';
 
 const Maintenance = () => (
   <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', background: '#000', color: '#fff' }}>
@@ -101,6 +104,9 @@ function App() {
                 <Route path="/register" element={<Register config={config} />} />
                 <Route path="/dashboard" element={<FanDashboard />} />
                 <Route path="/chat" element={<Chat config={config} />} />
+                <Route path="/terms" element={<Terms config={config} />} />
+                <Route path="/privacy" element={<Privacy config={config} />} />
+                <Route path="/2257" element={<Compliance2257 config={config} />} />
                 <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>

@@ -34,6 +34,12 @@ const Creator = sequelize.define('Creator', {
   // Fanvue link — outbound CTA target for the "Join Premium" modal
   fanvueUrl: { type: DataTypes.STRING, allowNull: true },
 
+  // Discreet billing descriptor — shown on bank statements for every
+  // charge. Max ~22 chars (Visa/MC limit). Must be neutral / brand-safe —
+  // adult processors will reject anything revealing the nature of the
+  // content. Example: "CRISTINA" or "CRISTINA-DIGITAL".
+  billingDescriptor: { type: DataTypes.STRING, allowNull: true },
+
   // Brand — logo image URL (shown in navbar + admin sidebar in place of wordmark)
   logoUrl: { type: DataTypes.STRING, allowNull: true },
 

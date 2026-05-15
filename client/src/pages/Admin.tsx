@@ -1391,6 +1391,37 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         <textarea className="av2-input" name="bio" value={formData.bio} onChange={handleChange} rows={5} style={{ resize: 'vertical' }} />
       </div>
 
+      {/* Billing descriptor — required for payment processor compliance */}
+      <div className="av2-card">
+        <p className="av2-section-label">Discreet Billing Descriptor</p>
+        <p style={{ fontSize: '0.82rem', color: 'var(--v3-ink-soft)', margin: '0 0 12px', lineHeight: 1.55 }}>
+          The short label that appears on your fans' bank/card statements for every charge.
+          Required by adult payment processors (Segpay, CCBill, NOWPayments). Must be
+          <strong> neutral and non-revealing</strong> — anything implying adult content
+          will be rejected during onboarding. Max 22 characters.
+        </p>
+        <input
+          className="av2-input"
+          name="billingDescriptor"
+          value={formData.billingDescriptor || ''}
+          onChange={handleChange}
+          maxLength={22}
+          placeholder="CRISTINA"
+          spellCheck={false}
+          style={{ fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: 1 }}
+        />
+        <p style={{ fontSize: '0.74rem', color: 'var(--v3-muted)', margin: '6px 0 0' }}>
+          Statement preview: <strong style={{ fontFamily: 'monospace' }}>
+            {(formData.billingDescriptor || 'CRISTINA').toUpperCase()}*ORDER123
+          </strong>
+          {(formData.billingDescriptor || '').length > 0 && (
+            <span style={{ marginLeft: 10, color: (formData.billingDescriptor || '').length > 22 ? 'var(--v3-danger)' : 'var(--v3-success)' }}>
+              {(formData.billingDescriptor || '').length}/22 chars
+            </span>
+          )}
+        </p>
+      </div>
+
       {/* Fanvue — dedicated monetization card */}
       <div className="v3-fanvue-card">
         <div className="ico">💎</div>
