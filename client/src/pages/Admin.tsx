@@ -401,6 +401,49 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         <h1 className="title">BIO BUILDER</h1>
         <p className="welcome">Edit your homepage hero, social links, featured tiles, and IG feed.</p>
 
+        {/* Logo — shown in navbar + admin sidebar instead of the text wordmark */}
+        <div className="av2-card">
+          <p className="av2-section-label">Logo</p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
+            Replaces the "CRISTINA" wordmark in the navbar &amp; admin sidebar. PNG with transparent background works best. Portrait (3:4) or square (1:1) is fine.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+            <DragDropUpload
+              accept="image/*"
+              onFiles={async (files) => {
+                if (!files.length) return;
+                setStatus('Uploading logo…');
+                const res = await uploadImage(files[0]);
+                if (res.url) {
+                  setFormData((prev: any) => ({ ...prev, logoUrl: res.url }));
+                  setStatus('Logo uploaded — remember to Save Changes');
+                  setTimeout(() => setStatus(''), 4000);
+                } else {
+                  setStatus('Upload failed');
+                }
+              }}
+              title={formData.logoUrl ? 'Replace logo' : 'Drop logo here'}
+              hint="PNG / WebP / JPG · ≤ 1 MB"
+              icon="✦"
+              style={{ width: 260, padding: '18px 22px' }}
+            />
+            {formData.logoUrl && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 100, height: 120, padding: 8, background: 'var(--v3-cream)', border: '1px solid var(--v3-line)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={formData.logoUrl.startsWith('http') ? formData.logoUrl : `${SERVER_URL}${formData.logoUrl}`}
+                       alt="Logo preview"
+                       style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+                <button type="button"
+                  onClick={() => setFormData({ ...formData, logoUrl: '' })}
+                  style={{ background: 'none', border: 'none', color: 'var(--v3-danger)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>
+                  Remove logo
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="av2-card">
           <p className="av2-section-label">Social Links</p>
           <label className="av2-label">Instagram</label>
@@ -529,10 +572,10 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         <div className="av2-card">
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
             <p className="av2-section-label" style={{ marginBottom: 0 }}>Hero Slider Images ({slider.length})</p>
-            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>auto-cycles on home page · 9:16 vertical works best</span>
+            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>auto-cycles on home page · 16:9 landscape · 1920×1080 ideal</span>
           </div>
           <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
-            Add 2 or more to enable the cross-fading slider with dot navigation.
+            Add 2 or more to enable the cross-fading slider with dot navigation. Portrait photos get cropped — use landscape.
           </p>
 
           <DragDropUpload
@@ -561,7 +604,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         <div className="av2-card">
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
             <p className="av2-section-label" style={{ marginBottom: 0 }}>Gallery Images ({gallery.length})</p>
-            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>shown on /gallery + fills the home Instagram-style feed</span>
+            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>shown on /gallery + home page IG feed · 1:1 square · 1080×1080 ideal</span>
           </div>
           <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
             Square (1:1) photos look best. Add 6–9 to fill the home page feed grid.
@@ -1049,7 +1092,20 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
       {/* Sidebar */}
       <aside className="v3-admin-side">
         <div className="v3-admin-brand">
-          {(config?.siteTitle || 'CRISTINA').toUpperCase()} <span style={{ color: 'var(--v3-muted)' }}>|</span> <small>BIO ADMIN</small>
+          {config?.logoUrl ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '4px 0 8px' }}>
+              <img
+                src={config.logoUrl.startsWith('http') ? config.logoUrl : `${SERVER_URL}${config.logoUrl}`}
+                alt={config?.siteTitle || 'Logo'}
+                style={{ maxHeight: 86, maxWidth: 160, objectFit: 'contain' }}
+              />
+              <small style={{ display: 'block' }}>BIO ADMIN</small>
+            </div>
+          ) : (
+            <>
+              {(config?.siteTitle || 'CRISTINA').toUpperCase()} <span style={{ color: 'var(--v3-muted)' }}>|</span> <small>BIO ADMIN</small>
+            </>
+          )}
         </div>
 
         <div className="v3-admin-profile">

@@ -89,7 +89,7 @@ function App() {
           </Routes>
         ) : (
           <>
-            <Navbar siteTitle={config.siteTitle} fanvueUrl={config.fanvueUrl} />
+            <Navbar siteTitle={config.siteTitle} fanvueUrl={config.fanvueUrl} logoUrl={config.logoUrl} />
             <main className="container">
               <Routes>
                 <Route path="/" element={<Home config={config} />} />

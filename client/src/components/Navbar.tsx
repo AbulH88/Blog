@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import JoinPremiumModal from './JoinPremiumModal';
+import { SERVER_URL } from '../api';
 
 const Navbar = ({
   siteTitle,
   instagramHandle,
   fanvueUrl,
+  logoUrl,
 }: {
   siteTitle: string;
   instagramHandle?: string;
   fanvueUrl?: string;
+  logoUrl?: string;
 }) => {
   const [fanUser, setFanUser] = useState<any>(null);
   const [joinOpen, setJoinOpen] = useState(false);
@@ -37,6 +40,9 @@ const Navbar = ({
   if (isMobileRosePage) return null;
 
   const handle = instagramHandle || '@cristina_style';
+  const logoSrc = logoUrl
+    ? (logoUrl.startsWith('http') ? logoUrl : `${SERVER_URL}${logoUrl}`)
+    : '';
 
   return (
     <>
@@ -47,8 +53,16 @@ const Navbar = ({
 
       {/* Main nav */}
       <nav className="v3-nav">
-        <Link to="/" className="v3-logo">
-          {(siteTitle || 'CRISTINA').toUpperCase()}
+        <Link to="/" className="v3-logo" style={{ display: 'inline-flex', alignItems: 'center' }}>
+          {logoSrc ? (
+            <img
+              src={logoSrc}
+              alt={siteTitle || 'CRISTINA'}
+              style={{ height: 52, width: 'auto', display: 'block' }}
+            />
+          ) : (
+            (siteTitle || 'CRISTINA').toUpperCase()
+          )}
         </Link>
 
         <div className="v3-nav-links">

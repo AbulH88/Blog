@@ -43,6 +43,7 @@ const normalize = (creator: any) => ({
   subscriptionPricePremium: creator.subscriptionPricePremium,
   welcomeMessage: creator.welcomeMessage,
   fanvueUrl: creator.fanvueUrl || '',
+  logoUrl: creator.logoUrl || '',
   featuredLinks: creator.featuredLinks || [],
   instagramPosts: creator.instagramPosts || [],
 });
@@ -63,6 +64,7 @@ const denormalize = (config: any) => {
     faq: config.faq || [],
     mustHaves: config.mustHaves || [],
     fanvueUrl: config.fanvueUrl || null,
+    logoUrl: config.logoUrl || null,
     featuredLinks: config.featuredLinks || [],
     instagramPosts: config.instagramPosts || [],
   };
