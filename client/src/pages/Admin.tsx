@@ -8,9 +8,10 @@ import {
 } from '../api';
 import AdminMessages from './AdminMessages';
 import AdminBroadcast from './AdminBroadcast';
+import DragDropUpload from '../components/DragDropUpload';
 
 type Tab =
-  | 'overview' | 'biobuilder' | 'analytics' | 'content'
+  | 'overview' | 'biobuilder' | 'analytics' | 'content' | 'gallery'
   | 'messages' | 'broadcast' | 'audience' | 'branding'
   | 'settings' | 'support';
 
@@ -19,6 +20,7 @@ const TABS: { id: Tab; label: string; icon: string; badge?: string }[] = [
   { id: 'biobuilder', label: 'Bio Builder',  icon: '☰' },
   { id: 'analytics',  label: 'Analytics',    icon: '📊' },
   { id: 'content',    label: 'Content',      icon: '◈' },
+  { id: 'gallery',    label: 'Gallery',      icon: '🖼' },
   { id: 'messages',   label: 'Messages',     icon: '◎' },
   { id: 'broadcast',  label: 'Broadcast',    icon: '📣' },
   { id: 'audience',   label: 'Audience',     icon: '👥' },
@@ -96,6 +98,33 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
     } else {
       setFormData({ ...formData, [name]: val });
     }
+  };
+
+  // Batch upload — used by DragDropUpload (supports multi-file drops)
+  const handleFilesUpload = async (files: File[], type: 'gallery' | 'slider' | 'favicon') => {
+    if (!files.length) return;
+    setStatus(`Uploading ${files.length} file${files.length === 1 ? '' : 's'}…`);
+    const urls: string[] = [];
+    for (const file of files) {
+      const res = await uploadImage(file);
+      if (res.url) urls.push(res.url);
+    }
+    if (!urls.length) { setStatus('Upload failed'); return; }
+    if (type === 'favicon') {
+      setFormData((prev: any) => ({ ...prev, seo: { ...prev.seo, favicon: urls[0] } }));
+    } else if (type === 'gallery') {
+      setFormData((prev: any) => ({
+        ...prev,
+        images: { ...prev.images, gallery: [...(prev.images?.gallery || []), ...urls] },
+      }));
+    } else if (type === 'slider') {
+      setFormData((prev: any) => ({
+        ...prev,
+        images: { ...prev.images, heroSlider: [...(prev.images?.heroSlider || []), ...urls] },
+      }));
+    }
+    setStatus(`${urls.length} uploaded — remember to Save Changes`);
+    setTimeout(() => setStatus(''), 4000);
   };
 
   const handleFileUpload = async (e: any, type: 'gallery' | 'slider' | 'favicon') => {
@@ -487,6 +516,89 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
     );
   };
 
+  const renderGallery = () => {
+    const slider: string[] = formData.images?.heroSlider || [];
+    const gallery: string[] = formData.images?.gallery || [];
+
+    return (
+      <div>
+        <h1 className="title">GALLERY</h1>
+        <p className="welcome">Your visual content — hero slider on the home page, and the gallery grid that also feeds the Instagram-style sidebar.</p>
+
+        {/* Hero Slider */}
+        <div className="av2-card">
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
+            <p className="av2-section-label" style={{ marginBottom: 0 }}>Hero Slider Images ({slider.length})</p>
+            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>auto-cycles on home page · 9:16 vertical works best</span>
+          </div>
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
+            Add 2 or more to enable the cross-fading slider with dot navigation.
+          </p>
+
+          <DragDropUpload
+            accept="image/*"
+            multiple
+            onFiles={(files) => handleFilesUpload(files, 'slider')}
+            title="Drop hero images here"
+            hint="or click to browse — JPG, PNG, WebP"
+            icon="🖼"
+            style={{ marginBottom: 14 }}
+          />
+
+          {slider.length > 0 && (
+            <div className="av2-img-grid">
+              {slider.map((img: string, idx: number) => (
+                <div key={idx} style={{ position: 'relative' }}>
+                  <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
+                  <button onClick={() => removeImage('slider', idx)} className="av2-img-remove">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Gallery */}
+        <div className="av2-card">
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
+            <p className="av2-section-label" style={{ marginBottom: 0 }}>Gallery Images ({gallery.length})</p>
+            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>shown on /gallery + fills the home Instagram-style feed</span>
+          </div>
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
+            Square (1:1) photos look best. Add 6–9 to fill the home page feed grid.
+          </p>
+
+          <DragDropUpload
+            accept="image/*"
+            multiple
+            onFiles={(files) => handleFilesUpload(files, 'gallery')}
+            title="Drop gallery photos here"
+            hint="or click to browse multiple"
+            icon="📷"
+            style={{ marginBottom: 14 }}
+          />
+
+          {gallery.length > 0 && (
+            <div className="av2-img-grid">
+              {gallery.map((img: string, idx: number) => (
+                <div key={idx} style={{ position: 'relative' }}>
+                  <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
+                  <button onClick={() => removeImage('gallery', idx)} className="av2-img-remove">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="av2-save-bar">
+          {status && <span style={{ fontSize: '0.85rem', color: status.includes('Error') || status.includes('failed') ? 'var(--v3-danger)' : 'var(--v3-success)', fontWeight: 600 }}>{status}</span>}
+          <button className="v3-btn v3-btn-primary" onClick={handleSave} style={{ padding: '12px 30px' }}>
+            Save Changes
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderPlaceholder = (title: string, blurb: string) => (
     <div>
       <h1 className="title">{title.toUpperCase()}</h1>
@@ -507,14 +619,13 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
       <div className="av2-card">
         <p className="av2-section-label">New Post</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label className="av2-upload-area">
-            <input type="file" accept="image/*,video/*,audio/*" style={{ display: 'none' }}
-              onChange={e => setPostFile(e.target.files?.[0] || null)} />
-            <span style={{ fontSize: '1.6rem' }}>{postFile ? '✓' : '+'}</span>
-            <span style={{ fontSize: '0.78rem', color: C.muted, marginTop: 6 }}>
-              {postFile ? postFile.name.substring(0, 20) + '…' : 'Pick media'}
-            </span>
-          </label>
+          <DragDropUpload
+            accept="image/*,video/*,audio/*"
+            onFiles={(files) => setPostFile(files[0] || null)}
+            title={postFile ? '✓ Selected' : 'Drop media here'}
+            hint={postFile ? postFile.name.substring(0, 30) + (postFile.name.length > 30 ? '…' : '') : 'image · video · audio'}
+            icon={postFile ? '✓' : '＋'}
+          />
           <div>
             <input className="av2-input" placeholder="Title (optional)"
               value={newPost.title} onChange={e => setNewPost({ ...newPost, title: e.target.value })} />
@@ -794,42 +905,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         </div>
       </div>
 
-      {/* Media */}
-      <div className="av2-card">
-        <p className="av2-section-label">Hero Slider Images</p>
-        <label className="av2-upload-area" style={{ marginBottom: 14 }}>
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, 'slider')} />
-          <span style={{ fontSize: '1.4rem' }}>+</span>
-          <span style={{ fontSize: '0.76rem', color: '#555', marginTop: 4 }}>Add slider image</span>
-        </label>
-        {(formData.images?.heroSlider || []).length > 0 && (
-          <div className="av2-img-grid">
-            {formData.images.heroSlider.map((img: string, idx: number) => (
-              <div key={idx} style={{ position: 'relative' }}>
-                <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 8 }} />
-                <button onClick={() => removeImage('slider', idx)} className="av2-img-remove">✕</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <p className="av2-section-label" style={{ marginTop: 20 }}>Gallery Images</p>
-        <label className="av2-upload-area" style={{ marginBottom: 14 }}>
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, 'gallery')} />
-          <span style={{ fontSize: '1.4rem' }}>+</span>
-          <span style={{ fontSize: '0.76rem', color: '#555', marginTop: 4 }}>Add gallery image</span>
-        </label>
-        {(formData.images?.gallery || []).length > 0 && (
-          <div className="av2-img-grid">
-            {formData.images.gallery.map((img: string, idx: number) => (
-              <div key={idx} style={{ position: 'relative' }}>
-                <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 8 }} />
-                <button onClick={() => removeImage('gallery', idx)} className="av2-img-remove">✕</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Media moved → see Gallery tab in the sidebar. */}
 
       {/* Appearance */}
       <div className="av2-card">
@@ -869,11 +945,22 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         <label className="av2-label">Meta Description</label>
         <textarea className="av2-input" name="seo.metaDescription" value={formData.seo?.metaDescription || ''} onChange={handleChange} rows={3} style={{ resize: 'vertical' }} />
         <label className="av2-label">Favicon</label>
-        <label className="av2-upload-area" style={{ width: 'fit-content', padding: '10px 20px', flexDirection: 'row', gap: 10 }}>
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, 'favicon')} />
-          <span>Upload favicon</span>
-          {formData.seo?.favicon && <img src={formData.seo.favicon} style={{ width: 24, height: 24, objectFit: 'contain' }} alt="" />}
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <DragDropUpload
+            accept="image/*"
+            onFiles={(files) => handleFilesUpload(files, 'favicon')}
+            title={formData.seo?.favicon ? 'Replace favicon' : 'Drop favicon'}
+            hint="32×32 PNG or ICO works best"
+            icon="✦"
+            style={{ width: 240, padding: '16px 20px' }}
+          />
+          {formData.seo?.favicon && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <img src={formData.seo.favicon} style={{ width: 40, height: 40, objectFit: 'contain', border: '1px solid var(--v3-line)', borderRadius: 6, padding: 4 }} alt="" />
+              <span style={{ fontSize: '0.78rem', color: 'var(--v3-muted)' }}>current</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Social links */}
@@ -1020,6 +1107,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         {activeTab === 'biobuilder' && renderBioBuilder()}
         {activeTab === 'analytics'  && renderPlaceholder('Analytics', 'Deeper traffic, click, and conversion analytics with charts.')}
         {activeTab === 'content'    && renderContent()}
+        {activeTab === 'gallery'    && renderGallery()}
         {activeTab === 'messages'   && <AdminMessages isDark={isDark} />}
         {activeTab === 'broadcast'  && <AdminBroadcast isDark={isDark} />}
         {activeTab === 'audience'   && renderPlaceholder('Audience', 'Subscriber list, tiers, segments, and bulk actions.')}
