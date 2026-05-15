@@ -31,14 +31,16 @@ const Navbar = ({
     navigate('/');
   };
 
-  // Mobile-rose pages (Chat / Vault / Dashboard) hide the desktop chrome ONLY
-  // on phone-sized viewports. On tablet+ they get the full navbar so the user
-  // can move around. CSS handles the actual hide via a body class — we still
-  // render the markup so it's available the moment a window resizes wider.
-  const isMobileRosePage =
-    location.pathname === '/chat' ||
-    location.pathname === '/vault' ||
-    location.pathname === '/dashboard';
+  // Chrome visibility:
+  // - /chat and /vault: hide chrome on mobile (immersive), show on desktop
+  //   (so users can navigate)
+  // - /dashboard: hide chrome on ALL sizes — the page has its own admin-style
+  //   sidebar shell on desktop, and its own mobile layout
+  const isImmersiveMobile =
+    location.pathname === '/chat' || location.pathname === '/vault';
+  const isFullyHidden = location.pathname === '/dashboard';
+
+  if (isFullyHidden) return null;
 
   const handle = instagramHandle || '@cristina_style';
   const logoSrc = logoUrl
@@ -46,7 +48,7 @@ const Navbar = ({
     : '';
 
   return (
-    <div className={isMobileRosePage ? 'v3-chrome v3-chrome--mobile-hidden' : 'v3-chrome'}>
+    <div className={isImmersiveMobile ? 'v3-chrome v3-chrome--mobile-hidden' : 'v3-chrome'}>
       {/* Top terracotta brand bar */}
       <div className="v3-brand-bar">
         {siteTitle?.toUpperCase()} <span style={{ opacity: 0.7, margin: '0 6px' }}>|</span> {handle}

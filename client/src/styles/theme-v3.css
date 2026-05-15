@@ -1089,6 +1089,250 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
 .v3-pill.warning { background: var(--v3-warning-bg); color: #a07033; }
 .v3-pill.danger  { background: var(--v3-danger-bg);  color: var(--v3-danger); }
 
+/* ───── Fan Dashboard SHELL (desktop) ────────────────────────
+   Admin-style layout: left sidebar + top bar + main + side panel.
+   Only used on >=900px. Mobile (<900px) renders the legacy
+   .v3-dash single-column layout instead. */
+
+.v3-fan-shell {
+  background: var(--v3-cream);
+  color: var(--v3-ink);
+  font-family: var(--v3-body);
+  min-height: 100vh;
+  display: flex;
+}
+
+.v3-fan-side {
+  width: 240px;
+  background: #fff;
+  border-right: 1px solid var(--v3-line);
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.v3-fan-brand {
+  font-family: var(--v3-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+  color: var(--v3-ink);
+  padding: 6px 10px 22px;
+  border-bottom: 1px solid var(--v3-line);
+  margin-bottom: 14px;
+}
+.v3-fan-brand small {
+  font-family: var(--v3-body);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.66rem;
+  letter-spacing: 3px;
+  color: var(--v3-muted);
+  display: block;
+  margin-top: 2px;
+}
+.v3-fan-brand img { max-height: 60px; max-width: 160px; display: block; margin-bottom: 6px; }
+
+.v3-fan-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 22px;
+  border-bottom: 1px solid var(--v3-line);
+  margin-bottom: 14px;
+}
+.v3-fan-profile .avatar {
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #ddd;
+  border: 2px solid #fff;
+  box-shadow: var(--v3-shadow-sm);
+}
+.v3-fan-profile .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.v3-fan-profile .handle {
+  font-size: 0.84rem;
+  color: var(--v3-ink-soft);
+  font-weight: 600;
+}
+.v3-fan-profile .role {
+  font-size: 0.66rem;
+  color: var(--v3-muted);
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+
+.v3-fan-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: none;
+  border: none;
+  color: var(--v3-ink-soft);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+  transition: background 0.15s;
+  text-decoration: none;
+}
+.v3-fan-nav-btn:hover { background: var(--v3-cream-deep); }
+.v3-fan-nav-btn.active {
+  background: var(--v3-cream-deep);
+  color: var(--v3-ink);
+  font-weight: 600;
+}
+
+.v3-fan-side-footer {
+  margin-top: auto;
+  padding-top: 14px;
+}
+.v3-fan-side-footer button,
+.v3-fan-side-footer a {
+  display: block;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--v3-line);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 0.78rem;
+  color: var(--v3-ink);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+
+.v3-fan-main {
+  flex: 1;
+  padding: 22px 32px 60px;
+  min-width: 0;
+}
+
+.v3-fan-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.v3-fan-top h1 {
+  font-family: var(--v3-heading);
+  font-size: 2rem;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+.v3-fan-top .sub {
+  font-size: 0.94rem;
+  color: var(--v3-ink-soft);
+  margin: 2px 0 0;
+}
+.v3-fan-top .right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.v3-fan-top .bell {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--v3-line);
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.v3-fan-top .bell .dot {
+  position: absolute; top: 6px; right: 6px;
+  background: var(--v3-danger); color: #fff;
+  font-size: 0.58rem; font-weight: 700;
+  border-radius: 50%; min-width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+}
+
+/* CTA — terracotta gradient banner spanning the main col */
+.v3-fan-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: linear-gradient(135deg, #E6927A, #C75A3E);
+  color: #fff;
+  border-radius: 16px;
+  padding: 22px 26px;
+  margin-bottom: 22px;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 8px 24px rgba(199, 90, 62, 0.22);
+}
+.v3-fan-cta:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(199, 90, 62, 0.3); }
+.v3-fan-cta .left { display: flex; align-items: center; gap: 14px; }
+.v3-fan-cta .icon {
+  width: 46px; height: 46px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+}
+.v3-fan-cta .t {
+  font-family: var(--v3-heading);
+  font-size: 1.2rem;
+  font-weight: 400;
+  font-style: italic;
+}
+.v3-fan-cta .s {
+  font-size: 0.82rem;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+.v3-fan-cta .arrow { font-size: 1.6rem; }
+
+/* 4 stat cards row */
+.v3-fan-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+/* 2-column body: latest + bundles+message */
+.v3-fan-cols {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .v3-fan-cols { grid-template-columns: 1fr; }
+}
+
+.v3-fan-cols .v3-card-head h3,
+.v3-fan-shell .v3-card-head h3 {
+  font-family: var(--v3-body);
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Show shell only on desktop, mobile gets the legacy .v3-dash render */
+.v3-fan-shell { display: none; }
+.v3-fan-mobile { display: block; }
+@media (min-width: 900px) {
+  .v3-fan-shell { display: flex; }
+  .v3-fan-mobile { display: none; }
+}
+
 /* ───── Fan Dashboard ─────────────────────────────────────── */
 :root {
   --v3-gold:        #C5A26B;
