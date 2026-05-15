@@ -106,8 +106,8 @@ const Home = ({ config }: { config: any }) => {
         </div>
 
         <InstagramFeed
-          slug={config?.slug || 'cristina'}
-          fallbackImages={config?.images?.gallery || []}
+          gallery={config?.images?.gallery || []}
+          instagramUrl={config?.links?.instagram || ''}
         />
       </section>
     </div>
