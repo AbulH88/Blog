@@ -1097,7 +1097,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
               <img
                 src={config.logoUrl.startsWith('http') ? config.logoUrl : `${SERVER_URL}${config.logoUrl}`}
                 alt={config?.siteTitle || 'Logo'}
-                style={{ maxHeight: 86, maxWidth: 160, objectFit: 'contain' }}
+                style={{ maxHeight: 130, maxWidth: 180, objectFit: 'contain' }}
               />
               <small style={{ display: 'block' }}>BIO ADMIN</small>
             </div>

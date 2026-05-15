@@ -58,7 +58,7 @@ const Navbar = ({
             <img
               src={logoSrc}
               alt={siteTitle || 'CRISTINA'}
-              style={{ height: 52, width: 'auto', display: 'block' }}
+              style={{ height: 78, width: 'auto', display: 'block' }}
             />
           ) : (
             (siteTitle || 'CRISTINA').toUpperCase()
