@@ -23,6 +23,7 @@ const Chat = ({ config }: { config: any }) => {
   const [isTyping, setIsTyping] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const pendingRef = useRef<string[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,7 +42,14 @@ const Chat = ({ config }: { config: any }) => {
 
     const socket = io(SERVER_URL, { auth: { token: fanToken } });
     socketRef.current = socket;
-    socket.on('new_message', (msg) => setMessages((prev) => [...prev, msg]));
+    socket.on('new_message', (msg) => {
+      if (msg.senderType === 'fan' && pendingRef.current.length > 0) {
+        const tempId = pendingRef.current.shift();
+        setMessages(prev => prev.map(m => m.id === tempId ? msg : m));
+      } else {
+        setMessages(prev => [...prev, msg]);
+      }
+    });
     socket.on('creator_typing', () => {
       setIsTyping(true);
       setTimeout(() => setIsTyping(false), 2000);
@@ -55,7 +63,12 @@ const Chat = ({ config }: { config: any }) => {
 
   const send = () => {
     if (!input.trim() || !socketRef.current) return;
-    socketRef.current.emit('fan_message', { creatorSlug: CREATOR_SLUG, content: input.trim() });
+    const content = input.trim();
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = { id: tempId, senderType: 'fan', content, sentAt: new Date().toISOString(), isPPV: false, isUnlocked: true };
+    pendingRef.current.push(tempId);
+    setMessages(prev => [...prev, optimistic]);
+    socketRef.current.emit('fan_message', { creatorSlug: CREATOR_SLUG, content });
     setInput('');
   };
 

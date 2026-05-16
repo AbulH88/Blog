@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   updateConfig, uploadImage, SERVER_URL, createPost, updatePost, deletePost,
   CREATOR_SLUG, getCreatorAnalytics,
   getCollections, createCollection, updateCollection, deleteCollection,
   assignPostToCollection, removePostFromCollection,
+  reorderPosts, reorderCollections,
   getFans, getCreatorTransactions,
 } from '../api';
 import AdminMessages from './AdminMessages';
@@ -70,6 +71,19 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
   const [editingBundle, setEditingBundle] = useState<any>(null); // { id?, title, description, price, isPublished }
   const [bundleStatus, setBundleStatus] = useState('');
   const [assigningPostId, setAssigningPostId] = useState<number | null>(null);
+
+  // Drag-reorder refs
+  const postDragIdx = useRef<number | null>(null);
+  const bundleDragIdx = useRef<number | null>(null);
+  const galleryDragIdx = useRef<number | null>(null);
+  const sliderDragIdx = useRef<number | null>(null);
+
+  const reorderArray = <T,>(arr: T[], from: number, to: number): T[] => {
+    const next = [...arr];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    return next;
+  };
 
   // Audience tab state
   const [fans, setFans] = useState<any[]>([]);
@@ -864,7 +878,18 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           {slider.length > 0 && (
             <div className="av2-img-grid">
               {slider.map((img: string, idx: number) => (
-                <div key={idx} style={{ position: 'relative' }}>
+                <div
+                  key={idx}
+                  style={{ position: 'relative', cursor: 'grab' }}
+                  draggable
+                  onDragStart={() => { sliderDragIdx.current = idx; }}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={() => {
+                    if (sliderDragIdx.current === null || sliderDragIdx.current === idx) return;
+                    const next = reorderArray(slider, sliderDragIdx.current, idx);
+                    sliderDragIdx.current = null;
+                    setFormData((prev: any) => ({ ...prev, images: { ...prev.images, heroSlider: next } }));
+                  }}>
                   <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
                   <button onClick={() => removeImage('slider', idx)} className="av2-img-remove">✕</button>
                 </div>
@@ -896,7 +921,18 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           {gallery.length > 0 && (
             <div className="av2-img-grid">
               {gallery.map((img: string, idx: number) => (
-                <div key={idx} style={{ position: 'relative' }}>
+                <div
+                  key={idx}
+                  style={{ position: 'relative', cursor: 'grab' }}
+                  draggable
+                  onDragStart={() => { galleryDragIdx.current = idx; }}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={() => {
+                    if (galleryDragIdx.current === null || galleryDragIdx.current === idx) return;
+                    const next = reorderArray(gallery, galleryDragIdx.current, idx);
+                    galleryDragIdx.current = null;
+                    setFormData((prev: any) => ({ ...prev, images: { ...prev.images, gallery: next } }));
+                  }}>
                   <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
                   <button onClick={() => removeImage('gallery', idx)} className="av2-img-remove">✕</button>
                 </div>
@@ -1231,8 +1267,20 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           <p style={{ color: C.faint, fontSize: '0.85rem' }}>No bundles yet. Create one to group premium posts.</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-            {bundles.map(b => (
-              <div key={b.id} style={{ background: C.editBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {bundles.map((b, idx) => (
+              <div
+                key={b.id}
+                draggable
+                onDragStart={() => { bundleDragIdx.current = idx; }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => {
+                  if (bundleDragIdx.current === null || bundleDragIdx.current === idx) return;
+                  const next = reorderArray(bundles, bundleDragIdx.current, idx);
+                  bundleDragIdx.current = null;
+                  setBundles(next);
+                  reorderCollections(next.map((b2, i) => ({ id: b2.id, sortOrder: i })));
+                }}
+                style={{ background: C.editBg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'grab' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, fontWeight: 700, fontSize: '0.92rem', color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1305,8 +1353,21 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           <p style={{ color: C.faint, fontSize: '0.85rem' }}>Loading…</p>
         ) : vaultPosts.length === 0 ? (
           <p style={{ color: C.faint, fontSize: '0.85rem' }}>No posts yet. Upload your first one above.</p>
-        ) : vaultPosts.map(post => (
-          <div key={post.id} className="av2-post-row">
+        ) : vaultPosts.map((post, idx) => (
+          <div
+            key={post.id}
+            className="av2-post-row"
+            draggable
+            onDragStart={() => { postDragIdx.current = idx; }}
+            onDragOver={e => e.preventDefault()}
+            onDrop={() => {
+              if (postDragIdx.current === null || postDragIdx.current === idx) return;
+              const next = reorderArray(vaultPosts, postDragIdx.current, idx);
+              postDragIdx.current = null;
+              setVaultPosts(next);
+              reorderPosts(next.map((p, i) => ({ id: p.id, sortOrder: i })));
+            }}
+            style={{ cursor: 'grab' }}
             <div className="av2-post-thumb">
               {post.mediaUrls?.[0]
                 ? <img src={`${SERVER_URL}${post.mediaUrls[0]}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

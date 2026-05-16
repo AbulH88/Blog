@@ -236,6 +236,15 @@ export const updatePost = async (id: number, data: any) => {
   return res.json();
 };
 
+export const reorderPosts = async (items: { id: number; sortOrder: number }[]) => {
+  const res = await fetch(`${API_URL}/posts/reorder`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({ items }),
+  });
+  return res.json();
+};
+
 export const deletePost = async (id: number) => {
   const res = await fetch(`${API_URL}/posts/${id}`, {
     method: 'DELETE',
@@ -299,6 +308,15 @@ export const updateCollection = async (id: number, data: any) => {
     method: 'PATCH',
     headers: authHeaders(),
     body: JSON.stringify(data),
+  });
+  return res.json();
+};
+
+export const reorderCollections = async (items: { id: number; sortOrder: number }[]) => {
+  const res = await fetch(`${API_URL}/collections/reorder`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({ items }),
   });
   return res.json();
 };

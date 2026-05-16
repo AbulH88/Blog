@@ -53,6 +53,8 @@ const applyMigrations = async () => {
   await addIfMissing('Creators', 'instagramPosts', { type: DataTypes.JSON, defaultValue: [] });
   await addIfMissing('Creators', 'logoUrl', { type: DataTypes.STRING, allowNull: true });
   await addIfMissing('Creators', 'billingDescriptor', { type: DataTypes.STRING, allowNull: true });
+  await addIfMissing('Posts', 'sortOrder', { type: DataTypes.INTEGER, defaultValue: 0 });
+  await addIfMissing('Collections', 'sortOrder', { type: DataTypes.INTEGER, defaultValue: 0 });
 };
 
 const syncDatabase = async () => {

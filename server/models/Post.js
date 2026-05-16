@@ -18,6 +18,7 @@ const Post = sequelize.define('Post', {
   expiresAt: { type: DataTypes.DATE, allowNull: true },
   likesCount: { type: DataTypes.INTEGER, defaultValue: 0 },
   collectionId: { type: DataTypes.INTEGER, allowNull: true },
+  sortOrder: { type: DataTypes.INTEGER, defaultValue: 0 },
 });
 
 module.exports = Post;

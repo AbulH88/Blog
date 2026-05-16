@@ -80,7 +80,7 @@ router.get('/:creatorSlug', async (req, res) => {
 
     const posts = await Post.findAll({
       where: { creatorId: creator.id },
-      order: [['isPinned', 'DESC'], ['createdAt', 'DESC']],
+      order: [['isPinned', 'DESC'], ['sortOrder', 'ASC'], ['createdAt', 'DESC']],
     });
 
     const feed = posts
@@ -143,6 +143,21 @@ router.post('/', requireAuth, requireCreator, upload.array('media', 10), async (
     res.status(201).json(post);
   } catch (err) {
     res.status(500).json({ error: 'Failed to create post', detail: err.message });
+  }
+});
+
+// PATCH /api/posts/reorder — bulk update sort order for post list
+router.patch('/reorder', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await Creator.findByPk(req.user.creatorId);
+    const { items } = req.body; // [{ id, sortOrder }]
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'items must be an array' });
+    await Promise.all(items.map(({ id, sortOrder }) =>
+      Post.update({ sortOrder }, { where: { id, creatorId: creator.id } })
+    ));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Reorder failed', detail: err.message });
   }
 });
 

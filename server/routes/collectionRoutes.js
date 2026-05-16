@@ -22,7 +22,7 @@ router.get('/:slug/all', requireAuth, requireCreator, async (req, res) => {
 
     const collections = await Collection.findAll({
       where: { creatorId: creator.id },
-      order: [['createdAt', 'DESC']],
+      order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']],
     });
 
     const withPosts = await Promise.all(
@@ -46,7 +46,7 @@ router.get('/:slug', async (req, res) => {
 
     const collections = await Collection.findAll({
       where: { creatorId: creator.id, isPublished: true },
-      order: [['createdAt', 'DESC']],
+      order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']],
     });
 
     // Optional fan auth — surface unlock state per bundle and a thumbnail strip
@@ -68,7 +68,7 @@ router.get('/:slug', async (req, res) => {
             where: { collectionId: col.id },
             attributes: ['mediaUrls'],
             limit: 4,
-            order: [['createdAt', 'DESC']],
+            order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']],
           }),
         ]);
         const thumbs = sampleThumbs
@@ -105,6 +105,20 @@ router.post('/', requireAuth, requireCreator, async (req, res) => {
     });
 
     res.status(201).json(col);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/collections/reorder — bulk update sort order
+router.patch('/reorder', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const { items } = req.body; // [{ id, sortOrder }]
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'items must be an array' });
+    await Promise.all(items.map(({ id, sortOrder }) =>
+      Collection.update({ sortOrder }, { where: { id, creatorId: req.user.creatorId } })
+    ));
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
