@@ -19,6 +19,13 @@ const Creator = sequelize.define('Creator', {
   subscriptionPrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 9.99 },
   subscriptionPricePremium: { type: DataTypes.DECIMAL(10, 2), defaultValue: 24.99 },
   welcomeMessage: { type: DataTypes.TEXT, defaultValue: '' },
+  // Phase 6.6 — Welcome PPV: auto-sent to every new fan on registration.
+  // When welcomeEnabled is true, a Message is created with isPPV=true,
+  // ppvPrice=welcomePpvPrice, mediaUrl=welcomeMediaUrl, content=welcomePpvText.
+  welcomeEnabled: { type: DataTypes.BOOLEAN, defaultValue: false },
+  welcomePpvText: { type: DataTypes.TEXT, allowNull: true },
+  welcomeMediaUrl: { type: DataTypes.STRING, allowNull: true },
+  welcomePpvPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
 
   // Branding (applied as CSS variables on the frontend)
   theme: {

@@ -1517,6 +1517,59 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         </div>
       </div>
 
+      {/* Welcome PPV — auto-send a teaser to every new fan */}
+      <div className="v3-fanvue-card">
+        <div className="ico">📩</div>
+        <div className="body">
+          <h3>Welcome PPV</h3>
+          <p className="sub">
+            Drops a locked teaser into every new fan's DM thread the moment they register.
+            Typical conversion: 5–10% within the first session.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0 12px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+              <input
+                type="checkbox"
+                checked={!!formData.welcomeEnabled}
+                onChange={(e) => setFormData((f: any) => ({ ...f, welcomeEnabled: e.target.checked }))}
+              />
+              Enabled
+            </label>
+          </div>
+          <input
+            type="text"
+            name="welcomePpvText"
+            placeholder="Caption (optional) — e.g. 'Just for you, baby 💋'"
+            value={formData.welcomePpvText || ''}
+            onChange={handleChange}
+            style={{ marginBottom: 8 }}
+          />
+          <input
+            type="url"
+            name="welcomeMediaUrl"
+            placeholder="Teaser media URL (upload via Gallery, paste path)"
+            value={formData.welcomeMediaUrl || ''}
+            onChange={handleChange}
+            style={{ marginBottom: 8 }}
+            spellCheck={false}
+          />
+          <input
+            type="number"
+            min="0.99"
+            step="0.01"
+            name="welcomePpvPrice"
+            placeholder="Price (e.g. 4.99)"
+            value={formData.welcomePpvPrice || ''}
+            onChange={handleChange}
+          />
+          <div className="actions" style={{ marginTop: 10 }}>
+            <span className={`status-pill ${formData.welcomeEnabled ? 'live' : 'empty'}`}>
+              {formData.welcomeEnabled ? '● Live' : '○ Off'}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Media moved → see Gallery tab in the sidebar. */}
 
       {/* Appearance */}

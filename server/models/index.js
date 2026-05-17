@@ -68,6 +68,12 @@ const applyMigrations = async () => {
   await addIfMissing('Transactions', 'providerChargeId', { type: DataTypes.STRING, allowNull: true });
   await addIfMissing('Transactions', 'webhookReceivedAt', { type: DataTypes.DATE, allowNull: true });
   await addIfMissing('Messages', 'collectionId', { type: DataTypes.INTEGER, allowNull: true });
+
+  // Phase 6.6 — Welcome PPV
+  await addIfMissing('Creators', 'welcomeEnabled', { type: DataTypes.BOOLEAN, defaultValue: false });
+  await addIfMissing('Creators', 'welcomePpvText', { type: DataTypes.TEXT, allowNull: true });
+  await addIfMissing('Creators', 'welcomeMediaUrl', { type: DataTypes.STRING, allowNull: true });
+  await addIfMissing('Creators', 'welcomePpvPrice', { type: DataTypes.DECIMAL(10, 2), allowNull: true });
 };
 
 const syncDatabase = async () => {

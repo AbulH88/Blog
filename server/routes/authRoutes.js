@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, Creator, Subscription } = require('../models');
+const { User, Creator, Subscription, Message } = require('../models');
 const { requireAuth } = require('../middleware/authMiddleware');
 require('dotenv').config();
 
@@ -27,13 +27,31 @@ router.post('/register', async (req, res) => {
     // fan immediately shows up in the creator's Messages inbox + sees content.
     // Freemium model: tier='free', no charge.
     try {
-      const creators = await Creator.findAll({ attributes: ['id'] });
+      const creators = await Creator.findAll();
       await Promise.all(creators.map(c =>
         Subscription.create({
           userId: user.id, creatorId: c.id,
           tier: 'free', status: 'active', startDate: new Date(),
         })
       ));
+
+      // Welcome PPV: drop a locked teaser into the DM thread so the fan
+      // sees it on first chat load. Converts within minutes of signup.
+      for (const c of creators) {
+        if (c.welcomeEnabled && c.welcomePpvPrice && parseFloat(c.welcomePpvPrice) > 0) {
+          await Message.create({
+            creatorId: c.id,
+            fanId: user.id,
+            senderId: c.id,
+            senderType: 'creator',
+            content: c.welcomePpvText || '',
+            mediaUrl: c.welcomeMediaUrl || null,
+            isPPV: true,
+            ppvPrice: parseFloat(c.welcomePpvPrice),
+            isUnlocked: false,
+          });
+        }
+      }
     } catch (subErr) {
       console.warn('auto-follow on register failed:', subErr.message);
     }
