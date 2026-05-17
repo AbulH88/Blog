@@ -74,6 +74,81 @@ router.get('/status/:transactionId', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Tipping ─────────────────────────────────────────────────────────────────
+// Body: { creatorId, amount, message?, paymentMethodId?, provider? }
+// - With paymentMethodId: one-tap charge with a saved card.
+// - Without: falls back to provider.createCheckout (mock/crypto redirect).
+router.post('/tip', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+    const { creatorId, amount, message, paymentMethodId } = req.body || {};
+    const providerName = req.body?.provider || 'mock';
+
+    const amt = parseFloat(amount);
+    if (!creatorId || !amt || amt < 1 || amt > 1000) {
+      return res.status(400).json({ error: 'amount must be between $1 and $1000' });
+    }
+    const creator = await Creator.findByPk(creatorId);
+    if (!creator) return res.status(404).json({ error: 'Creator not found' });
+
+    let tx;
+    if (paymentMethodId) {
+      const method = await PaymentMethod.findByPk(paymentMethodId);
+      if (!method || method.userId !== req.user.userId) return res.status(403).json({ error: 'Forbidden' });
+      const provider = getProvider(method.provider);
+      const charge = await provider.chargeSavedToken({
+        providerTokenId: method.providerTokenId,
+        amount: amt, currency: 'USD',
+        fanId: req.user.userId, creatorId,
+        productRef: { type: 'tip' },
+        statementDescriptor: creator.billingDescriptor || null,
+      });
+      tx = await Transaction.create({
+        userId: req.user.userId, creatorId,
+        type: 'tip', amount: amt,
+        description: message ? `Tip: ${String(message).slice(0, 200)}` : 'Tip',
+        provider: method.provider,
+        providerChargeId: charge.providerChargeId,
+        status: charge.status === 'completed' ? 'completed' : 'failed',
+      });
+    } else {
+      const provider = getProvider(providerName);
+      const checkout = await provider.createCheckout({
+        amount: amt, currency: 'USD',
+        fanId: req.user.userId, creatorId,
+        productRef: { type: 'tip' },
+        statementDescriptor: creator.billingDescriptor || null,
+      });
+      tx = await Transaction.create({
+        userId: req.user.userId, creatorId,
+        type: 'tip', amount: amt,
+        description: message ? `Tip: ${String(message).slice(0, 200)}` : 'Tip',
+        provider: providerName,
+        providerInvoiceId: checkout.providerInvoiceId,
+        status: checkout.status || 'pending',
+      });
+      if (checkout.redirectUrl) {
+        return res.json({ success: false, transactionId: tx.id, redirectUrl: checkout.redirectUrl, status: tx.status });
+      }
+    }
+
+    // Real-time creator notification
+    const io = req.app.get('io');
+    if (io && tx.status === 'completed') {
+      io.to(`creator:${creatorId}`).emit('tip_received', {
+        from: { id: req.user.userId, username: req.user.username || 'A fan' },
+        amount: amt,
+        message: message || null,
+        at: new Date().toISOString(),
+      });
+    }
+
+    res.json({ success: tx.status === 'completed', transactionId: tx.id, status: tx.status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── List active providers (frontend uses this to choose UI options) ─────────
 router.get('/providers', requireAuth, async (_req, res) => {
   const { listProviders } = require('../payments/registry');

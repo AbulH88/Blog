@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { getChatHistory, unlockMessage, SERVER_URL, CREATOR_SLUG } from '../api';
+import { getChatHistory, unlockMessage, SERVER_URL, CREATOR_SLUG, getCreator } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
+import TipModal from '../components/TipModal';
 
 const fullUrl = (p?: string | null) => {
   if (!p) return '';
@@ -21,6 +22,8 @@ const Chat = ({ config }: { config: any }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
+  const [creatorId, setCreatorId] = useState<number | null>(null);
+  const [tipOpen, setTipOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef<string[]>([]);
@@ -38,6 +41,11 @@ const Chat = ({ config }: { config: any }) => {
     getChatHistory(CREATOR_SLUG).then((msgs) => {
       setMessages(Array.isArray(msgs) ? msgs : []);
       setLoading(false);
+      if (Array.isArray(msgs) && msgs.length > 0 && msgs[0].creatorId) {
+        setCreatorId(msgs[0].creatorId);
+      } else {
+        getCreator().then((c: any) => { if (c?.id) setCreatorId(c.id); }).catch(() => {});
+      }
     });
 
     const socket = io(SERVER_URL, { auth: { token: fanToken } });
@@ -216,6 +224,10 @@ const Chat = ({ config }: { config: any }) => {
     <div className="v3-composer">
       <button className="icon-btn" type="button" aria-label="Emoji">☺</button>
       <button className="icon-btn" type="button" aria-label="Attach">＋</button>
+      <button className="icon-btn" type="button" aria-label="Tip"
+        onClick={() => creatorId && setTipOpen(true)}
+        disabled={!creatorId}
+        title="Send a tip">💰</button>
       <input
         value={input}
         onChange={e => setInput(e.target.value)}
@@ -325,6 +337,23 @@ const Chat = ({ config }: { config: any }) => {
     <>
       {MobileLayout}
       {DesktopShell}
+      {tipOpen && creatorId && (
+        <TipModal
+          creatorId={creatorId}
+          creatorName={creatorName}
+          onClose={() => setTipOpen(false)}
+          onSuccess={(amt) => {
+            // Drop a local-only system bubble so the fan sees confirmation
+            setMessages(prev => [...prev, {
+              id: `tip-${Date.now()}`,
+              senderType: 'fan',
+              content: `💰 Sent a $${amt} tip`,
+              sentAt: new Date().toISOString(),
+              isUnlocked: true,
+            }]);
+          }}
+        />
+      )}
     </>
   );
 };

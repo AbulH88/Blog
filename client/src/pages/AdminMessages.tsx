@@ -83,6 +83,15 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
     const s = io(SERVER_URL, { auth: { token } });
     socketRef.current = s;
 
+    s.on('tip_received', (tip: { from: { username: string }; amount: number; message: string | null }) => {
+      // Lightweight toast — keep it dependency-free
+      const note = document.createElement('div');
+      note.textContent = `💰 ${tip.from.username} tipped $${tip.amount}${tip.message ? ` — "${tip.message}"` : ''}`;
+      note.style.cssText = 'position:fixed;top:20px;right:20px;background:#1a1a1a;color:#fff;padding:14px 18px;border-radius:10px;border:1px solid var(--v3-terracotta,#c45c3a);z-index:9999;max-width:340px;box-shadow:0 8px 30px rgba(0,0,0,0.4);font-size:14px;';
+      document.body.appendChild(note);
+      setTimeout(() => note.remove(), 6000);
+    });
+
     s.on('new_message', (msg: ChatMessage) => {
       // Update active thread if it matches
       setActiveFanId(curId => {

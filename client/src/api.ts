@@ -455,6 +455,16 @@ export const chargeSavedMethod = async (
   return res.json();
 };
 
+export const sendTip = async (creatorId: number, amount: number, opts: { message?: string; paymentMethodId?: number; provider?: string } = {}) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/payments/tip`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ creatorId, amount, ...opts }),
+  });
+  return res.json();
+};
+
 export const getCreatorInbox = async (creatorSlug: string) => {
   const res = await fetch(`${API_URL}/chat/${creatorSlug}/inbox`, {
     headers: { Authorization: `Bearer ${getToken()}` },
