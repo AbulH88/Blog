@@ -71,7 +71,7 @@ router.get('/:creatorSlug/inbox', requireAuth, requireCreator, async (req, res) 
       where: { creatorId: creator.id, status: 'active', userId: fanIds },
     });
     const subMap = Object.fromEntries(
-      activeSubs.map(s => [s.userId, { tier: s.tier, since: s.createdAt }])
+      activeSubs.map(s => [s.userId, { tier: s.tier, since: s.createdAt, aiAutoReplyEnabled: !!s.aiAutoReplyEnabled }])
     );
 
     // Only include fans who currently have an active subscription
@@ -83,6 +83,7 @@ router.get('/:creatorSlug/inbox', requireAuth, requireCreator, async (req, res) 
         unread: unreadMap[thread.fanId] || 0,
         subscriptionTier: subMap[thread.fanId].tier,
         memberSince: subMap[thread.fanId].since,
+        aiAutoReplyEnabled: subMap[thread.fanId].aiAutoReplyEnabled,
       }));
 
     res.json(inbox);

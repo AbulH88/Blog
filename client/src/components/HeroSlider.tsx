@@ -22,6 +22,9 @@ const HeroSlider = ({ images, interval = 6000, alt = '' }: Props) => {
     return <div className="v3-hero-image" style={{ background: '#e6d6c2' }} />;
   }
 
+  const prev = () => setActive((i) => (i - 1 + images.length) % images.length);
+  const next = () => setActive((i) => (i + 1) % images.length);
+
   return (
     <div className="v3-hero-slider">
       {images.map((img, i) => (
@@ -34,16 +37,38 @@ const HeroSlider = ({ images, interval = 6000, alt = '' }: Props) => {
         />
       ))}
       {images.length > 1 && (
-        <div className="v3-hero-dots">
-          {images.map((_, i) => (
-            <button
-              key={i}
-              className={`v3-hero-dot ${i === active ? 'active' : ''}`}
-              onClick={() => setActive(i)}
-              aria-label={`Show slide ${i + 1}`}
-            />
-          ))}
-        </div>
+        <>
+          <button
+            type="button"
+            className="v3-hero-arrow v3-hero-arrow-prev"
+            onClick={prev}
+            aria-label="Previous slide"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="v3-hero-arrow v3-hero-arrow-next"
+            onClick={next}
+            aria-label="Next slide"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+          <div className="v3-hero-dots">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                className={`v3-hero-dot ${i === active ? 'active' : ''}`}
+                onClick={() => setActive(i)}
+                aria-label={`Show slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -7,6 +7,7 @@ const Subscription = require('./Subscription');
 const Message     = require('./Message');
 const Transaction = require('./Transaction');
 const PaymentMethod = require('./PaymentMethod');
+const PendingPpv  = require('./PendingPpv');
 
 // Associations
 Creator.hasMany(Post,        { foreignKey: 'creatorId', as: 'posts' });
@@ -77,6 +78,21 @@ const applyMigrations = async () => {
 
   // Phase 6.7 — Collection discount %
   await addIfMissing('Collections', 'discountPercent', { type: DataTypes.INTEGER, defaultValue: 0 });
+
+  // Phase 7 — AI Chatbot
+  await addIfMissing('Creators', 'aiPersonaPrompt', { type: DataTypes.TEXT, allowNull: true });
+  await addIfMissing('Creators', 'aiModel', { type: DataTypes.STRING, defaultValue: 'sao10k/l3.3-euryale-70b' });
+  // SQLite stores ENUMs as VARCHAR + CHECK; addColumn with STRING is the safe portable path
+  await addIfMissing('Creators', 'aiNsfwLevel', { type: DataTypes.STRING, defaultValue: 'flirty' });
+  await addIfMissing('Creators', 'aiPpvEnabled', { type: DataTypes.BOOLEAN, defaultValue: true });
+  await addIfMissing('Creators', 'aiPpvCadence', { type: DataTypes.INTEGER, defaultValue: 8 });
+  await addIfMissing('Subscriptions', 'aiAutoReplyEnabled', { type: DataTypes.BOOLEAN, defaultValue: false });
+
+  // AI PPV approval system + Telegram integration
+  await addIfMissing('Creators', 'aiApprovalRequired', { type: DataTypes.BOOLEAN, defaultValue: true });
+  await addIfMissing('Creators', 'aiApprovalTimeoutSec', { type: DataTypes.INTEGER, defaultValue: 600 });
+  await addIfMissing('Creators', 'telegramBotToken', { type: DataTypes.STRING, allowNull: true });
+  await addIfMissing('Creators', 'telegramChatId', { type: DataTypes.STRING, allowNull: true });
 };
 
 const syncDatabase = async () => {
@@ -87,5 +103,5 @@ const syncDatabase = async () => {
 
 module.exports = {
   sequelize, syncDatabase,
-  Creator, User, Post, Collection, Subscription, Message, Transaction, PaymentMethod,
+  Creator, User, Post, Collection, Subscription, Message, Transaction, PaymentMethod, PendingPpv,
 };

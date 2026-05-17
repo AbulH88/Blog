@@ -494,6 +494,127 @@ export const sendBlast = async (
   return res.json();
 };
 
+// ─── AI Chatbot ───────────────────────────────────────────────────────────────
+
+export interface AiSettings {
+  aiPersonaPrompt: string | null;
+  aiModel: string;
+  aiNsfwLevel: 'off' | 'flirty' | 'explicit';
+  aiPpvEnabled: boolean;
+  aiPpvCadence: number;
+  aiApprovalRequired: boolean;
+  aiApprovalTimeoutSec: number;
+  telegramBotTokenSet: boolean;
+  telegramChatId: string | null;
+}
+
+export interface PendingPpvRow {
+  id: number;
+  fanId: number;
+  aiReplyText: string;
+  suggestedCollectionId: number;
+  autoSendAt: string;
+  status: string;
+}
+
+export const getAiSettings = async (): Promise<AiSettings> => {
+  const res = await fetch(`${API_URL}/ai/settings`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const updateAiSettings = async (patch: Partial<AiSettings>) => {
+  const res = await fetch(`${API_URL}/ai/settings`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  return res.json();
+};
+
+export const getAiStarterTemplate = async (): Promise<{ template: string }> => {
+  const res = await fetch(`${API_URL}/ai/starter-template`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const setThreadAiEnabled = async (fanId: number, enabled: boolean) => {
+  const res = await fetch(`${API_URL}/ai/thread/${fanId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  return res.json();
+};
+
+export const testAiReply = async (history: { role: 'user' | 'assistant'; content: string }[]) => {
+  const res = await fetch(`${API_URL}/ai/test`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ history }),
+  });
+  return res.json();
+};
+
+// ── Telegram + PPV approval ──────────────────────────────────────
+export const verifyTelegramBot = async (token: string) => {
+  const res = await fetch(`${API_URL}/ai/telegram/verify`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  return res.json();
+};
+
+export const sendTelegramTest = async () => {
+  const res = await fetch(`${API_URL}/ai/telegram/test`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const getPendingPpvForFan = async (fanId: number): Promise<PendingPpvRow | null> => {
+  const res = await fetch(`${API_URL}/ai/ppv/pending/${fanId}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) return null;
+  const j = await res.json();
+  return j && j.id ? j : null;
+};
+
+export const approvePpv = async (id: number) => {
+  const res = await fetch(`${API_URL}/ai/ppv/${id}/approve`, {
+    method: 'POST', headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const changePpvBundle = async (id: number, collectionId: number) => {
+  const res = await fetch(`${API_URL}/ai/ppv/${id}/change`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ collectionId }),
+  });
+  return res.json();
+};
+
+export const ppvTextOnly = async (id: number) => {
+  const res = await fetch(`${API_URL}/ai/ppv/${id}/text-only`, {
+    method: 'POST', headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const rejectPpv = async (id: number) => {
+  const res = await fetch(`${API_URL}/ai/ppv/${id}/reject`, {
+    method: 'POST', headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
 // Legacy password-only login kept for reference during migration
 export const login = async (password: string) => {
   const res = await fetch(`${API_URL}/login`, {

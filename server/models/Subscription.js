@@ -17,6 +17,10 @@ const Subscription = sequelize.define('Subscription', {
   renewalDate: { type: DataTypes.DATE, allowNull: true },
   cancelledAt: { type: DataTypes.DATE, allowNull: true },
   stripeSubscriptionId: { type: DataTypes.STRING, allowNull: true },
+
+  // AI auto-reply toggle for this specific creator-fan thread.
+  // Default OFF — creator opts in per-thread from the chat UI.
+  aiAutoReplyEnabled: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
 module.exports = Subscription;

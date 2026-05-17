@@ -86,6 +86,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/collections', collectionRoutes);
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/instagram', require('./routes/instagramRoutes'));
+app.use('/api/ai', require('./routes/aiChatRoutes'));
 
 // ─── V1 Legacy Routes (kept during frontend migration to V2) ───────────────────
 app.get('/api/analytics', (req, res) => {
@@ -135,11 +136,49 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 
 // ─── Start ─────────────────────────────────────────────────────────────────────
 syncDatabase()
-  .then(() => {
+  .then(async () => {
     initPayments();
+
+    // AI PPV approval system
+    const telegram = require('./services/telegram');
+    const ppvApproval = require('./services/ppvApproval');
+    const { sendCreatorMessage } = require('./socket');
+
+    // Wire Telegram inline-button callbacks → ppvApproval actions
+    telegram.setCallbackHandler(async ({ creatorId, callbackQueryId, data, chatId, messageId }) => {
+      const [action, idStr] = String(data || '').split(':');
+      const pendingId = parseInt(idStr, 10);
+      if (!pendingId) {
+        await telegram.answerCallback(await tokenFor(creatorId), callbackQueryId, '⚠️ Bad data');
+        return;
+      }
+      const ctx = { io, sendCreatorMessage, pendingId, by: 'telegram' };
+      let result, ack = 'Done';
+      try {
+        if (action === 'send') { result = await ppvApproval.approve(ctx); ack = '✅ Sent'; }
+        else if (action === 'text') { result = await ppvApproval.textOnly(ctx); ack = '📝 Text sent'; }
+        else if (action === 'rej')  { result = await ppvApproval.reject({ io, pendingId, by: 'telegram' }); ack = '❌ Rejected'; }
+        else { ack = 'Unknown action'; }
+        if (result && !result.ok) ack = '⚠️ Already resolved';
+      } catch (err) {
+        ack = '⚠️ ' + err.message.slice(0, 60);
+      }
+      const token = await tokenFor(creatorId);
+      if (token) await telegram.answerCallback(token, callbackQueryId, ack);
+    });
+
+    await telegram.initFromDb();
+    await ppvApproval.rehydrate({ io, sendCreatorMessage });
+
     server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
   })
   .catch((err) => {
     console.error('Failed to sync database:', err.message);
     process.exit(1);
   });
+
+async function tokenFor(creatorId) {
+  const { Creator } = require('./models');
+  const c = await Creator.findByPk(creatorId, { attributes: ['telegramBotToken'] });
+  return c?.telegramBotToken;
+}

@@ -3,8 +3,10 @@ import { io, Socket } from 'socket.io-client';
 import {
   SERVER_URL, CREATOR_SLUG,
   getCreatorInbox, getThreadWithFan, uploadImage,
-  getCollections,
+  getCollections, setThreadAiEnabled,
+  getPendingPpvForFan, approvePpv, changePpvBundle, ppvTextOnly, rejectPpv,
 } from '../api';
+import type { PendingPpvRow } from '../api';
 
 interface InboxRow {
   fanId: number;
@@ -19,6 +21,7 @@ interface InboxRow {
   subscriptionTier?: string;
   memberSince?: string;
   senderType?: 'fan' | 'creator';
+  aiAutoReplyEnabled?: boolean;
 }
 
 interface ChatMessage {
@@ -72,6 +75,10 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
   const [bundles, setBundles] = useState<any[]>([]);
   const [attachedBundle, setAttachedBundle] = useState<any | null>(null);
 
+  // Pending PPV awaiting approval for the active thread
+  const [pendingPpv, setPendingPpv] = useState<PendingPpvRow | null>(null);
+  const [ppvSwapPickerOpen, setPpvSwapPickerOpen] = useState(false);
+
   const socketRef = useRef<Socket | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -90,6 +97,25 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
       note.style.cssText = 'position:fixed;top:20px;right:20px;background:#1a1a1a;color:#fff;padding:14px 18px;border-radius:10px;border:1px solid var(--v3-terracotta,#c45c3a);z-index:9999;max-width:340px;box-shadow:0 8px 30px rgba(0,0,0,0.4);font-size:14px;';
       document.body.appendChild(note);
       setTimeout(() => note.remove(), 6000);
+    });
+
+    s.on('ppv_suggestion', (sug: PendingPpvRow) => {
+      // Update inline card if it's for the active fan; toast otherwise
+      if (activeFanIdRef.current === sug.fanId) {
+        setPendingPpv(sug);
+      } else {
+        const fanRow = inboxRef.current.find(r => r.fanId === sug.fanId);
+        const note = document.createElement('div');
+        note.textContent = `🤖 AI suggestion for ${fanRow?.fan?.username || `fan #${sug.fanId}`} — open thread to approve`;
+        note.style.cssText = 'position:fixed;top:20px;right:20px;background:#1a1a1a;color:#fff;padding:14px 18px;border-radius:10px;border:1px solid var(--v3-terracotta,#c45c3a);z-index:9999;max-width:340px;box-shadow:0 8px 30px rgba(0,0,0,0.4);font-size:14px;cursor:pointer;';
+        note.onclick = () => { const row = inboxRef.current.find(r => r.fanId === sug.fanId); if (row) openThread(row); note.remove(); };
+        document.body.appendChild(note);
+        setTimeout(() => note.remove(), 12000);
+      }
+    });
+
+    s.on('ppv_resolved', (payload: { id: number; status: string }) => {
+      setPendingPpv(prev => (prev && prev.id === payload.id) ? null : prev);
     });
 
     s.on('new_message', (msg: ChatMessage) => {
@@ -136,6 +162,10 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
   const activeFanIdRef = useRef<number | null>(null);
   useEffect(() => { activeFanIdRef.current = activeFanId; }, [activeFanId]);
 
+  // Mirror inbox into ref for socket-handler access (closure captures stale state otherwise)
+  const inboxRef = useRef<InboxRow[]>([]);
+  useEffect(() => { inboxRef.current = inbox; }, [inbox]);
+
   useEffect(() => { fetchInbox(); }, []);
 
   useEffect(() => {
@@ -152,9 +182,19 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
   const openThread = async (row: InboxRow) => {
     setActiveFanId(row.fanId);
     setLoadingThread(true);
+    setPendingPpv(null);
     try {
-      const msgs = await getThreadWithFan(CREATOR_SLUG, row.fanId);
+      const [msgs, ppv] = await Promise.all([
+        getThreadWithFan(CREATOR_SLUG, row.fanId),
+        getPendingPpvForFan(row.fanId),
+      ]);
       setMessages(Array.isArray(msgs) ? msgs : []);
+      setPendingPpv(ppv);
+      // Load bundles lazily once so the swap picker works
+      if (bundles.length === 0) {
+        const bs = await getCollections(CREATOR_SLUG);
+        setBundles(Array.isArray(bs) ? bs : []);
+      }
     } catch {
       setMessages([]);
     }
@@ -346,6 +386,32 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                   </p>
                 )}
               </div>
+              {/* AI Auto-Reply toggle */}
+              <label title="Auto-reply with AI in this thread" style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
+                border: `1px solid ${active.aiAutoReplyEnabled ? 'var(--v3-terracotta)' : C.border}`,
+                borderRadius: 999, cursor: 'pointer', userSelect: 'none',
+                background: active.aiAutoReplyEnabled ? '#FBE3E0' : 'transparent',
+              }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: C.text, letterSpacing: 0.5 }}>
+                  🤖 AI {active.aiAutoReplyEnabled ? 'ON' : 'OFF'}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={!!active.aiAutoReplyEnabled}
+                  onChange={async (e) => {
+                    const enabled = e.target.checked;
+                    setInbox(prev => prev.map(r => r.fanId === active.fanId ? { ...r, aiAutoReplyEnabled: enabled } : r));
+                    try {
+                      await setThreadAiEnabled(active.fanId, enabled);
+                    } catch {
+                      // revert on error
+                      setInbox(prev => prev.map(r => r.fanId === active.fanId ? { ...r, aiAutoReplyEnabled: !enabled } : r));
+                    }
+                  }}
+                  style={{ accentColor: 'var(--v3-terracotta)' }}
+                />
+              </label>
             </div>
 
             {/* Messages */}
@@ -406,6 +472,18 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
             </div>
 
             {/* Composer */}
+            {/* Pending PPV approval card (above composer) */}
+            {pendingPpv && (
+              <PendingPpvCard
+                pending={pendingPpv}
+                bundles={bundles}
+                pickerOpen={ppvSwapPickerOpen}
+                setPickerOpen={setPpvSwapPickerOpen}
+                C={C}
+                onResolved={() => setPendingPpv(null)}
+              />
+            )}
+
             <div style={{ borderTop: `1px solid ${C.border}`, padding: '10px 14px', background: C.panelBg }}>
               {/* Zone 1 — preview strip */}
               {mediaUrl && (
@@ -527,5 +605,108 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
     </div>
   );
 };
+
+// ── Pending PPV approval card ─────────────────────────────────────
+function PendingPpvCard({
+  pending, bundles, pickerOpen, setPickerOpen, C, onResolved,
+}: {
+  pending: PendingPpvRow;
+  bundles: any[];
+  pickerOpen: boolean;
+  setPickerOpen: (v: boolean) => void;
+  C: any;
+  onResolved: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [remaining, setRemaining] = useState('');
+
+  useEffect(() => {
+    const tick = () => {
+      const ms = new Date(pending.autoSendAt).getTime() - Date.now();
+      if (ms <= 0) { setRemaining('auto-sending…'); return; }
+      const m = Math.floor(ms / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      setRemaining(`${m}:${s.toString().padStart(2, '0')}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [pending.autoSendAt]);
+
+  const suggested = bundles.find(b => b.id === pending.suggestedCollectionId);
+
+  const wrap = async (fn: () => Promise<any>) => {
+    setBusy(true);
+    try { await fn(); onResolved(); }
+    catch (e) { /* swallow — socket event will catch us up */ }
+    setBusy(false);
+  };
+
+  return (
+    <div style={{
+      borderTop: `1px solid ${C.border}`,
+      borderBottom: '3px solid var(--v3-terracotta)',
+      background: 'linear-gradient(180deg, #FBE3E0 0%, #FFF8F2 100%)',
+      padding: '12px 16px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ fontWeight: 700, color: C.text, fontSize: '0.84rem' }}>
+          🤖 AI suggestion · auto-sends in <span style={{ color: 'var(--v3-terracotta)', fontVariantNumeric: 'tabular-nums' }}>{remaining}</span>
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        {suggested?.coverImage && (
+          <img src={mediaUrlAbs(suggested.coverImage)} alt=""
+            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: `1px solid ${C.border}` }} />
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '0.86rem', color: C.text, marginBottom: 4, lineHeight: 1.4 }}>
+            💬 <i>{pending.aiReplyText || '(no text)'}</i>
+          </div>
+          <div style={{ fontSize: '0.78rem', color: C.muted }}>
+            📦 {suggested?.title || `Bundle #${pending.suggestedCollectionId}`} — ${suggested?.price || '?'}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+        <button onClick={() => wrap(() => approvePpv(pending.id))} disabled={busy}
+          style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'var(--v3-terracotta)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>
+          ✅ Send
+        </button>
+        <button onClick={() => setPickerOpen(!pickerOpen)} disabled={busy}
+          style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>
+          🔄 Change bundle
+        </button>
+        <button onClick={() => wrap(() => ppvTextOnly(pending.id))} disabled={busy}
+          style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>
+          📝 Text only
+        </button>
+        <button onClick={() => wrap(() => rejectPpv(pending.id))} disabled={busy}
+          style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem' }}>
+          ❌ Reject
+        </button>
+      </div>
+      {pickerOpen && (
+        <div style={{ marginTop: 10, padding: 10, background: '#fff', borderRadius: 8, border: `1px solid ${C.border}`, maxHeight: 200, overflowY: 'auto' }}>
+          {bundles.length === 0 ? (
+            <p style={{ margin: 0, fontSize: '0.78rem', color: C.muted }}>No bundles available.</p>
+          ) : bundles.map(b => (
+            <div key={b.id} onClick={() => !busy && wrap(() => changePpvBundle(pending.id, b.id))}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: 6, borderRadius: 6,
+                cursor: busy ? 'wait' : 'pointer', background: b.id === pending.suggestedCollectionId ? '#FBE3E0' : 'transparent',
+              }}
+              onMouseEnter={e => { if (!busy && b.id !== pending.suggestedCollectionId) (e.currentTarget.style.background = C.rowHover); }}
+              onMouseLeave={e => { if (b.id !== pending.suggestedCollectionId) (e.currentTarget.style.background = 'transparent'); }}>
+              {b.coverImage && <img src={mediaUrlAbs(b.coverImage)} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />}
+              <span style={{ flex: 1, fontSize: '0.82rem', color: C.text }}>{b.title}</span>
+              <span style={{ fontSize: '0.78rem', color: C.muted }}>${parseFloat(b.price).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default AdminMessages;

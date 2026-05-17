@@ -1,6 +1,107 @@
 const jwt = require('jsonwebtoken');
-const { Message, Creator, Collection } = require('./models');
+const { Message, Creator, Collection, Subscription } = require('./models');
+const aiChat = require('./services/aiChat');
+const ppvApproval = require('./services/ppvApproval');
 require('dotenv').config();
+
+/**
+ * Shared helper: create a creator-side Message (manual reply OR AI reply OR
+ * AI welcome). Handles bundle PPV via Collection lookup and broadcasts the
+ * new_message to both fan and creator rooms. Single source of truth for
+ * "the creator (or her AI) just sent something".
+ */
+async function sendCreatorMessage({
+  io,
+  creatorId,
+  fanId,
+  content,
+  mediaUrl = null,
+  isPPV = false,
+  ppvPrice = 0,
+  collectionId = null,
+}) {
+  let effectivePrice = isPPV ? parseFloat(ppvPrice) || 0 : 0;
+  let effectiveMedia = mediaUrl || null;
+  let effectiveCollectionId = null;
+  let effectiveIsPPV = !!isPPV;
+
+  if (collectionId) {
+    const col = await Collection.findByPk(collectionId);
+    if (!col || col.creatorId !== creatorId) throw new Error('Bundle not found');
+    effectivePrice = parseFloat(col.price || 0);
+    effectiveMedia = col.coverImage || effectiveMedia;
+    effectiveCollectionId = col.id;
+    effectiveIsPPV = true;
+  }
+
+  const msg = await Message.create({
+    creatorId,
+    fanId,
+    senderId: creatorId,
+    senderType: 'creator',
+    content: content || '',
+    mediaUrl: effectiveMedia,
+    isPPV: effectiveIsPPV,
+    ppvPrice: effectivePrice,
+    collectionId: effectiveCollectionId,
+    isUnlocked: !effectiveIsPPV,
+  });
+
+  const payload = { ...msg.toJSON() };
+  io.to(`fan:${fanId}`).emit('new_message', payload);
+  io.to(`creator:${creatorId}`).emit('new_message', payload);
+  return msg;
+}
+
+/**
+ * Fire-and-forget AI auto-reply for a fan message. Emits typing indicator,
+ * generates the reply, then sends it via sendCreatorMessage. Silent on error
+ * (we don't want a broken AI to kill the chat experience — the creator can
+ * still reply manually).
+ */
+async function triggerAiReply({ io, creator, fanId }) {
+  try {
+    io.to(`fan:${fanId}`).emit('creator_typing');
+
+    const history = await Message.findAll({
+      where: { creatorId: creator.id, fanId },
+      order: [['sentAt', 'ASC']],
+      limit: 50,
+    });
+
+    const { text, collectionId } = await aiChat.generateReply({
+      creator,
+      fanId,
+      history,
+    });
+
+    if (!text && !collectionId) return; // safety: empty reply, skip
+
+    // PPV approval gate: if AI wants to attach a bundle AND creator requires approval,
+    // hold both text + PPV for review. Otherwise auto-send immediately.
+    if (collectionId && creator.aiApprovalRequired !== false) {
+      await ppvApproval.createSuggestion({
+        io,
+        sendCreatorMessage,
+        creator,
+        fanId,
+        text: text || '',
+        collectionId,
+      });
+      return;
+    }
+
+    await sendCreatorMessage({
+      io,
+      creatorId: creator.id,
+      fanId,
+      content: text || '',
+      collectionId: collectionId || null,
+    });
+  } catch (err) {
+    console.warn(`AI reply failed for creator=${creator.id} fan=${fanId}:`, err.message);
+  }
+}
 
 const setupSocket = (io) => {
   // Auth handshake
@@ -42,44 +143,34 @@ const setupSocket = (io) => {
         const payload = { ...msg.toJSON() };
         io.to(`fan:${user.userId}`).emit('new_message', payload);
         io.to(`creator:${creator.id}`).emit('new_message', payload);
+
+        // AI auto-reply — only if per-fan toggle is on
+        const sub = await Subscription.findOne({
+          where: { creatorId: creator.id, userId: user.userId },
+        });
+        if (sub?.aiAutoReplyEnabled && (creator.aiNsfwLevel || 'flirty') !== 'off') {
+          // Fire and forget — don't block the socket ack on AI latency
+          triggerAiReply({ io, creator, fanId: user.userId });
+        }
       } catch (err) {
         socket.emit('chat_error', err.message);
       }
     });
 
-    // Creator replies to a fan
+    // Creator replies to a fan (manual)
     socket.on('creator_reply', async ({ fanId, content, isPPV, ppvPrice, mediaUrl, collectionId }) => {
       try {
         if (user.role !== 'creator') return;
-
-        // Bundle attach: derive PPV price and media from the Collection
-        let effectivePrice = isPPV ? parseFloat(ppvPrice) || 0 : 0;
-        let effectiveMedia = mediaUrl || null;
-        let effectiveCollectionId = null;
-        if (collectionId) {
-          const col = await Collection.findByPk(collectionId);
-          if (!col || col.creatorId !== user.creatorId) return socket.emit('chat_error', 'Bundle not found');
-          effectivePrice = parseFloat(col.price || 0);
-          effectiveMedia = col.coverImage || effectiveMedia;
-          effectiveCollectionId = col.id;
-        }
-
-        const msg = await Message.create({
+        await sendCreatorMessage({
+          io,
           creatorId: user.creatorId,
           fanId,
-          senderId: user.creatorId,
-          senderType: 'creator',
-          content: isPPV || collectionId ? (content || '') : (content || ''),
-          mediaUrl: effectiveMedia,
-          isPPV: !!(isPPV || collectionId),
-          ppvPrice: effectivePrice,
-          collectionId: effectiveCollectionId,
-          isUnlocked: !(isPPV || collectionId),
+          content,
+          mediaUrl,
+          isPPV,
+          ppvPrice,
+          collectionId,
         });
-
-        const payload = { ...msg.toJSON() };
-        io.to(`fan:${fanId}`).emit('new_message', payload);
-        io.to(`creator:${user.creatorId}`).emit('new_message', payload);
       } catch (err) {
         socket.emit('chat_error', err.message);
       }
@@ -101,3 +192,5 @@ const setupSocket = (io) => {
 };
 
 module.exports = setupSocket;
+module.exports.sendCreatorMessage = sendCreatorMessage;
+module.exports.triggerAiReply = triggerAiReply;

@@ -92,6 +92,27 @@ const Creator = sequelize.define('Creator', {
     type: DataTypes.JSON,
     defaultValue: { totalHits: 0, pages: {}, referrers: {} },
   },
+
+  // ─── AI Chatbot ─────────────────────────────────────────────
+  // Persona/voice script the AI uses to reply in this creator's voice.
+  // Admin-editable. If null, a default is generated from bio + displayName.
+  aiPersonaPrompt: { type: DataTypes.TEXT, allowNull: true },
+  // OpenRouter model slug. Default = Lumimaid 70B (NSFW-tuned, 131K ctx).
+  aiModel: { type: DataTypes.STRING, defaultValue: 'sao10k/l3.3-euryale-70b' },
+  // NSFW gate passed into the system prompt.
+  aiNsfwLevel: { type: DataTypes.ENUM('off', 'flirty', 'explicit'), defaultValue: 'flirty' },
+  // Whether the AI is allowed to attach PPV vault Collections to its replies.
+  aiPpvEnabled: { type: DataTypes.BOOLEAN, defaultValue: true },
+  // Minimum fan-message count between AI-sent PPVs (anti-spam).
+  aiPpvCadence: { type: DataTypes.INTEGER, defaultValue: 8 },
+  // PPV approval flow — when true, AI suggests; creator approves via UI or Telegram;
+  // auto-sends after aiApprovalTimeoutSec if no decision.
+  aiApprovalRequired: { type: DataTypes.BOOLEAN, defaultValue: true },
+  aiApprovalTimeoutSec: { type: DataTypes.INTEGER, defaultValue: 600 },
+
+  // Telegram bot integration (mobile notifications + remote approval)
+  telegramBotToken: { type: DataTypes.STRING, allowNull: true },
+  telegramChatId: { type: DataTypes.STRING, allowNull: true },
 });
 
 module.exports = Creator;

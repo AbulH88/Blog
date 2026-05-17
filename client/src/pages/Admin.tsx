@@ -9,13 +9,14 @@ import {
   getFans, getCreatorTransactions,
 } from '../api';
 import AdminMessages from './AdminMessages';
+import AdminAiChatbot from './AdminAiChatbot';
 import AdminBroadcast from './AdminBroadcast';
 import DragDropUpload from '../components/DragDropUpload';
 
 type Tab =
   | 'overview' | 'biobuilder' | 'analytics' | 'content' | 'gallery'
   | 'messages' | 'broadcast' | 'audience' | 'branding'
-  | 'settings' | 'support';
+  | 'aichatbot' | 'settings' | 'support';
 
 const TABS: { id: Tab; label: string; icon: string; badge?: string }[] = [
   { id: 'overview',   label: 'Dashboard',    icon: '🏠', badge: 'Active' },
@@ -27,6 +28,7 @@ const TABS: { id: Tab; label: string; icon: string; badge?: string }[] = [
   { id: 'broadcast',  label: 'Broadcast',    icon: '📣' },
   { id: 'audience',   label: 'Audience',     icon: '👥' },
   { id: 'branding',   label: 'Branding',     icon: '🔗' },
+  { id: 'aichatbot',  label: 'AI Chatbot',   icon: '🤖' },
   { id: 'settings',   label: 'Settings',     icon: '⚙' },
   { id: 'support',    label: 'Support',      icon: '?' },
 ];
@@ -1805,6 +1807,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         {activeTab === 'broadcast'  && <AdminBroadcast isDark={isDark} />}
         {activeTab === 'audience'   && renderAudience()}
         {activeTab === 'branding'   && renderPlaceholder('Branding', 'Logo, colors, fonts, domain — make the site feel like you.')}
+        {activeTab === 'aichatbot'  && <AdminAiChatbot isDark={isDark} />}
         {activeTab === 'settings'   && renderSettings()}
         {activeTab === 'support'    && renderPlaceholder('Support', 'Docs, FAQs, and a direct line to the team.')}
       </main>
