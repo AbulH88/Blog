@@ -254,4 +254,490 @@ b7995ec feat: v3 design + freemium pivot + Get Premium Access + Fan Dashboard + 
 
 ---
 
+# 🚀 DEPLOYMENT — Production VPS (Rocky/CentOS/Alma + Postgres + Nginx)
+
+> Step-by-step playbook to put this on a real VPS. Target: Rocky Linux 9 / AlmaLinux 9 / CentOS Stream 9 (all use `dnf` + `firewalld` + `systemd`). Adjust only minor commands for Ubuntu (`apt` instead of `dnf`, `ufw` instead of `firewalld`).
+>
+> Assumes: VPS already provisioned, root access via SSH, domain (e.g. `cristina.com`) owned with DNS access.
+
+## Architecture this doc deploys
+
+```
+ONE VPS:
+  - Node backend (PM2 daemon, port 5000, listens 127.0.0.1 only)
+  - Postgres 16 (port 5432, localhost only)
+  - Nginx (ports 80/443, public)
+  - Built React frontends in /var/www/{slug}-build/
+  - Telegram pollers, AI client, sockets run inside the Node process
+
+EXTERNAL:
+  - OpenRouter (AI) — paid API
+  - Backblaze B2 (optional, add later for media at scale)
+```
+
+---
+
+## 0. Prerequisites checklist
+
+- [ ] SSH access to VPS as `root` (or sudo user)
+- [ ] Domain registered (e.g. `cristina.com`) with DNS panel access
+- [ ] At least: 2 vCPU, 4GB RAM, 40GB SSD (Hetzner CPX21 / Vultr 2GB OK; CPX31 recommended)
+- [ ] Repo pushed to GitHub (✅ done — `https://github.com/AbulH88/Blog`)
+- [ ] OpenRouter API key (✅ have one; rotate before going live)
+
+---
+
+## 1. Server hardening (one-time, ~10 min)
+
+SSH in as `root`, then:
+
+```bash
+# Update everything
+dnf update -y
+
+# Create a non-root user with sudo
+adduser deploy
+passwd deploy                       # set a strong password
+usermod -aG wheel deploy            # wheel = sudo group on RHEL family
+
+# (Optional but recommended) Copy your SSH key to the deploy user
+mkdir -p /home/deploy/.ssh
+cp ~/.ssh/authorized_keys /home/deploy/.ssh/
+chown -R deploy:deploy /home/deploy/.ssh
+chmod 700 /home/deploy/.ssh
+chmod 600 /home/deploy/.ssh/authorized_keys
+
+# Lock down SSH — disable root login, require keys
+sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+systemctl restart sshd
+
+# Firewall — open only what we need
+systemctl enable --now firewalld
+firewall-cmd --permanent --add-service=ssh
+firewall-cmd --permanent --add-service=http
+firewall-cmd --permanent --add-service=https
+firewall-cmd --reload
+
+# Add 2GB swap (helps build steps on small VPS)
+fallocate -l 2G /swapfile && chmod 600 /swapfile
+mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+```
+
+From now on, SSH as `deploy` (`ssh deploy@<vps-ip>`).
+
+---
+
+## 2. Install the stack
+
+```bash
+# Node.js 22 (LTS at time of writing) via NodeSource
+curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
+sudo dnf install -y nodejs gcc-c++ make git
+
+# PM2 (process manager — keeps Node running, restarts on crash, on reboot)
+sudo npm install -g pm2
+
+# Postgres 16
+sudo dnf install -y postgresql-server postgresql-contrib
+sudo postgresql-setup --initdb
+sudo systemctl enable --now postgresql
+
+# Nginx + certbot (Let's Encrypt SSL)
+sudo dnf install -y nginx
+sudo dnf install -y epel-release
+sudo dnf install -y certbot python3-certbot-nginx
+sudo systemctl enable --now nginx
+
+# Verify
+node -v          # → v22.x
+psql --version   # → 16.x
+nginx -v
+```
+
+---
+
+## 3. Create Postgres database + user
+
+```bash
+sudo -u postgres psql <<'EOF'
+CREATE USER cristina_app WITH PASSWORD 'CHANGE_ME_STRONG_RANDOM_64_CHARS';
+CREATE DATABASE platform OWNER cristina_app;
+GRANT ALL PRIVILEGES ON DATABASE platform TO cristina_app;
+\q
+EOF
+```
+
+> Replace the password. Generate one: `openssl rand -hex 32`. Save it for the `.env` step.
+
+Then enable password auth for local apps. Edit `/var/lib/pgsql/data/pg_hba.conf` and change the `host` line for `127.0.0.1/32` from `ident` to `scram-sha-256`. Reload:
+
+```bash
+sudo systemctl reload postgresql
+```
+
+---
+
+## 4. Switch the app from SQLite to Postgres
+
+The code currently uses SQLite. Two-line change to support both via env var.
+
+Edit `server/database.js`:
+
+```js
+const { Sequelize } = require('sequelize');
+const path = require('path');
+require('dotenv').config();
+
+const isPg = process.env.DB_DIALECT === 'postgres';
+
+const sequelize = isPg
+  ? new Sequelize(process.env.DATABASE_URL, {
+      dialect: 'postgres',
+      logging: false,
+      pool: { max: 10, min: 0, idle: 10000 },
+    })
+  : new Sequelize({
+      dialect: 'sqlite',
+      storage: path.resolve(__dirname, process.env.DATABASE_PATH || './data/platform.db'),
+      logging: false,
+    });
+
+module.exports = sequelize;
+```
+
+Install the pg driver (in the next deploy step). Existing migrations work as-is — Sequelize handles both dialects.
+
+---
+
+## 5. Deploy the code
+
+```bash
+# As deploy user
+sudo mkdir -p /var/www
+sudo chown deploy:deploy /var/www
+cd /var/www
+
+git clone https://github.com/AbulH88/Blog.git platform
+cd platform
+git checkout feature/phase-7-ai-chatbot   # or main after merge
+
+# Backend deps + Postgres driver
+cd server
+npm install
+npm install pg pg-hstore                   # for Postgres dialect
+
+# Create .env
+cat > .env <<'EOF'
+PORT=5000
+DB_DIALECT=postgres
+DATABASE_URL=postgres://cristina_app:THE_PASSWORD_FROM_STEP_3@127.0.0.1:5432/platform
+JWT_SECRET=GENERATE_WITH_openssl_rand_hex_64
+JWT_EXPIRES_IN=24h
+PLATFORM_FEE_PERCENT=10
+
+# AI
+OPENROUTER_API_KEY=sk-or-v1-YOUR_KEY
+SITE_URL=https://cristina.com
+
+# Future: payments, S3, etc.
+EOF
+chmod 600 .env
+
+# Test boot — should print migrations + "Server running"
+node index.js
+# Ctrl-C to stop
+```
+
+---
+
+## 6. Run the backend under PM2 (auto-restart, survives reboot)
+
+```bash
+cd /var/www/platform/server
+pm2 start index.js --name platform-api
+pm2 save
+pm2 startup systemd -u deploy --hp /home/deploy
+# pm2 startup prints a sudo command — run it as instructed
+sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u deploy --hp /home/deploy
+
+# Verify
+pm2 ls
+pm2 logs platform-api --lines 30
+```
+
+The API is now running on `127.0.0.1:5000` (localhost only — Nginx will reverse-proxy public traffic to it).
+
+---
+
+## 7. Build + deploy the React frontend for Cristina
+
+```bash
+cd /var/www/platform/client
+npm install
+
+# Set per-creator build config
+cat > .env.production <<'EOF'
+VITE_API_URL=https://cristina.com/api
+VITE_SERVER_URL=https://cristina.com
+VITE_CREATOR_SLUG=cristina
+EOF
+
+npm run build
+# Outputs to /var/www/platform/client/dist
+
+# Move build to a per-creator static dir
+sudo mkdir -p /var/www/cristina-build
+sudo cp -r dist/* /var/www/cristina-build/
+sudo chown -R nginx:nginx /var/www/cristina-build
+```
+
+---
+
+## 8. Nginx — serve frontend + proxy API/sockets
+
+Create `/etc/nginx/conf.d/cristina.conf`:
+
+```nginx
+server {
+    listen 80;
+    server_name cristina.com www.cristina.com;
+    return 301 https://cristina.com$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name cristina.com;
+
+    # SSL certs filled in by certbot in next step
+
+    client_max_body_size 500M;             # for large video uploads
+
+    root /var/www/cristina-build;
+    index index.html;
+
+    # React Router — SPA fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Uploaded media (served from VPS until you migrate to B2)
+    location /uploads/ {
+        alias /var/www/platform/server/uploads/;
+        access_log off;
+        expires 30d;
+    }
+
+    # API
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Socket.IO — needs WebSocket upgrade headers
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
+}
+```
+
+SELinux note (RHEL family): allow nginx to proxy out + read app files:
+
+```bash
+sudo setsebool -P httpd_can_network_connect 1
+sudo chcon -R -t httpd_sys_content_t /var/www/cristina-build
+```
+
+Point DNS:
+- In your registrar (NameCheap/Cloudflare/etc), add `A` records:
+  - `cristina.com` → `<vps-ip>`
+  - `www.cristina.com` → `<vps-ip>`
+- Wait 1-5 min for propagation (`dig cristina.com +short` should return your IP)
+
+Get the SSL cert + auto-renewal:
+
+```bash
+sudo certbot --nginx -d cristina.com -d www.cristina.com
+# Follow prompts (email, agree to ToS, redirect HTTP→HTTPS yes)
+# Certbot edits the conf file with cert paths AND adds the renewal cron
+
+# Test renewal
+sudo certbot renew --dry-run
+```
+
+Reload + verify:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+curl -I https://cristina.com           # → HTTP/2 200
+curl https://cristina.com/api/creator/cristina   # → JSON
+```
+
+Open `https://cristina.com` in browser. Site is live. 🎉
+
+---
+
+## 9. Seed the database + creator account
+
+```bash
+cd /var/www/platform/server
+node scripts/seed.js
+# Creates Cristina creator + fan@example.com test account
+
+# Or create manually:
+node -e "
+const bcrypt = require('bcryptjs');
+const { Creator } = require('./models');
+(async () => {
+  const passwordHash = await bcrypt.hash('STRONG_ADMIN_PASSWORD', 12);
+  await Creator.create({
+    slug: 'cristina', displayName: 'Cristina Adam',
+    email: 'cristina@example.com', passwordHash,
+    bio: 'NYC born and raised. 19.',
+  });
+  console.log('OK');
+})();
+"
+```
+
+Log in at `https://cristina.com/login`.
+
+---
+
+## 10. Adding model #2 (e.g. Aria) — 5 minutes
+
+```bash
+# Point DNS: aria.com → <same vps-ip>
+
+# Build her frontend with her slug
+cd /var/www/platform/client
+cat > .env.production <<'EOF'
+VITE_API_URL=https://aria.com/api
+VITE_SERVER_URL=https://aria.com
+VITE_CREATOR_SLUG=aria
+EOF
+npm run build
+
+sudo mkdir -p /var/www/aria-build
+sudo cp -r dist/* /var/www/aria-build/
+sudo chown -R nginx:nginx /var/www/aria-build
+sudo chcon -R -t httpd_sys_content_t /var/www/aria-build
+
+# Nginx — copy cristina.conf to aria.conf, swap domain + root path
+sudo cp /etc/nginx/conf.d/cristina.conf /etc/nginx/conf.d/aria.conf
+sudo sed -i 's/cristina/aria/g' /etc/nginx/conf.d/aria.conf
+sudo certbot --nginx -d aria.com -d www.aria.com
+sudo nginx -t && sudo systemctl reload nginx
+
+# Create her in the DB
+cd /var/www/platform/server
+node -e "
+const bcrypt = require('bcryptjs');
+const { Creator } = require('./models');
+(async () => {
+  await Creator.create({
+    slug: 'aria', displayName: 'Aria',
+    email: 'aria@example.com', passwordHash: await bcrypt.hash('admin123', 12),
+  });
+})();"
+```
+
+Now `https://aria.com` serves Aria's frontend, hitting the same backend. Same Cristina log-in/admin pattern. Same AI chatbot — she configures her own persona, model, Telegram bot, vault, fans.
+
+---
+
+## 11. Deploys (when you push new code)
+
+```bash
+ssh deploy@<vps-ip>
+cd /var/www/platform
+git pull
+
+# Backend changed?
+cd server && npm install && pm2 restart platform-api
+
+# Frontend changed? (per slug — repeat for each)
+cd ../client && npm install && npm run build
+sudo cp -r dist/* /var/www/cristina-build/
+
+# Done. Zero downtime — PM2 restart is fast, Nginx serves new static instantly.
+```
+
+Optionally automate with a `deploy.sh` script or GitHub Actions later.
+
+---
+
+## 12. Backups (do this BEFORE going live)
+
+**Database (daily, ~30s)** — cron job as `deploy`:
+
+```bash
+crontab -e
+# Add:
+0 3 * * * pg_dump -U cristina_app -h 127.0.0.1 platform | gzip > /home/deploy/backups/platform-$(date +\%F).sql.gz
+0 4 * * 0 find /home/deploy/backups -name 'platform-*.sql.gz' -mtime +30 -delete
+```
+
+**Uploads (weekly, sync to B2 or another VPS)** — see B2 migration step below.
+
+**VPS snapshots** — most providers offer this. Hetzner: $1/mo, Vultr: 20% of VPS cost. Enable it. Restores in 60s.
+
+---
+
+## 13. Switching media to Backblaze B2 (do later when needed)
+
+When you hit ANY of: first content leak, disk >70%, multi-model storage mess.
+
+Already on the roadmap as Phase 8. Architecture:
+- Install `@aws-sdk/client-s3` (B2 has S3-compatible API)
+- New `server/services/storage.js` with `uploadFile()` and `signedUrl(key, ttl)` functions
+- Refactor `POST /api/upload` to push to B2 instead of disk
+- Refactor places that return `/uploads/...` URLs to return signed B2 URLs
+- ~2 hours of work; the abstraction is already friendly (every model field stores a URL string)
+
+---
+
+## 14. Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `502 Bad Gateway` | Node not running or wrong port | `pm2 ls`, `pm2 logs platform-api` |
+| `permission denied` from Nginx | SELinux blocking | `sudo setsebool -P httpd_can_network_connect 1`; check `audit2allow` |
+| Socket.IO disconnects every 60s | Nginx default proxy timeout | Already set `proxy_read_timeout 86400` in config above |
+| SSL cert won't issue | DNS not propagated | `dig cristina.com +short` should return VPS IP; wait 5 min |
+| Postgres connection refused | Auth method or wrong port | Check `pg_hba.conf` is `scram-sha-256` for `127.0.0.1/32`, `pg_ctl reload` |
+| File upload 413 | Nginx body size limit | `client_max_body_size 500M;` in `server` block (already in config) |
+| Telegram bot stops responding | Long-poll loop crashed | `pm2 logs` — look for `[telegram] poll error`; restart Node |
+
+---
+
+## 15. Going-live checklist (do all before pointing fans at it)
+
+- [ ] Rotated OpenRouter key (the one shared in chat is compromised)
+- [ ] Set OpenRouter spend cap (~$50-100/mo)
+- [ ] Strong JWT_SECRET in `.env` (64 random hex chars)
+- [ ] Strong Postgres password (64 random chars)
+- [ ] Strong Cristina admin password (not `admin123`)
+- [ ] `chmod 600 server/.env` (already done)
+- [ ] DNS A records correct for cristina.com + www
+- [ ] HTTPS working (`curl -I https://cristina.com` → 200)
+- [ ] PM2 startup script saved (`pm2 startup` ran)
+- [ ] Daily DB backup cron working (`crontab -l`)
+- [ ] VPS snapshot enabled in provider dashboard
+- [ ] Test account login + AI chat works end-to-end on the live URL
+- [ ] Legal placeholders in `/terms`, `/privacy`, `/2257` filled in (state, custodian name, etc.)
+- [ ] Telegram bot configured for live PPV approvals from your phone
+
+---
+
 **Welcome to the project. Read README.md + this file. You're caught up. Continue from where the user wants to go.**
