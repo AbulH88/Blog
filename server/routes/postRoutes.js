@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const { Post, Creator, Subscription, Transaction } = require('../models');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+const { getProvider } = require('../payments/registry');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
@@ -208,7 +209,7 @@ router.post('/:id/unlock', requireAuth, async (req, res) => {
 
     // Already unlocked?
     const existing = await Transaction.findOne({
-      where: { userId: req.user.userId, type: 'post_unlock', referenceId: post.id },
+      where: { userId: req.user.userId, type: 'post_unlock', referenceId: post.id, status: 'completed' },
     });
     if (existing) return res.json({ success: true, alreadyUnlocked: true, post });
 
@@ -217,16 +218,39 @@ router.post('/:id/unlock', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'This post is part of a bundle — unlock the bundle to access it.' });
     }
 
-    await Transaction.create({
+    const providerName = req.body?.provider || 'mock';
+    const provider = getProvider(providerName);
+    const creator = await Creator.findByPk(post.creatorId);
+
+    const checkout = await provider.createCheckout({
+      amount: price,
+      currency: 'USD',
+      fanId: req.user.userId,
+      creatorId: post.creatorId,
+      productRef: { type: 'post_unlock', id: post.id },
+      statementDescriptor: creator?.billingDescriptor || null,
+    });
+
+    const tx = await Transaction.create({
       userId: req.user.userId,
       creatorId: post.creatorId,
       type: 'post_unlock',
       amount: price,
       referenceId: post.id,
       description: `Post unlock: ${post.title || post.id}`,
+      provider: providerName,
+      providerInvoiceId: checkout.providerInvoiceId,
+      status: checkout.status || 'pending',
     });
 
-    res.json({ success: true, post });
+    res.json({
+      success: checkout.status === 'completed',
+      post: checkout.status === 'completed' ? post : undefined,
+      transactionId: tx.id,
+      status: tx.status,
+      redirectUrl: checkout.redirectUrl,
+      clientToken: checkout.clientToken,
+    });
   } catch (err) {
     res.status(500).json({ error: 'Unlock failed', detail: err.message });
   }

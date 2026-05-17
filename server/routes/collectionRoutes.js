@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { Collection, Post, Creator, Transaction } = require('../models');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+const { getProvider } = require('../payments/registry');
 require('dotenv').config();
 
 const router = express.Router();
@@ -190,20 +191,42 @@ router.post('/:id/unlock', requireAuth, async (req, res) => {
 
     // Check if already unlocked
     const existing = await Transaction.findOne({
-      where: { userId: req.user.userId, type: 'collection_unlock', referenceId: col.id },
+      where: { userId: req.user.userId, type: 'collection_unlock', referenceId: col.id, status: 'completed' },
     });
     if (existing) return res.json({ success: true, alreadyUnlocked: true });
 
-    await Transaction.create({
+    const providerName = req.body?.provider || 'mock';
+    const provider = getProvider(providerName);
+    const creator = await Creator.findByPk(col.creatorId);
+
+    const checkout = await provider.createCheckout({
+      amount: parseFloat(col.price || 0),
+      currency: 'USD',
+      fanId: req.user.userId,
+      creatorId: col.creatorId,
+      productRef: { type: 'collection_unlock', id: col.id },
+      statementDescriptor: creator?.billingDescriptor || null,
+    });
+
+    const tx = await Transaction.create({
       userId: req.user.userId,
       creatorId: col.creatorId,
       type: 'collection_unlock',
       amount: col.price,
       referenceId: col.id,
       description: `Bundle unlock: ${col.title}`,
+      provider: providerName,
+      providerInvoiceId: checkout.providerInvoiceId,
+      status: checkout.status || 'pending',
     });
 
-    res.json({ success: true });
+    res.json({
+      success: checkout.status === 'completed',
+      transactionId: tx.id,
+      status: tx.status,
+      redirectUrl: checkout.redirectUrl,
+      clientToken: checkout.clientToken,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

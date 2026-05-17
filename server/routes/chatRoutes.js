@@ -1,6 +1,7 @@
 const express = require('express');
 const { Message, Creator, User, Subscription, Transaction } = require('../models');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+const { getProvider } = require('../payments/registry');
 const { Op } = require('sequelize');
 
 const router = express.Router();
@@ -123,17 +124,44 @@ router.post('/:messageId/unlock', requireAuth, async (req, res) => {
     if (msg.isUnlocked) return res.json({ success: true, message: msg });
     if (msg.fanId !== req.user.userId) return res.status(403).json({ error: 'Forbidden' });
 
-    await msg.update({ isUnlocked: true });
+    const providerName = req.body?.provider || 'mock';
+    const provider = getProvider(providerName);
+    const creator = await Creator.findByPk(msg.creatorId);
 
-    await Transaction.create({
+    const checkout = await provider.createCheckout({
+      amount: parseFloat(msg.ppvPrice || 0),
+      currency: 'USD',
+      fanId: req.user.userId,
+      creatorId: msg.creatorId,
+      productRef: { type: 'ppv_message', id: msg.id },
+      statementDescriptor: creator?.billingDescriptor || null,
+    });
+
+    const tx = await Transaction.create({
       userId: req.user.userId,
       creatorId: msg.creatorId,
       type: 'ppv_message',
       amount: msg.ppvPrice,
+      referenceId: msg.id,
       description: `PPV message unlock`,
+      provider: providerName,
+      providerInvoiceId: checkout.providerInvoiceId,
+      status: checkout.status || 'pending',
     });
 
-    res.json({ success: true, message: msg });
+    // Only reveal the message once payment is actually settled
+    if (checkout.status === 'completed') {
+      await msg.update({ isUnlocked: true });
+    }
+
+    res.json({
+      success: checkout.status === 'completed',
+      message: checkout.status === 'completed' ? msg : undefined,
+      transactionId: tx.id,
+      status: tx.status,
+      redirectUrl: checkout.redirectUrl,
+      clientToken: checkout.clientToken,
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to unlock message', detail: err.message });
   }

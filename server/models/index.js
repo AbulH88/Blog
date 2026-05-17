@@ -6,6 +6,7 @@ const Collection  = require('./Collection');
 const Subscription = require('./Subscription');
 const Message     = require('./Message');
 const Transaction = require('./Transaction');
+const PaymentMethod = require('./PaymentMethod');
 
 // Associations
 Creator.hasMany(Post,        { foreignKey: 'creatorId', as: 'posts' });
@@ -28,6 +29,9 @@ Creator.hasMany(Transaction,   { foreignKey: 'creatorId', as: 'transactions' });
 User.hasMany(Transaction,      { foreignKey: 'userId',    as: 'transactions' });
 Transaction.belongsTo(Creator, { foreignKey: 'creatorId' });
 Transaction.belongsTo(User,    { foreignKey: 'userId' });
+
+User.hasMany(PaymentMethod,        { foreignKey: 'userId', as: 'paymentMethods' });
+PaymentMethod.belongsTo(User,      { foreignKey: 'userId' });
 
 // Lightweight in-place migrations — apply nullable column additions safely.
 // Use this pattern whenever you add a nullable column to an existing model,
@@ -55,6 +59,13 @@ const applyMigrations = async () => {
   await addIfMissing('Creators', 'billingDescriptor', { type: DataTypes.STRING, allowNull: true });
   await addIfMissing('Posts', 'sortOrder', { type: DataTypes.INTEGER, defaultValue: 0 });
   await addIfMissing('Collections', 'sortOrder', { type: DataTypes.INTEGER, defaultValue: 0 });
+
+  // Phase 6 — payments
+  await addIfMissing('Transactions', 'status', { type: DataTypes.STRING, defaultValue: 'completed' });
+  await addIfMissing('Transactions', 'provider', { type: DataTypes.STRING, allowNull: true });
+  await addIfMissing('Transactions', 'providerInvoiceId', { type: DataTypes.STRING, allowNull: true });
+  await addIfMissing('Transactions', 'providerChargeId', { type: DataTypes.STRING, allowNull: true });
+  await addIfMissing('Transactions', 'webhookReceivedAt', { type: DataTypes.DATE, allowNull: true });
 };
 
 const syncDatabase = async () => {
@@ -65,5 +76,5 @@ const syncDatabase = async () => {
 
 module.exports = {
   sequelize, syncDatabase,
-  Creator, User, Post, Collection, Subscription, Message, Transaction,
+  Creator, User, Post, Collection, Subscription, Message, Transaction, PaymentMethod,
 };

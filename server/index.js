@@ -9,6 +9,7 @@ const fs = require('fs');
 const { Server } = require('socket.io');
 
 const { syncDatabase } = require('./models');
+const { initPayments } = require('./payments');
 const authRoutes = require('./routes/authRoutes');
 const creatorRoutes = require('./routes/creatorRoutes');
 const postRoutes = require('./routes/postRoutes');
@@ -133,6 +134,7 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 // ─── Start ─────────────────────────────────────────────────────────────────────
 syncDatabase()
   .then(() => {
+    initPayments();
     server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
   })
   .catch((err) => {
