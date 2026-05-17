@@ -84,7 +84,12 @@ const Chat = ({ config }: { config: any }) => {
       return;
     }
     if (res?.success) {
-      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isUnlocked: true, content: res.message.content } : m));
+      setMessages(prev => prev.map(m => m.id === msgId ? {
+        ...m,
+        isUnlocked: true,
+        content: res.message?.content ?? m.content,
+        collection: res.message?.collection ?? m.collection,
+      } : m));
     } else if (res?.error) {
       alert(res.error);
     }
@@ -118,6 +123,8 @@ const Chat = ({ config }: { config: any }) => {
         const locked = msg.isPPV && !msg.isUnlocked;
         const mediaAbs = fullUrl(msg.mediaUrl);
         const isVideo = mediaAbs && /\.(mp4|mov|webm)$/i.test(mediaAbs);
+        const isBundle = !!msg.collectionId;
+        const bundlePosts: any[] = (msg.collection?.posts || []) as any[];
 
         return (
           <div key={msg.id} className={`v3-msg-row ${fromFan ? 'fan' : 'creator'}`}>
@@ -139,9 +146,14 @@ const Chat = ({ config }: { config: any }) => {
                   }}>
                     {mediaAbs && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(14px)' }}/>}
                     <div style={{ position: 'relative', textAlign: 'center', color: '#fff' }}>
-                      <p style={{ fontSize: '1.3rem', margin: '0 0 4px' }}>🔒</p>
-                      <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>Exclusive content</p>
-                      <p style={{ fontSize: '0.78rem', margin: '0 0 10px', opacity: 0.9 }}>${parseFloat(msg.ppvPrice).toFixed(2)}</p>
+                      <p style={{ fontSize: '1.3rem', margin: '0 0 4px' }}>{isBundle ? '📦' : '🔒'}</p>
+                      <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>
+                        {isBundle ? (msg.collection?.title || 'Bundle') : 'Exclusive content'}
+                      </p>
+                      {isBundle && bundlePosts.length > 0 && (
+                        <p style={{ fontSize: '0.72rem', margin: '2px 0 0', opacity: 0.8 }}>{bundlePosts.length} items</p>
+                      )}
+                      <p style={{ fontSize: '0.78rem', margin: '4px 0 10px', opacity: 0.9 }}>${parseFloat(msg.ppvPrice).toFixed(2)}</p>
                       <button onClick={() => handleUnlock(msg.id)}
                         style={{
                           background: '#fff', color: 'var(--v3-terracotta)',
@@ -149,8 +161,25 @@ const Chat = ({ config }: { config: any }) => {
                           fontWeight: 700, fontSize: '0.78rem',
                           cursor: 'pointer', letterSpacing: 0.5,
                         }}>
-                        Unlock Now
+                        {isBundle ? 'Unlock Bundle' : 'Unlock Now'}
                       </button>
+                    </div>
+                  </div>
+                ) : isBundle && bundlePosts.length > 0 ? (
+                  <div>
+                    {msg.content && <p style={{ margin: '0 0 8px' }}>{msg.content}</p>}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 6 }}>
+                      {bundlePosts.map((p: any) => {
+                        const url = fullUrl(p.imageUrl || p.videoUrl);
+                        const video = url && /\.(mp4|mov|webm)$/i.test(url);
+                        return (
+                          <div key={p.id} style={{ borderRadius: 8, overflow: 'hidden', background: '#222', aspectRatio: '1' }}>
+                            {video
+                              ? <video src={url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (

@@ -11,6 +11,7 @@ const Message = sequelize.define('Message', {
   mediaUrl: { type: DataTypes.STRING, allowNull: true },
   isPPV: { type: DataTypes.BOOLEAN, defaultValue: false },
   ppvPrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+  collectionId: { type: DataTypes.INTEGER, allowNull: true }, // PPV bundle attach
   isUnlocked: { type: DataTypes.BOOLEAN, defaultValue: false },
   isRead: { type: DataTypes.BOOLEAN, defaultValue: false },
   sentAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },

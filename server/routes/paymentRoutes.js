@@ -164,6 +164,9 @@ router.post('/charge', requireAuth, async (req, res) => {
 
     // Look up the product server-side
     let amount, creatorId, description;
+    let effectiveType = productType;
+    let effectiveRefId = productId;
+    let bundleMessageId = null; // when unlocking a bundle via chat, also reveal the message
     if (productType === 'post_unlock') {
       const post = await Post.findByPk(productId);
       if (!post) return res.status(404).json({ error: 'Post not found' });
@@ -183,7 +186,16 @@ router.post('/charge', requireAuth, async (req, res) => {
       if (msg.fanId !== req.user.userId) return res.status(403).json({ error: 'Forbidden' });
       amount = parseFloat(msg.ppvPrice || 0);
       creatorId = msg.creatorId;
-      description = 'PPV message unlock';
+      if (msg.collectionId) {
+        // Bundle attached to chat — treat as collection_unlock so the bundle
+        // appears unlocked in Vault. Also flip the message itself.
+        effectiveType = 'collection_unlock';
+        effectiveRefId = msg.collectionId;
+        description = `Bundle unlock (chat): ${msg.collectionId}`;
+        bundleMessageId = msg.id;
+      } else {
+        description = 'PPV message unlock';
+      }
     } else {
       return res.status(400).json({ error: 'Unknown productType' });
     }
@@ -192,12 +204,18 @@ router.post('/charge', requireAuth, async (req, res) => {
     const existing = await Transaction.findOne({
       where: {
         userId: req.user.userId,
-        type: productType,
-        referenceId: productId,
+        type: effectiveType,
+        referenceId: effectiveRefId,
         status: 'completed',
       },
     });
-    if (existing) return res.json({ success: true, alreadyUnlocked: true });
+    if (existing) {
+      if (bundleMessageId) {
+        const m = await Message.findByPk(bundleMessageId);
+        if (m && !m.isUnlocked) await m.update({ isUnlocked: true });
+      }
+      return res.json({ success: true, alreadyUnlocked: true });
+    }
 
     const creator = await Creator.findByPk(creatorId);
     const provider = getProvider(method.provider);
@@ -207,21 +225,27 @@ router.post('/charge', requireAuth, async (req, res) => {
       currency: 'USD',
       fanId: req.user.userId,
       creatorId,
-      productRef: { type: productType, id: productId },
+      productRef: { type: effectiveType, id: effectiveRefId },
       statementDescriptor: creator?.billingDescriptor || null,
     });
 
     const tx = await Transaction.create({
       userId: req.user.userId,
       creatorId,
-      type: productType,
+      type: effectiveType,
       amount,
-      referenceId: productId,
+      referenceId: effectiveRefId,
       description,
       provider: method.provider,
       providerChargeId: charge.providerChargeId,
       status: charge.status === 'completed' ? 'completed' : 'failed',
     });
+
+    // Bundle-via-chat: also flip the message's isUnlocked
+    if (tx.status === 'completed' && bundleMessageId) {
+      const m = await Message.findByPk(bundleMessageId);
+      if (m && !m.isUnlocked) await m.update({ isUnlocked: true });
+    }
 
     if (tx.status === 'completed') await applyUnlock(tx);
 

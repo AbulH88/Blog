@@ -1,5 +1,5 @@
 const express = require('express');
-const { Message, Creator, User, Subscription, Transaction } = require('../models');
+const { Message, Creator, User, Subscription, Transaction, Collection, Post } = require('../models');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
 const { getProvider } = require('../payments/registry');
 const { Op } = require('sequelize');
@@ -17,6 +17,7 @@ router.get('/:creatorSlug', requireAuth, async (req, res) => {
     const messages = await Message.findAll({
       where: { creatorId: creator.id, fanId: req.user.userId },
       order: [['sentAt', 'ASC']],
+      include: [{ model: Collection, as: 'collection', required: false, include: [{ model: Post, as: 'posts' }] }],
     });
 
     // Mark all as read
@@ -127,36 +128,48 @@ router.post('/:messageId/unlock', requireAuth, async (req, res) => {
     const providerName = req.body?.provider || 'mock';
     const provider = getProvider(providerName);
     const creator = await Creator.findByPk(msg.creatorId);
+    const isBundle = !!msg.collectionId;
+
+    // Bundle-attached message: route this as a collection_unlock so the
+    // Collection appears unlocked everywhere (Vault, future re-sends, etc.)
+    const txType = isBundle ? 'collection_unlock' : 'ppv_message';
+    const refId = isBundle ? msg.collectionId : msg.id;
 
     const checkout = await provider.createCheckout({
       amount: parseFloat(msg.ppvPrice || 0),
       currency: 'USD',
       fanId: req.user.userId,
       creatorId: msg.creatorId,
-      productRef: { type: 'ppv_message', id: msg.id },
+      productRef: { type: txType, id: refId },
       statementDescriptor: creator?.billingDescriptor || null,
     });
 
     const tx = await Transaction.create({
       userId: req.user.userId,
       creatorId: msg.creatorId,
-      type: 'ppv_message',
+      type: txType,
       amount: msg.ppvPrice,
-      referenceId: msg.id,
-      description: `PPV message unlock`,
+      referenceId: refId,
+      description: isBundle ? `Bundle unlock (chat): ${msg.collectionId}` : `PPV message unlock`,
       provider: providerName,
       providerInvoiceId: checkout.providerInvoiceId,
       status: checkout.status || 'pending',
     });
 
     // Only reveal the message once payment is actually settled
+    let collection = null;
     if (checkout.status === 'completed') {
       await msg.update({ isUnlocked: true });
+      if (isBundle) {
+        collection = await Collection.findByPk(msg.collectionId, {
+          include: [{ model: Post, as: 'posts' }],
+        });
+      }
     }
 
     res.json({
       success: checkout.status === 'completed',
-      message: checkout.status === 'completed' ? msg : undefined,
+      message: checkout.status === 'completed' ? { ...msg.toJSON(), collection } : undefined,
       transactionId: tx.id,
       status: tx.status,
       redirectUrl: checkout.redirectUrl,

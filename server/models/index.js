@@ -24,6 +24,7 @@ Subscription.belongsTo(User,   { foreignKey: 'userId' });
 
 Creator.hasMany(Message,    { foreignKey: 'creatorId', as: 'messages' });
 Message.belongsTo(Creator,  { foreignKey: 'creatorId' });
+Message.belongsTo(Collection, { foreignKey: 'collectionId', as: 'collection' });
 
 Creator.hasMany(Transaction,   { foreignKey: 'creatorId', as: 'transactions' });
 User.hasMany(Transaction,      { foreignKey: 'userId',    as: 'transactions' });
@@ -66,6 +67,7 @@ const applyMigrations = async () => {
   await addIfMissing('Transactions', 'providerInvoiceId', { type: DataTypes.STRING, allowNull: true });
   await addIfMissing('Transactions', 'providerChargeId', { type: DataTypes.STRING, allowNull: true });
   await addIfMissing('Transactions', 'webhookReceivedAt', { type: DataTypes.DATE, allowNull: true });
+  await addIfMissing('Messages', 'collectionId', { type: DataTypes.INTEGER, allowNull: true });
 };
 
 const syncDatabase = async () => {

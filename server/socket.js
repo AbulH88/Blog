@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { Message, Creator } = require('./models');
+const { Message, Creator, Collection } = require('./models');
 require('dotenv').config();
 
 const setupSocket = (io) => {
@@ -48,20 +48,33 @@ const setupSocket = (io) => {
     });
 
     // Creator replies to a fan
-    socket.on('creator_reply', async ({ fanId, content, isPPV, ppvPrice, mediaUrl }) => {
+    socket.on('creator_reply', async ({ fanId, content, isPPV, ppvPrice, mediaUrl, collectionId }) => {
       try {
         if (user.role !== 'creator') return;
+
+        // Bundle attach: derive PPV price and media from the Collection
+        let effectivePrice = isPPV ? parseFloat(ppvPrice) || 0 : 0;
+        let effectiveMedia = mediaUrl || null;
+        let effectiveCollectionId = null;
+        if (collectionId) {
+          const col = await Collection.findByPk(collectionId);
+          if (!col || col.creatorId !== user.creatorId) return socket.emit('chat_error', 'Bundle not found');
+          effectivePrice = parseFloat(col.price || 0);
+          effectiveMedia = col.coverImage || effectiveMedia;
+          effectiveCollectionId = col.id;
+        }
 
         const msg = await Message.create({
           creatorId: user.creatorId,
           fanId,
           senderId: user.creatorId,
           senderType: 'creator',
-          content: isPPV ? '' : (content || ''),
-          mediaUrl: mediaUrl || null,
-          isPPV: !!isPPV,
-          ppvPrice: isPPV ? parseFloat(ppvPrice) || 0 : 0,
-          isUnlocked: !isPPV,
+          content: isPPV || collectionId ? (content || '') : (content || ''),
+          mediaUrl: effectiveMedia,
+          isPPV: !!(isPPV || collectionId),
+          ppvPrice: effectivePrice,
+          collectionId: effectiveCollectionId,
+          isUnlocked: !(isPPV || collectionId),
         });
 
         const payload = { ...msg.toJSON() };

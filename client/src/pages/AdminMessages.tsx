@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import {
   SERVER_URL, CREATOR_SLUG,
   getCreatorInbox, getThreadWithFan, uploadImage,
+  getCollections,
 } from '../api';
 
 interface InboxRow {
@@ -67,6 +68,9 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
   const [ppvPrice, setPpvPrice] = useState('4.99');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [bundlePickerOpen, setBundlePickerOpen] = useState(false);
+  const [bundles, setBundles] = useState<any[]>([]);
+  const [attachedBundle, setAttachedBundle] = useState<any | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -165,10 +169,20 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
     setMediaUrl(null);
     setIsPPV(false);
     setPpvPrice('4.99');
+    setAttachedBundle(null);
+  };
+
+  const openBundlePicker = async () => {
+    setBundlePickerOpen(true);
+    if (bundles.length === 0) {
+      const list = await getCollections(CREATOR_SLUG);
+      setBundles(Array.isArray(list) ? list : []);
+    }
   };
 
   const canSend = () => {
     if (uploading) return false;
+    if (attachedBundle) return true;
     if (isPPV) {
       // PPV requires media or content + price
       const priceOk = parseFloat(ppvPrice) > 0;
@@ -182,21 +196,27 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
     const payload: any = {
       fanId: activeFanId,
       content: input.trim(),
-      isPPV,
+      isPPV: isPPV || !!attachedBundle,
       mediaUrl,
     };
-    if (isPPV) payload.ppvPrice = parseFloat(ppvPrice) || 0;
+    if (attachedBundle) {
+      payload.collectionId = attachedBundle.id;
+    } else if (isPPV) {
+      payload.ppvPrice = parseFloat(ppvPrice) || 0;
+    }
     socketRef.current.emit('creator_reply', payload);
     // Optimistic append
     setMessages(prev => [...prev, {
       id: Date.now(),
       fanId: activeFanId,
       senderType: 'creator',
-      content: isPPV ? '' : input.trim(),
-      mediaUrl,
-      isPPV,
-      ppvPrice: isPPV ? parseFloat(ppvPrice) || 0 : 0,
-      isUnlocked: !isPPV,
+      content: (isPPV || attachedBundle) ? input.trim() : input.trim(),
+      mediaUrl: attachedBundle?.coverImage || mediaUrl,
+      isPPV: isPPV || !!attachedBundle,
+      ppvPrice: attachedBundle ? parseFloat(attachedBundle.price) : (isPPV ? parseFloat(ppvPrice) || 0 : 0),
+      collectionId: attachedBundle?.id,
+      collection: attachedBundle,
+      isUnlocked: !(isPPV || attachedBundle),
       sentAt: new Date().toISOString(),
     }]);
     clearComposer();
@@ -408,13 +428,28 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                     padding: '5px 10px', color: C.muted, cursor: uploading ? 'wait' : 'pointer',
                     fontSize: '0.76rem',
                   }}>{uploading ? '… uploading' : '📎 Attach'}</button>
-                <button onClick={() => setIsPPV(p => !p)}
+                <button onClick={() => setIsPPV(p => !p)} disabled={!!attachedBundle}
                   style={{
                     background: isPPV ? 'var(--v3-terracotta)' : 'none',
                     border: `1px solid ${isPPV ? 'var(--v3-terracotta)' : C.border}`,
-                    borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
+                    borderRadius: 6, padding: '5px 10px', cursor: attachedBundle ? 'not-allowed' : 'pointer',
                     color: isPPV ? '#fff' : C.muted, fontSize: '0.76rem', fontWeight: 600,
+                    opacity: attachedBundle ? 0.5 : 1,
                   }}>🔒 PPV</button>
+                <button onClick={openBundlePicker} disabled={isPPV}
+                  style={{
+                    background: attachedBundle ? 'var(--v3-terracotta)' : 'none',
+                    border: `1px solid ${attachedBundle ? 'var(--v3-terracotta)' : C.border}`,
+                    borderRadius: 6, padding: '5px 10px', cursor: isPPV ? 'not-allowed' : 'pointer',
+                    color: attachedBundle ? '#fff' : C.muted, fontSize: '0.76rem', fontWeight: 600,
+                    opacity: isPPV ? 0.5 : 1,
+                  }}>📦 Bundle</button>
+                {attachedBundle && (
+                  <span style={{ fontSize: '0.74rem', color: C.muted }}>
+                    {attachedBundle.title} · ${parseFloat(attachedBundle.price).toFixed(2)}
+                    <button onClick={() => setAttachedBundle(null)} style={{ marginLeft: 6, background: 'none', border: 'none', color: C.muted, cursor: 'pointer' }}>✕</button>
+                  </span>
+                )}
                 {isPPV && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: '0.78rem', color: C.muted }}>$</span>
@@ -451,6 +486,35 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
           </>
         )}
       </section>
+
+      {bundlePickerOpen && (
+        <div onClick={() => setBundlePickerOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, maxWidth: 480, width: '100%', maxHeight: '70vh', overflow: 'auto' }}>
+            <h3 style={{ marginTop: 0, color: C.text }}>Attach a bundle</h3>
+            {bundles.length === 0 ? (
+              <p style={{ color: C.muted }}>No bundles yet. Create one in the Bundles tab first.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {bundles.map(b => (
+                  <li key={b.id}
+                    onClick={() => { setAttachedBundle(b); setBundlePickerOpen(false); setIsPPV(false); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 8, cursor: 'pointer' }}>
+                    {b.coverImage && <img src={mediaUrlAbs(b.coverImage)} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6 }} />}
+                    <span style={{ flex: 1, color: C.text }}>{b.title}</span>
+                    <span style={{ color: C.muted, fontSize: '0.85rem' }}>${parseFloat(b.price).toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button onClick={() => setBundlePickerOpen(false)}
+              style={{ marginTop: 12, padding: '6px 14px', border: `1px solid ${C.border}`, borderRadius: 6, background: 'none', color: C.muted, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
