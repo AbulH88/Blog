@@ -83,6 +83,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/collections', collectionRoutes);
+app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/instagram', require('./routes/instagramRoutes'));
 
 // ─── V1 Legacy Routes (kept during frontend migration to V2) ───────────────────

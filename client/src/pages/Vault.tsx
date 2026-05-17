@@ -33,20 +33,31 @@ const Vault = ({ config }: { config: any }) => {
 
   useEffect(() => { refresh(); }, []);
 
-  const handleUnlockBundle = async (bundleId: number) => {
+  const followCheckout = (res: { success?: boolean; error?: string; redirectUrl?: string; transactionId?: number }) => {
+    if (res?.redirectUrl) {
+      const ret = encodeURIComponent('/vault');
+      window.location.href = `${res.redirectUrl}${res.redirectUrl.includes('?') ? '&' : '?'}return=${ret}&tx=${res.transactionId}`;
+      return true;
+    }
+    return false;
+  };
+
+  const handleUnlockBundle = async (bundleId: number, provider: string = 'mock') => {
     if (!isLoggedIn) { setJoinOpen(true); return; }
     setUnlockingId(bundleId);
-    const res = await unlockCollection(bundleId);
+    const res = await unlockCollection(bundleId, provider);
     setUnlockingId(null);
+    if (followCheckout(res)) return;
     if (res?.success) await refresh();
     else alert(res?.error || 'Unlock failed');
   };
 
-  const handleUnlockPost = async (postId: number) => {
+  const handleUnlockPost = async (postId: number, provider: string = 'mock') => {
     if (!isLoggedIn) { setJoinOpen(true); return; }
     setUnlockingId(postId);
-    const res = await unlockPost(postId);
+    const res = await unlockPost(postId, provider);
     setUnlockingId(null);
+    if (followCheckout(res)) return;
     if (res?.success) await refresh();
     else alert(res?.error || 'Unlock failed');
   };

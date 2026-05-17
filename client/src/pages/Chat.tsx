@@ -76,10 +76,17 @@ const Chat = ({ config }: { config: any }) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  const handleUnlock = async (msgId: number) => {
-    const res = await unlockMessage(msgId);
+  const handleUnlock = async (msgId: number, provider: string = 'mock') => {
+    const res = await unlockMessage(msgId, provider);
+    if (res?.redirectUrl) {
+      const ret = encodeURIComponent('/chat');
+      window.location.href = `${res.redirectUrl}${res.redirectUrl.includes('?') ? '&' : '?'}return=${ret}&tx=${res.transactionId}`;
+      return;
+    }
     if (res?.success) {
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isUnlocked: true, content: res.message.content } : m));
+    } else if (res?.error) {
+      alert(res.error);
     }
   };
 

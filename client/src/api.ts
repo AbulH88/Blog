@@ -258,11 +258,12 @@ export const getInstagramFeed = async (slug: string) => {
   return res.json();
 };
 
-export const unlockPost = async (id: number) => {
+export const unlockPost = async (id: number, provider: string = 'mock') => {
   const fanToken = localStorage.getItem('fanToken');
   const res = await fetch(`${API_URL}/posts/${id}/unlock`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${fanToken}` },
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider }),
   });
   return res.json();
 };
@@ -346,11 +347,12 @@ export const removePostFromCollection = async (postId: number) => {
   return res.json();
 };
 
-export const unlockCollection = async (collectionId: number) => {
+export const unlockCollection = async (collectionId: number, provider: string = 'mock') => {
   const fanToken = localStorage.getItem('fanToken');
   const res = await fetch(`${API_URL}/collections/${collectionId}/unlock`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${fanToken}` },
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider }),
   });
   return res.json();
 };
@@ -365,10 +367,29 @@ export const getChatHistory = async (creatorSlug: string) => {
   return res.json();
 };
 
-export const unlockMessage = async (messageId: number) => {
+export const unlockMessage = async (messageId: number, provider: string = 'mock') => {
   const fanToken = localStorage.getItem('fanToken');
   const res = await fetch(`${API_URL}/chat/${messageId}/unlock`, {
     method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider }),
+  });
+  return res.json();
+};
+
+// ─── Payments ────────────────────────────────────────────────────────────────
+
+export const getActivePaymentProviders = async (): Promise<{ providers: string[] }> => {
+  const fanToken = localStorage.getItem('fanToken') || getToken();
+  const res = await fetch(`${API_URL}/payments/providers`, {
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
+export const getTransactionStatus = async (transactionId: number) => {
+  const fanToken = localStorage.getItem('fanToken') || getToken();
+  const res = await fetch(`${API_URL}/payments/status/${transactionId}`, {
     headers: { Authorization: `Bearer ${fanToken}` },
   });
   return res.json();
