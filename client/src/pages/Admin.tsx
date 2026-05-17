@@ -1382,6 +1382,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
               reorderPosts(next.map((p, i) => ({ id: p.id, sortOrder: i })));
             }}
             style={{ cursor: 'grab' }}
+          >
             <div className="av2-post-thumb">
               {post.mediaUrls?.[0]
                 ? <img src={`${SERVER_URL}${post.mediaUrls[0]}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
