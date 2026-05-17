@@ -74,6 +74,9 @@ const applyMigrations = async () => {
   await addIfMissing('Creators', 'welcomePpvText', { type: DataTypes.TEXT, allowNull: true });
   await addIfMissing('Creators', 'welcomeMediaUrl', { type: DataTypes.STRING, allowNull: true });
   await addIfMissing('Creators', 'welcomePpvPrice', { type: DataTypes.DECIMAL(10, 2), allowNull: true });
+
+  // Phase 6.7 — Collection discount %
+  await addIfMissing('Collections', 'discountPercent', { type: DataTypes.INTEGER, defaultValue: 0 });
 };
 
 const syncDatabase = async () => {

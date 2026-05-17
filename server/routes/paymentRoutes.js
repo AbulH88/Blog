@@ -252,9 +252,11 @@ router.post('/charge', requireAuth, async (req, res) => {
     } else if (productType === 'collection_unlock') {
       const col = await Collection.findByPk(productId);
       if (!col) return res.status(404).json({ error: 'Collection not found' });
-      amount = parseFloat(col.price || 0);
+      const base = parseFloat(col.price || 0);
+      const disc = Math.min(90, Math.max(0, parseInt(col.discountPercent || 0, 10)));
+      amount = Number((base * (1 - disc / 100)).toFixed(2));
       creatorId = col.creatorId;
-      description = `Bundle unlock: ${col.title}`;
+      description = disc > 0 ? `Bundle unlock: ${col.title} (-${disc}%)` : `Bundle unlock: ${col.title}`;
     } else if (productType === 'ppv_message') {
       const msg = await Message.findByPk(productId);
       if (!msg) return res.status(404).json({ error: 'Message not found' });

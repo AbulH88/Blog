@@ -26,6 +26,7 @@ interface BundleTileProps {
     title: string;
     description?: string;
     price: number | string;
+    discountPercent?: number;
     thumbs?: string[];
     postCount?: number;
     isUnlocked?: boolean;
@@ -43,13 +44,21 @@ const VaultTile = (props: Props) => {
     const { bundle, bundlePosts = [], onUnlock, unlocking } = props;
     const tiles = (bundle.thumbs || []).slice(0, 4);
     const includesPreview = bundlePosts.slice(0, 4).map(p => p.title || (p.caption || 'Premium content').slice(0, 28));
+    const base = parseFloat(String(bundle.price));
+    const disc = Math.min(90, Math.max(0, Number(bundle.discountPercent || 0)));
+    const final = Number((base * (1 - disc / 100)).toFixed(2));
 
     return (
       <div className="v3-vault-tile bundle">
-        <div className="media">
+        <div className="media" style={{ position: 'relative' }}>
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="media-tile" style={{ backgroundImage: tiles[i] ? `url("${fullUrl(tiles[i])}")` : undefined }} />
           ))}
+          {disc > 0 && (
+            <span style={{ position: 'absolute', top: 10, right: 10, background: 'var(--v3-terracotta, #c45c3a)', color: '#fff', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: 0.5 }}>
+              SAVE {disc}%
+            </span>
+          )}
         </div>
         <div className="body">
           <p className="title">{bundle.title}</p>
@@ -58,7 +67,14 @@ const VaultTile = (props: Props) => {
               {includesPreview.map((t, i) => <li key={i}>{t}</li>)}
             </ol>
           )}
-          <p className="total">${parseFloat(String(bundle.price)).toFixed(0)} TOTAL VALUE</p>
+          {disc > 0 ? (
+            <p className="total">
+              <span style={{ textDecoration: 'line-through', opacity: 0.55, marginRight: 8 }}>${base.toFixed(0)}</span>
+              <span style={{ color: 'var(--v3-terracotta, #c45c3a)', fontWeight: 700 }}>${final.toFixed(2)}</span>
+            </p>
+          ) : (
+            <p className="total">${base.toFixed(0)} TOTAL VALUE</p>
+          )}
           <div className="actions">
             {bundle.isUnlocked ? (
               <span style={{ color: '#1f6b32', fontWeight: 700, fontSize: '0.86rem' }}>✓ Unlocked</span>
@@ -67,7 +83,7 @@ const VaultTile = (props: Props) => {
                 className="unlock-btn"
                 onClick={() => onUnlock?.(bundle.id)}
                 disabled={!!unlocking}>
-                {unlocking ? 'Unlocking…' : 'Unlock Bundle'}
+                {unlocking ? 'Unlocking…' : `Unlock Bundle — $${final.toFixed(2)}`}
               </button>
             )}
           </div>

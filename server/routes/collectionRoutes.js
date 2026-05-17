@@ -199,8 +199,12 @@ router.post('/:id/unlock', requireAuth, async (req, res) => {
     const provider = getProvider(providerName);
     const creator = await Creator.findByPk(col.creatorId);
 
+    const basePrice = parseFloat(col.price || 0);
+    const disc = Math.min(90, Math.max(0, parseInt(col.discountPercent || 0, 10)));
+    const effectivePrice = Number((basePrice * (1 - disc / 100)).toFixed(2));
+
     const checkout = await provider.createCheckout({
-      amount: parseFloat(col.price || 0),
+      amount: effectivePrice,
       currency: 'USD',
       fanId: req.user.userId,
       creatorId: col.creatorId,
@@ -212,9 +216,11 @@ router.post('/:id/unlock', requireAuth, async (req, res) => {
       userId: req.user.userId,
       creatorId: col.creatorId,
       type: 'collection_unlock',
-      amount: col.price,
+      amount: effectivePrice,
       referenceId: col.id,
-      description: `Bundle unlock: ${col.title}`,
+      description: disc > 0
+        ? `Bundle unlock: ${col.title} (-${disc}%)`
+        : `Bundle unlock: ${col.title}`,
       provider: providerName,
       providerInvoiceId: checkout.providerInvoiceId,
       status: checkout.status || 'pending',

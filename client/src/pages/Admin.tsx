@@ -268,6 +268,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         title: editingBundle.title,
         description: editingBundle.description,
         price: editingBundle.price,
+        discountPercent: Number(editingBundle.discountPercent) || 0,
         isPublished: editingBundle.isPublished,
       });
     } else {
@@ -276,6 +277,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         title: editingBundle.title || 'Untitled Bundle',
         description: editingBundle.description || '',
         price: parseFloat(editingBundle.price) || 9.99,
+        discountPercent: Number(editingBundle.discountPercent) || 0,
       });
     }
     if (res?.success || res?.id) {
@@ -1247,6 +1249,18 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                   value={editingBundle.price}
                   onChange={e => setEditingBundle({ ...editingBundle, price: e.target.value })}
                   className="av2-input" style={{ width: 100, marginBottom: 0 }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '0.82rem', color: C.muted }}>Discount %</span>
+                <input type="number" min="0" max="90" step="1"
+                  value={editingBundle.discountPercent || 0}
+                  onChange={e => setEditingBundle({ ...editingBundle, discountPercent: e.target.value })}
+                  className="av2-input" style={{ width: 80, marginBottom: 0 }} />
+                {Number(editingBundle.discountPercent) > 0 && (
+                  <span style={{ fontSize: '0.78rem', color: 'var(--v3-terracotta, #c45c3a)' }}>
+                    → ${(parseFloat(editingBundle.price || 0) * (1 - Number(editingBundle.discountPercent || 0) / 100)).toFixed(2)}
+                  </span>
+                )}
               </div>
               <label className="av2-toggle-label">
                 <input type="checkbox"
