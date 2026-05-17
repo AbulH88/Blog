@@ -40,7 +40,7 @@ const getUnlockedCollections = async (authHeader) => {
   const fan = decodeFan(authHeader);
   if (!fan) return new Set();
   const unlocks = await Transaction.findAll({
-    where: { userId: fan.userId, type: 'collection_unlock' },
+    where: { userId: fan.userId, type: 'collection_unlock', status: 'completed' },
     attributes: ['referenceId'],
   });
   return new Set(unlocks.map(u => u.referenceId).filter(Boolean));
@@ -50,7 +50,7 @@ const getUnlockedPosts = async (authHeader) => {
   const fan = decodeFan(authHeader);
   if (!fan) return new Set();
   const unlocks = await Transaction.findAll({
-    where: { userId: fan.userId, type: 'post_unlock' },
+    where: { userId: fan.userId, type: 'post_unlock', status: 'completed' },
     attributes: ['referenceId'],
   });
   return new Set(unlocks.map(u => u.referenceId).filter(Boolean));

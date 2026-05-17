@@ -395,6 +395,66 @@ export const getTransactionStatus = async (transactionId: number) => {
   return res.json();
 };
 
+export interface SavedCard {
+  id: number;
+  provider: string;
+  last4: string;
+  brand: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+}
+
+export const getPaymentMethods = async (): Promise<{ methods: SavedCard[] }> => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/payments/methods`, {
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
+export const addPaymentMethod = async (cardData: { number: string; brand?: string; expMonth: number; expYear: number; cvc?: string }, setDefault = true) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/payments/methods`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cardData, setDefault }),
+  });
+  return res.json();
+};
+
+export const removePaymentMethod = async (id: number) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/payments/methods/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
+export const setDefaultPaymentMethod = async (id: number) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/payments/methods/${id}/default`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
+export const chargeSavedMethod = async (
+  paymentMethodId: number,
+  productType: 'post_unlock' | 'collection_unlock' | 'ppv_message',
+  productId: number,
+) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/payments/charge`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paymentMethodId, productType, productId }),
+  });
+  return res.json();
+};
+
 export const getCreatorInbox = async (creatorSlug: string) => {
   const res = await fetch(`${API_URL}/chat/${creatorSlug}/inbox`, {
     headers: { Authorization: `Bearer ${getToken()}` },

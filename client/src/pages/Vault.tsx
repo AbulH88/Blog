@@ -3,7 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   getPosts, CREATOR_SLUG, SERVER_URL,
   getPublicCollections, unlockCollection,
-  unlockPost,
+  unlockPost, getPaymentMethods, chargeSavedMethod,
+  type SavedCard,
 } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
 import JoinPremiumModal from '../components/JoinPremiumModal';
@@ -16,6 +17,7 @@ const Vault = ({ config }: { config: any }) => {
   const [bundles, setBundles] = useState<any[]>([]);
   const [unlockingId, setUnlockingId] = useState<number | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [defaultCard, setDefaultCard] = useState<SavedCard | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -33,6 +35,13 @@ const Vault = ({ config }: { config: any }) => {
 
   useEffect(() => { refresh(); }, []);
 
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    getPaymentMethods().then(r => {
+      setDefaultCard((r.methods || []).find((m: SavedCard) => m.isDefault) || null);
+    }).catch(() => {});
+  }, [isLoggedIn]);
+
   const followCheckout = (res: { success?: boolean; error?: string; redirectUrl?: string; transactionId?: number }) => {
     if (res?.redirectUrl) {
       const ret = encodeURIComponent('/vault');
@@ -45,7 +54,10 @@ const Vault = ({ config }: { config: any }) => {
   const handleUnlockBundle = async (bundleId: number, provider: string = 'mock') => {
     if (!isLoggedIn) { setJoinOpen(true); return; }
     setUnlockingId(bundleId);
-    const res = await unlockCollection(bundleId, provider);
+    // One-tap with saved default card when available
+    const res = defaultCard
+      ? await chargeSavedMethod(defaultCard.id, 'collection_unlock', bundleId)
+      : await unlockCollection(bundleId, provider);
     setUnlockingId(null);
     if (followCheckout(res)) return;
     if (res?.success) await refresh();
@@ -55,7 +67,9 @@ const Vault = ({ config }: { config: any }) => {
   const handleUnlockPost = async (postId: number, provider: string = 'mock') => {
     if (!isLoggedIn) { setJoinOpen(true); return; }
     setUnlockingId(postId);
-    const res = await unlockPost(postId, provider);
+    const res = defaultCard
+      ? await chargeSavedMethod(defaultCard.id, 'post_unlock', postId)
+      : await unlockPost(postId, provider);
     setUnlockingId(null);
     if (followCheckout(res)) return;
     if (res?.success) await refresh();

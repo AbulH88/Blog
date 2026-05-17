@@ -19,13 +19,13 @@ function initPayments() {
       console.warn('NOWPayments provider failed to load:', e.message);
     }
   }
-  if (active.includes('card')) {
-    try {
-      const CardProvider = require('./providers/card');
-      registerProvider('card', new CardProvider());
-    } catch (e) {
-      console.warn('Card provider failed to load:', e.message);
-    }
+  // Card provider: always register (uses MockCardProvider when CARD_PROVIDER
+  // isn't set, so the UI flow works end-to-end before a real gateway is picked).
+  try {
+    const createCardProvider = require('./providers/card');
+    registerProvider('card', createCardProvider());
+  } catch (e) {
+    console.warn('Card provider failed to load:', e.message);
   }
 
   console.log('Payment providers registered:', listProviders().join(', '));

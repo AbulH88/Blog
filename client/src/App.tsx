@@ -22,6 +22,7 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Compliance2257 from './pages/Compliance2257';
 import PaymentReturn from './pages/PaymentReturn';
+import PaymentMethods from './pages/PaymentMethods';
 
 const Maintenance = () => (
   <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', background: '#000', color: '#fff' }}>
@@ -109,6 +110,7 @@ function App() {
                 <Route path="/privacy" element={<Privacy config={config} />} />
                 <Route path="/2257" element={<Compliance2257 config={config} />} />
                 <Route path="/payment/return" element={<PaymentReturn />} />
+                <Route path="/dashboard/payment-methods" element={<PaymentMethods />} />
                 <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>

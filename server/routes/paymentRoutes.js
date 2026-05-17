@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { Transaction, Post, Collection, Message } = require('../models');
+const { Transaction, Post, Collection, Message, PaymentMethod, Creator } = require('../models');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { getProvider, hasProvider } = require('../payments/registry');
 
@@ -78,6 +78,161 @@ router.get('/status/:transactionId', requireAuth, async (req, res) => {
 router.get('/providers', requireAuth, async (_req, res) => {
   const { listProviders } = require('../payments/registry');
   res.json({ providers: listProviders() });
+});
+
+// ─── Saved payment methods (cards) ───────────────────────────────────────────
+
+router.get('/methods', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+    const methods = await PaymentMethod.findAll({
+      where: { userId: req.user.userId },
+      order: [['isDefault', 'DESC'], ['createdAt', 'DESC']],
+    });
+    res.json({ methods });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/methods', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+    if (!hasProvider('card')) return res.status(503).json({ error: 'Card provider not configured' });
+
+    const { cardData, billingAddress, setDefault } = req.body || {};
+    const provider = getProvider('card');
+    const tok = await provider.tokenizeCard({ fanId: req.user.userId, cardData, billingAddress });
+
+    if (setDefault) {
+      await PaymentMethod.update({ isDefault: false }, { where: { userId: req.user.userId } });
+    }
+
+    const method = await PaymentMethod.create({
+      userId: req.user.userId,
+      provider: 'card',
+      providerTokenId: tok.providerTokenId,
+      last4: tok.last4,
+      brand: tok.brand,
+      expMonth: tok.expMonth,
+      expYear: tok.expYear,
+      isDefault: !!setDefault,
+    });
+    res.json({ method });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/methods/:id', requireAuth, async (req, res) => {
+  try {
+    const method = await PaymentMethod.findByPk(req.params.id);
+    if (!method) return res.status(404).json({ error: 'Method not found' });
+    if (method.userId !== req.user.userId) return res.status(403).json({ error: 'Forbidden' });
+    await method.destroy();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/methods/:id/default', requireAuth, async (req, res) => {
+  try {
+    const method = await PaymentMethod.findByPk(req.params.id);
+    if (!method || method.userId !== req.user.userId) return res.status(403).json({ error: 'Forbidden' });
+    await PaymentMethod.update({ isDefault: false }, { where: { userId: req.user.userId } });
+    await method.update({ isDefault: true });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── One-tap charge with a saved method ──────────────────────────────────────
+// Body: { paymentMethodId, productType: 'post_unlock'|'collection_unlock'|'ppv_message', productId }
+// Server looks up price (never trust client-supplied amount) and charges.
+router.post('/charge', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+    const { paymentMethodId, productType, productId } = req.body || {};
+    if (!paymentMethodId || !productType || !productId) {
+      return res.status(400).json({ error: 'paymentMethodId, productType, productId required' });
+    }
+
+    const method = await PaymentMethod.findByPk(paymentMethodId);
+    if (!method || method.userId !== req.user.userId) return res.status(403).json({ error: 'Forbidden' });
+
+    // Look up the product server-side
+    let amount, creatorId, description;
+    if (productType === 'post_unlock') {
+      const post = await Post.findByPk(productId);
+      if (!post) return res.status(404).json({ error: 'Post not found' });
+      if (post.collectionId) return res.status(400).json({ error: 'Buy the bundle to unlock bundle posts' });
+      amount = parseFloat(post.price || 0);
+      creatorId = post.creatorId;
+      description = `Post unlock: ${post.title || post.id}`;
+    } else if (productType === 'collection_unlock') {
+      const col = await Collection.findByPk(productId);
+      if (!col) return res.status(404).json({ error: 'Collection not found' });
+      amount = parseFloat(col.price || 0);
+      creatorId = col.creatorId;
+      description = `Bundle unlock: ${col.title}`;
+    } else if (productType === 'ppv_message') {
+      const msg = await Message.findByPk(productId);
+      if (!msg) return res.status(404).json({ error: 'Message not found' });
+      if (msg.fanId !== req.user.userId) return res.status(403).json({ error: 'Forbidden' });
+      amount = parseFloat(msg.ppvPrice || 0);
+      creatorId = msg.creatorId;
+      description = 'PPV message unlock';
+    } else {
+      return res.status(400).json({ error: 'Unknown productType' });
+    }
+
+    // Idempotency: skip if already unlocked
+    const existing = await Transaction.findOne({
+      where: {
+        userId: req.user.userId,
+        type: productType,
+        referenceId: productId,
+        status: 'completed',
+      },
+    });
+    if (existing) return res.json({ success: true, alreadyUnlocked: true });
+
+    const creator = await Creator.findByPk(creatorId);
+    const provider = getProvider(method.provider);
+    const charge = await provider.chargeSavedToken({
+      providerTokenId: method.providerTokenId,
+      amount,
+      currency: 'USD',
+      fanId: req.user.userId,
+      creatorId,
+      productRef: { type: productType, id: productId },
+      statementDescriptor: creator?.billingDescriptor || null,
+    });
+
+    const tx = await Transaction.create({
+      userId: req.user.userId,
+      creatorId,
+      type: productType,
+      amount,
+      referenceId: productId,
+      description,
+      provider: method.provider,
+      providerChargeId: charge.providerChargeId,
+      status: charge.status === 'completed' ? 'completed' : 'failed',
+    });
+
+    if (tx.status === 'completed') await applyUnlock(tx);
+
+    res.json({
+      success: tx.status === 'completed',
+      transactionId: tx.id,
+      status: tx.status,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

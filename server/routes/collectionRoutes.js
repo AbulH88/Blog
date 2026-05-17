@@ -55,7 +55,7 @@ router.get('/:slug', async (req, res) => {
     const unlockedIds = new Set();
     if (fan) {
       const unlocks = await Transaction.findAll({
-        where: { userId: fan.userId, type: 'collection_unlock' },
+        where: { userId: fan.userId, type: 'collection_unlock', status: 'completed' },
         attributes: ['referenceId'],
       });
       unlocks.forEach(u => unlockedIds.add(u.referenceId));

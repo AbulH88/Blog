@@ -136,6 +136,9 @@ const FanDashboard = () => {
           <Link to="/about" className="v3-fan-nav-btn">
             <span style={{ width: 20, textAlign: 'center' }}>✨</span><span>About</span>
           </Link>
+          <Link to="/dashboard/payment-methods" className={`v3-fan-nav-btn ${location.pathname === '/dashboard/payment-methods' ? 'active' : ''}`}>
+            <span style={{ width: 20, textAlign: 'center' }}>💳</span><span>Payment Methods</span>
+          </Link>
         </nav>
 
         <div className="v3-fan-side-footer">
