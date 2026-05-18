@@ -3,9 +3,8 @@
 > **For the next agent picking this up:**
 > Read this file first. Then `README.md` for the product overview, `SRS_FRS_DOCUMENT.md` for the full technical inventory.
 
-**Active branch:** `feature/v3-design-pivot`
-**Worktree path:** `C:\Users\jimi\Documents\APP\Blog\.claude\worktrees\upbeat-keller-f96724`
-**Last commit (session end):** `c509eb2` — compliance bundle
+**Active branch:** `feature/phase-7-ai-chatbot`
+**Last commit (session end):** `3cee809` — notifications dropdown + AddCardModal + Dashboard nav label
 **Remote:** https://github.com/AbulH88/Blog
 
 ---
@@ -20,9 +19,78 @@ Right now there's one creator seeded (`cristina`). The user plans to spin up mul
 
 ---
 
+## 📍 Update — Phase 7 AI chatbot + fan-UX polish session (2026-05-18)
+
+This session built **all of Phase 7** plus a major fan-UX polish pass. Highlights:
+
+### 🤖 AI Chatbot system (Phase 7)
+- **OpenRouter integration** (`server/services/aiChat.js`) — generates Cristina's replies using `sao10k/l3.3-euryale-70b` by default (NSFW-tuned, flirty)
+- **12-intent classifier** (`server/services/intentClassifier.js`) — cheap per-message Haiku-4.5 call labels fan intent (`WANTS_CONTENT`, `ESCALATION`, `PRICING_QUESTION`, `CUSTOM_REQUEST`, `GREETING`, `GOODBYE`, `COMPLIMENT`, `POST_PURCHASE_REACTION`, `TIP_OFFER`, `BOUNDARY_VIOLATION`, `CHITCHAT`, `COLD`). Acts as a gate on whether PPV is allowed AND supplies a per-intent behaviour hint injected into the persona prompt. Defaults to safe (no pitch) on any failure.
+- **Per-fan AI toggle** — `Subscription.aiAutoReplyEnabled` controls whether AI replies for that specific fan
+- **PPV approval flow** — when AI wants to attach a bundle, the suggestion is held as a `PendingPpv` record; creator approves/edits/rejects via UI OR via Telegram with one tap
+- **Telegram bot integration** — `Creator.telegramBotToken` + `Creator.telegramChatId`. The bot long-polls for inline-button callbacks (`✅ Send` / `📝 Text only` / `❌ Reject`). First time the creator messages the bot, it replies with the chat ID for setup. Auto-sends after `aiApprovalTimeoutSec` if no decision.
+- **Admin → AI Chatbot tab** — persona prompt, model picker, NSFW level, PPV cadence, approval gate toggle, Telegram setup, sandbox test chat
+
+### 💬 Messenger-style chat overhaul
+- Removed the redundant chat-thread-list column (single-creator MVP — re-introduce when multi-tenant lands)
+- 600–720px centered conversation column with internal scroll (page itself doesn't scroll)
+- Sticky chat header with avatar + name + green "Active now" dot
+- Tight bubble grouping — consecutive same-sender messages stack with shared rounded corners and one avatar at the bottom of the burst
+- Date dividers ("Today at 3:12 PM", "Yesterday at 9:14 AM") when >60min gap
+- `Creator.chatAvatarUrl` — **separate** from `logoUrl` and `profileImage`; creators can change the chat-DM face independently of the website brand mark. Upload UI lives in Bio Builder. Falls back: `chatAvatarUrl → profileImage → logoUrl → blank`.
+
+### ⚙ Settings page (Fanvue-style nested nav)
+- New `/dashboard/settings` route — Account / Payments & subscriptions / Notifications / Privacy / Help
+- **Payments** has 3 sub-tabs: Wallet & payments (saved cards), My subscriptions, Transaction history
+- **Account** has Profile (display name + email), Change password, Danger zone (cancel account)
+- Backend endpoints added: `PATCH /api/auth/me` (display name / email, with JWT refresh on email change) and `PATCH /api/auth/me/password` (current + new, bcrypt cost 12)
+- Fully responsive — section nav becomes a pill grid on mobile with the MobileBottomNav
+
+### 🔔 Notifications dropdown
+- Bell icon on Fan Dashboard opens a panel listing 6 most-recent creator messages
+- Each item: avatar + preview + time + creator name + unread dot
+- Click-outside-to-close, "View all messages →" footer link
+- Replaces the previous bell badge bug that always showed `1`
+
+### 💳 AddCardModal (polished popup)
+- Replaces the inline card form in Settings → Payments → Wallet
+- **Live card preview** that updates as the user types (color/brand badge change per detected card prefix: Visa/MC/Amex/Discover)
+- Cardholder name field, structured MM/YY/CVC grid
+- 🔒 Encrypted-and-secure trust signal + accepted-brands strip
+- Validation: length, expiry, CVC format
+- Submit button text changes to "Save card ending in 1234"
+
+### 🧱 Shared FanSidebar component (`client/src/components/FanSidebar.tsx`)
+- Single source of truth for the fan-area side nav — used by Dashboard, Chat, Vault, Settings
+- Includes Dashboard, Vault, Messages, Gallery, Journal, About, Settings (with gear icon)
+- Footer: Sign Out + Cancel my account + Terms/Privacy/2257
+
+### 📱 Responsiveness fixes
+- `Navbar.tsx` + `Footer.tsx` now hide on ALL `/dashboard/*` sub-routes (previously only on exact `/dashboard` — caused the website chrome to leak into Settings, which the user spotted)
+- Fan shells (Dashboard, Chat, Vault) are now **contained cards** at max 1280px on wide screens with rounded corners + soft shadow + cream background outside. Below 1320px they expand to full viewport edge. Below 900px they swap to mobile layouts
+- Chat shell uses fixed `height: calc(100vh - 40px)` so the message area scrolls internally (was: shell grew to fit all content, page scrolled instead of the chat)
+
+### 🎯 Other small wins
+- Navbar "username" link relabeled to **Dashboard** (was showing the fan's handle)
+- Fan Dashboard now has a **My Purchases** card showing last 10 transactions (Date · Type pill · Item · Amount)
+- Mobile dashboard now has 4 stat cards (parity with desktop — added Total Spent)
+- "Bundles Owned" → "Collections Unlocked" everywhere
+- Dead `client/src/pages/PaymentMethods.tsx` superseded by `/dashboard/settings/payments` route; old URL redirects there
+
+### 🟡 What's still on the TODO from this session
+- Drag-to-reorder for posts, bundles, gallery images, hero slider images
+- Delete dead `client/src/components/SubscribeModal.tsx` (superseded by `JoinPremiumModal`)
+- Delete dead `client/src/components/PostCard.tsx` (superseded by `VaultTile`)
+- Optimistic UI for chat send (currently waits for socket round-trip)
+- Fix the 16 console errors from empty `<img src="">` on bundle item thumbnails where the bundle has no media set
+- Notification dropdown could fetch a global feed (purchases, new bundles) — currently only shows creator messages
+- The chat list column (multi-tenant DM list) — re-add when there's >1 creator
+
+---
+
 ## 📍 Current State (as of session end)
 
-### ✅ What's shipped on `feature/v3-design-pivot`
+### ✅ What's shipped on `feature/v3-design-pivot` (now merged forward into `feature/phase-7-ai-chatbot`)
 
 1. **Full V3 design system** — terracotta/cream (desktop) + rose-pink (mobile) · serif italic display fonts · `theme-v3.css` is the single source of truth · `body.v3` class activates it globally
 2. **Freemium pivot** — subscriptions are now free "follower" records (no monthly charge). Revenue flows from: per-bundle unlocks · per-post unlocks · PPV chat · Fanvue redirect
@@ -229,9 +297,16 @@ If the user says "continue":
 
 ---
 
-## Latest commits on `feature/v3-design-pivot`
+## Latest commits on `feature/phase-7-ai-chatbot`
 
 ```
+3cee809 feat(fan-ui): notifications dropdown, polished card modal, Dashboard nav label
+05bff68 feat(fan-ui): Messenger-style chat + Settings page + responsive polish
+fdf023f docs(deploy): add production VPS deployment playbook (RHEL + Postgres + Nginx)
+a9e5273 feat(ai): AI chatbot with OpenRouter + per-fan toggle + PPV approval (Telegram)
+3c9262f fix(admin): missing > on draggable post row JSX
+b62b58c feat(bundles): discount %
+3010f48 feat(onboarding): welcome PPV auto-send for new fans
 c509eb2 feat(compliance): age gate · terms · privacy · 2257 · cancel · billing descriptor
 9f1a142 feat(admin): Audience tab with fan list, spend totals + Top Spenders
 f5c8ba1 docs: re-encode README as UTF-8 (was UTF-16, GitHub treated as binary)
