@@ -319,7 +319,7 @@ export const getPublicCollections = async (creatorSlug: string) => {
   return res.json();
 };
 
-export const createCollection = async (data: { creatorSlug: string; title: string; description: string; price: number }) => {
+export const createCollection = async (data: { creatorSlug: string; title: string; description: string; price: number; discountPercent?: number }) => {
   const res = await fetch(`${API_URL}/collections`, {
     method: 'POST',
     headers: authHeaders(),

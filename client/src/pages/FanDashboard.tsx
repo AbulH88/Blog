@@ -60,7 +60,7 @@ const FanDashboard = () => {
       setBundles(Array.isArray(b) ? b : []);
       setMessages(Array.isArray(m) ? m : []);
       setTransactions(Array.isArray(t) ? t : []);
-      setWalletBalance(parseFloat(w?.balance || 0));
+      setWalletBalance(Number(w?.balance || 0));
       setLoading(false);
     })();
   }, [navigate]);
@@ -225,7 +225,7 @@ const FanDashboard = () => {
           balance={walletBalance}
           onDeposited={async () => {
             const w = await getWallet().catch(() => ({ balance: 0 }));
-            setWalletBalance(parseFloat(w?.balance || 0));
+            setWalletBalance(Number(w?.balance || 0));
           }}
         />
 
@@ -459,7 +459,7 @@ const FanDashboard = () => {
         balance={walletBalance}
         onDeposited={async () => {
           const w = await getWallet().catch(() => ({ balance: 0 }));
-          setWalletBalance(parseFloat(w?.balance || 0));
+          setWalletBalance(Number(w?.balance || 0));
         }}
       />
 

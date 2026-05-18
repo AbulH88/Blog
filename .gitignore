@@ -2,3 +2,47 @@ node_modules/
 .DS_Store
 .env
 .env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# Dev databases + backups
+server/data/*.db
+server/data/*.db.bak
+server/data/*.db-journal
+*.sqlite
+*.sqlite3
+
+# Server logs
+server/server.log
+server/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test artifacts
+.playwright-mcp/
+*.png
+!client/public/**/*.png
+!client/src/**/*.png
+!docs/**/*.png
+
+# Tooling temp files
+.tmp_*
+*_tmp.js
+.cache/
+
+# Server uploads (user-generated media — never commit, move to S3/B2 in prod)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude/AI tooling
+.claude/

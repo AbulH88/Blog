@@ -48,7 +48,7 @@ export default function PayMethodPicker({
       ]);
       setCards(m.methods || []);
       setProviders(p.providers || []);
-      setWalletBalance(parseFloat(w?.balance || 0));
+      setWalletBalance(typeof w?.balance === 'number' ? w.balance : parseFloat(w?.balance || '0'));
       setLoading(false);
     })();
   }, []);
@@ -56,7 +56,6 @@ export default function PayMethodPicker({
   const hasCrypto = providers.includes('nowpayments');
   const hasCard = providers.includes('card');
   const hasMock = providers.includes('mock');
-  const defaultCard = cards.find(c => c.isDefault) || cards[0] || null;
 
   // Run the matching unlock fn
   const callUnlock = async (provider: string) => {

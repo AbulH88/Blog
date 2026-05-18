@@ -211,10 +211,14 @@ const Chat = ({ config }: { config: any }) => {
                         const url = fullUrl(p.imageUrl || p.videoUrl);
                         const video = url && /\.(mp4|mov|webm)$/i.test(url);
                         return (
-                          <div key={p.id} style={{ borderRadius: 8, overflow: 'hidden', background: '#222', aspectRatio: '1' }}>
-                            {video
-                              ? <video src={url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              : <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                          <div key={p.id} style={{ borderRadius: 8, overflow: 'hidden', background: '#222', aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)' }}>
+                            {!url ? (
+                              <span style={{ fontSize: '1.5rem' }}>📷</span>
+                            ) : video ? (
+                              <video src={url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            )}
                           </div>
                         );
                       })}

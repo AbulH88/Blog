@@ -155,23 +155,6 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
     setTimeout(() => setStatus(''), 4000);
   };
 
-  const handleFileUpload = async (e: any, type: 'gallery' | 'slider' | 'favicon') => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setStatus('Uploading…');
-    const res = await uploadImage(file);
-    if (res.url) {
-      if (type === 'favicon') {
-        setFormData({ ...formData, seo: { ...formData.seo, favicon: res.url } });
-      } else if (type === 'gallery') {
-        setFormData({ ...formData, images: { ...formData.images, gallery: [...formData.images.gallery, res.url] } });
-      } else if (type === 'slider') {
-        setFormData({ ...formData, images: { ...formData.images, heroSlider: [...(formData.images.heroSlider || []), res.url] } });
-      }
-      setStatus('Uploaded!');
-    }
-  };
-
   const removeImage = (type: 'slider' | 'gallery', index: number) => {
     const key = type === 'slider' ? 'heroSlider' : 'gallery';
     const list = [...formData.images[key]];
