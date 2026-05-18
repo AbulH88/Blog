@@ -45,6 +45,7 @@ const normalize = (creator: any) => ({
   fanvueUrl: creator.fanvueUrl || '',
   billingDescriptor: creator.billingDescriptor || '',
   logoUrl: creator.logoUrl || '',
+  chatAvatarUrl: creator.chatAvatarUrl || '',
   featuredLinks: creator.featuredLinks || [],
   instagramPosts: creator.instagramPosts || [],
 });
@@ -67,6 +68,7 @@ const denormalize = (config: any) => {
     fanvueUrl: config.fanvueUrl || null,
     billingDescriptor: config.billingDescriptor || null,
     logoUrl: config.logoUrl || null,
+    chatAvatarUrl: config.chatAvatarUrl || null,
     featuredLinks: config.featuredLinks || [],
     instagramPosts: config.instagramPosts || [],
   };
@@ -148,6 +150,28 @@ export const fanRegister = async (email: string, username: string, password: str
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, username, password }),
+  });
+  return res.json();
+};
+
+export const updateMyProfile = async (patch: { username?: string; email?: string }) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/auth/me`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  const data = await res.json();
+  if (data?.token) localStorage.setItem('fanToken', data.token);
+  return data;
+};
+
+export const changeMyPassword = async (payload: { currentPassword: string; newPassword: string }) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/auth/me/password`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
   return res.json();
 };

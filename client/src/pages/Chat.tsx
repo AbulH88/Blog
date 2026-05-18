@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState, Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { getChatHistory, unlockMessage, SERVER_URL, CREATOR_SLUG, getCreator } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
 import TipModal from '../components/TipModal';
+import FanSidebar from '../components/FanSidebar';
 
 const fullUrl = (p?: string | null) => {
   if (!p) return '';
@@ -17,6 +18,18 @@ const fmtTime = (iso?: string) => {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 };
 
+const fmtDateDivider = (iso?: string) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const today = new Date();
+  const isToday = d.toDateString() === today.toDateString();
+  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  if (isToday) return `Today at ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  if (isYesterday) return `Yesterday at ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+};
+
 const Chat = ({ config }: { config: any }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
@@ -28,11 +41,9 @@ const Chat = ({ config }: { config: any }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef<string[]>([]);
   const navigate = useNavigate();
-  const location = useLocation();
 
   const fanToken = typeof window !== 'undefined' ? localStorage.getItem('fanToken') : null;
-  const fanUser = JSON.parse(localStorage.getItem('fanUser') || 'null');
-  const avatar = config?.images?.hero || config?.images?.heroSlider?.[0];
+  const avatar = config?.chatAvatarUrl || config?.images?.hero || config?.images?.heroSlider?.[0] || config?.logoUrl;
   const creatorName = config?.siteTitle || 'CRISTINA';
 
   useEffect(() => {
@@ -103,12 +114,6 @@ const Chat = ({ config }: { config: any }) => {
     }
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem('fanToken');
-    localStorage.removeItem('fanUser');
-    navigate('/');
-  };
-
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v3-rose-grad)' }}>
@@ -126,7 +131,7 @@ const Chat = ({ config }: { config: any }) => {
         </p>
       )}
 
-      {messages.map((msg) => {
+      {messages.map((msg, idx) => {
         const fromFan = msg.senderType === 'fan';
         const locked = msg.isPPV && !msg.isUnlocked;
         const mediaAbs = fullUrl(msg.mediaUrl);
@@ -134,12 +139,34 @@ const Chat = ({ config }: { config: any }) => {
         const isBundle = !!msg.collectionId;
         const bundlePosts: any[] = (msg.collection?.posts || []) as any[];
 
+        const prev = messages[idx - 1];
+        const next = messages[idx + 1];
+        const prevTime = prev?.sentAt ? new Date(prev.sentAt).getTime() : 0;
+        const thisTime = msg.sentAt ? new Date(msg.sentAt).getTime() : 0;
+        // Date divider when >60min gap or first message of the day
+        const showDivider = !prev || (thisTime - prevTime) > 60 * 60 * 1000;
+        // After a divider, treat as "new burst" — break grouping
+        const sameAsPrev = !showDivider && prev && prev.senderType === msg.senderType;
+        const sameAsNext = next && next.senderType === msg.senderType
+          && (new Date(next.sentAt).getTime() - thisTime) <= 60 * 60 * 1000;
+        const showAvatar = !fromFan && !sameAsNext;
+        // Inline tiny timestamp only on the LAST message in a burst
+        const showTime = !sameAsNext;
+
         return (
-          <div key={msg.id} className={`v3-msg-row ${fromFan ? 'fan' : 'creator'}`}>
-            {!fromFan && (
-              <div className="avatar-sm">{avatar && <img src={fullUrl(avatar)} alt="" />}</div>
+          <Fragment key={msg.id}>
+            {showDivider && msg.sentAt && (
+              <div className="v3-msg-divider">
+                {fmtDateDivider(msg.sentAt)}
+              </div>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '78%' }}>
+          <div className={`v3-msg-row ${fromFan ? 'fan' : 'creator'} ${sameAsPrev ? 'group-tight' : ''}`}>
+            {!fromFan && (
+              showAvatar
+                ? <div className="avatar-sm">{avatar && <img src={fullUrl(avatar)} alt="" />}</div>
+                : <div className="avatar-sm spacer" aria-hidden="true" />
+            )}
+            <div className="v3-msg-col">
               <div className={`v3-bubble ${fromFan ? 'fan' : 'creator'}`}>
                 {locked ? (
                   <div style={{
@@ -201,9 +228,10 @@ const Chat = ({ config }: { config: any }) => {
                   </>
                 )}
               </div>
-              <span className="v3-msg-time">{fmtTime(msg.sentAt)}</span>
+              {showTime && <span className="v3-msg-time">{fmtTime(msg.sentAt)}</span>}
             </div>
           </div>
+          </Fragment>
         );
       })}
 
@@ -245,15 +273,23 @@ const Chat = ({ config }: { config: any }) => {
 
   const renderHeader = () => (
     <div className="v3-chat-header">
-      <div className="v3-chat-avatar">
+      <div className="v3-chat-avatar" style={{ position: 'relative' }}>
         {avatar && <img src={fullUrl(avatar)} alt="" />}
+        <span style={{
+          position: 'absolute', bottom: 0, right: 0,
+          width: 12, height: 12, borderRadius: '50%',
+          background: '#3ec46d', border: '2px solid #fff',
+        }} />
       </div>
       <div>
         <h2 className="v3-chat-title">
-          {creatorName.toUpperCase()}
-          <span className="v3-verified" style={{ marginLeft: 8, verticalAlign: 'middle' }}>✓</span>
+          {creatorName}
+          <span className="v3-verified" style={{ marginLeft: 6, fontSize: '0.85rem', verticalAlign: 'middle' }}>✓</span>
         </h2>
-        <p className="v3-chat-status">Online ✨ | Replies within a few hours.</p>
+        <p className="v3-chat-status">
+          <span style={{ color: '#3ec46d', marginRight: 4 }}>●</span>
+          Active now
+        </p>
       </div>
     </div>
   );
@@ -261,58 +297,11 @@ const Chat = ({ config }: { config: any }) => {
   // ── DESKTOP shell ──────────────────────────────────────────
   const DesktopShell = (
     <div className="v3-chat-shell">
-      <aside className="v3-fan-side">
-        <div className="v3-fan-brand">
-          {config?.logoUrl ? (
-            <img src={fullUrl(config.logoUrl)} alt={creatorName} />
-          ) : (
-            <>{creatorName.toUpperCase()}<small>FAN ACCOUNT</small></>
-          )}
-        </div>
-
-        <div className="v3-fan-profile">
-          <div className="avatar">
-            {avatar && <img src={fullUrl(avatar)} alt={creatorName} />}
-          </div>
-          <div className="handle">@{fanUser?.username || 'fan'}</div>
-          <div className="role">Following</div>
-        </div>
-
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-          <Link to="/dashboard" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>🏠</span><span>Dashboard</span>
-          </Link>
-          <Link to="/vault" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>💎</span><span>The Vault</span>
-          </Link>
-          <Link to="/chat"
-            className={`v3-fan-nav-btn ${location.pathname === '/chat' ? 'active' : ''}`}>
-            <span style={{ width: 20, textAlign: 'center' }}>💬</span><span>Messages</span>
-          </Link>
-          <Link to="/gallery" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>🖼</span><span>Gallery</span>
-          </Link>
-          <Link to="/blog" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>📓</span><span>Journal</span>
-          </Link>
-          <Link to="/about" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>✨</span><span>About</span>
-          </Link>
-        </nav>
-
-        <div className="v3-fan-side-footer">
-          <Link to="/">View Site ↗</Link>
-          <button onClick={handleSignOut}
-            style={{ background: 'none', border: 'none', color: 'var(--v3-muted)' }}>
-            Sign Out
-          </button>
-        </div>
-      </aside>
+      <FanSidebar creator={config} />
 
       <main className="v3-chat-main">
         {renderHeader()}
-        <h2 className="v3-chat-h2">CHAT WITH {creatorName.toUpperCase()}</h2>
-        <div className="v3-chat-area" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="v3-chat-area">
           {renderMessages()}
         </div>
         {renderComposer()}
@@ -324,7 +313,6 @@ const Chat = ({ config }: { config: any }) => {
   const MobileLayout = (
     <div className="v3-mobile v3-chat-mobile">
       {renderHeader()}
-      <h2 className="v3-chat-h2">CHAT WITH {creatorName.toUpperCase()}</h2>
       <div className="v3-chat-area">
         {renderMessages()}
       </div>

@@ -124,4 +124,68 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
+// Fan profile update (display name + email). Returns a refreshed JWT if email changed.
+router.patch('/me', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+    const user = await User.findByPk(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { username, email } = req.body || {};
+    if (username !== undefined) {
+      const trimmed = String(username).trim();
+      if (!trimmed) return res.status(400).json({ error: 'Username cannot be empty' });
+      user.username = trimmed;
+    }
+    let emailChanged = false;
+    if (email !== undefined) {
+      const trimmed = String(email).trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+      if (trimmed !== user.email) {
+        const taken = await User.findOne({ where: { email: trimmed } });
+        if (taken) return res.status(409).json({ error: 'Email already in use' });
+        user.email = trimmed;
+        emailChanged = true;
+      }
+    }
+    await user.save();
+
+    const payload = { id: user.id, username: user.username, email: user.email };
+    if (emailChanged) {
+      const token = signToken({ userId: user.id, role: 'fan', email: user.email });
+      return res.json({ ok: true, user: payload, token });
+    }
+    res.json({ ok: true, user: payload });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed', detail: err.message });
+  }
+});
+
+// Fan password change.
+router.patch('/me/password', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword required' });
+    }
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+    const user = await User.findByPk(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await user.save();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Password change failed', detail: err.message });
+  }
+});
+
 module.exports = router;

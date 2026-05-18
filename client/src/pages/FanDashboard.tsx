@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   CREATOR_SLUG, SERVER_URL,
   getPosts, getPublicCollections, getChatHistory, getCreator,
-  getMyTransactions, unsubscribe,
+  getMyTransactions,
 } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
+import FanSidebar from '../components/FanSidebar';
 
 const fullUrl = (p?: string | null) => {
   if (!p) return '';
@@ -21,7 +22,6 @@ const fmtTime = (iso?: string) => {
 
 const FanDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const fanUser = JSON.parse(localStorage.getItem('fanUser') || 'null');
 
   const [creator, setCreator] = useState<any>(null);
@@ -50,26 +50,6 @@ const FanDashboard = () => {
     })();
   }, [navigate]);
 
-  const handleSignOut = () => {
-    localStorage.removeItem('fanToken');
-    localStorage.removeItem('fanUser');
-    navigate('/');
-  };
-
-  const handleCancelAccount = async () => {
-    const confirmed = window.confirm(
-      'Cancel your account?\n\n' +
-      '• Any content you have unlocked remains accessible until you log out.\n' +
-      '• You will not be charged for anything after cancellation.\n' +
-      '• You can re-activate by signing back in any time.\n\n' +
-      'Continue?'
-    );
-    if (!confirmed) return;
-    try { await unsubscribe(CREATOR_SLUG); } catch { /* ignore */ }
-    alert("You're all set. We've stopped any future charges. Thanks for being part of " + (creator?.siteTitle || 'the community') + ' 💌');
-    handleSignOut();
-  };
-
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--v3-cream)' }}>
@@ -81,8 +61,7 @@ const FanDashboard = () => {
   // ── Derived data ───────────────────────────────────────────
   const firstName = (fanUser?.username || 'there').split(/\s+/)[0];
   const creatorName = creator?.siteTitle || 'Creator';
-  const handle = (creator?.links?.instagram?.split('/').filter(Boolean).pop()) || (creatorName.toLowerCase().replace(/\s+/g, ''));
-  const avatar = creator?.images?.hero || creator?.images?.heroSlider?.[0];
+  const avatar = creator?.chatAvatarUrl || creator?.images?.hero || creator?.images?.heroSlider?.[0] || creator?.logoUrl;
   const tagline = creator?.homeBio?.split('.')[0] || 'Welcome to my private space.';
 
   const postsUnlocked = posts.filter(p => !p.isLocked).length;
@@ -94,74 +73,45 @@ const FanDashboard = () => {
   const lockedBundles = bundles.filter(b => !b.isUnlocked);
   const latestPosts = posts.slice(0, 6);
 
+  // ── Purchase history rows (resolved against current state) ──
+  const titleForTxn = (t: any) => {
+    if (t.collectionId) {
+      const b = bundles.find(x => x.id === t.collectionId);
+      return b?.title || `Bundle #${t.collectionId}`;
+    }
+    if (t.postId) {
+      const p = posts.find(x => x.id === t.postId);
+      return p?.title || p?.caption?.slice(0, 40) || `Post #${t.postId}`;
+    }
+    if (t.messageId) return 'PPV message';
+    if (t.type === 'tip') return 'Tip sent';
+    return 'Unlock';
+  };
+  const typeLabel = (t: any) => {
+    if (t.type === 'tip') return 'Tip';
+    if (t.collectionId) return 'Bundle';
+    if (t.messageId) return 'PPV';
+    if (t.postId) return 'Post';
+    return t.type || 'Purchase';
+  };
+  const purchaseRows = [...transactions]
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 10)
+    .map(t => ({
+      id: t.id,
+      date: t.createdAt,
+      type: typeLabel(t),
+      title: titleForTxn(t),
+      amount: parseFloat(t.amount || 0),
+    }));
+
+  // ── Unread + notification count (proper, no `|| 1`) ──
+  const unreadFromCreator = messages.filter(m => m.senderType === 'creator' && !m.isRead).length;
+
   // ── DESKTOP shell ──────────────────────────────────────────
   const DesktopShell = (
     <div className="v3-fan-shell">
-      <aside className="v3-fan-side">
-        <div className="v3-fan-brand">
-          {creator?.logoUrl ? (
-            <img src={fullUrl(creator.logoUrl)} alt={creatorName} />
-          ) : (
-            <>{creatorName.toUpperCase()}<small>FAN ACCOUNT</small></>
-          )}
-        </div>
-
-        <div className="v3-fan-profile">
-          <div className="avatar">
-            {avatar && <img src={fullUrl(avatar)} alt={creatorName} />}
-          </div>
-          <div className="handle">@{handle}</div>
-          <div className="role">Following</div>
-        </div>
-
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-          <Link to="/dashboard"
-            className={`v3-fan-nav-btn ${location.pathname === '/dashboard' ? 'active' : ''}`}>
-            <span style={{ width: 20, textAlign: 'center' }}>🏠</span><span>Dashboard</span>
-          </Link>
-          <Link to="/vault"
-            className={`v3-fan-nav-btn ${location.pathname === '/vault' ? 'active' : ''}`}>
-            <span style={{ width: 20, textAlign: 'center' }}>💎</span><span>The Vault</span>
-          </Link>
-          <Link to="/chat"
-            className={`v3-fan-nav-btn ${location.pathname === '/chat' ? 'active' : ''}`}>
-            <span style={{ width: 20, textAlign: 'center' }}>💬</span><span>Messages</span>
-          </Link>
-          <Link to="/gallery" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>🖼</span><span>Gallery</span>
-          </Link>
-          <Link to="/blog" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>📓</span><span>Journal</span>
-          </Link>
-          <Link to="/about" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>✨</span><span>About</span>
-          </Link>
-          <Link to="/dashboard/payment-methods" className={`v3-fan-nav-btn ${location.pathname === '/dashboard/payment-methods' ? 'active' : ''}`}>
-            <span style={{ width: 20, textAlign: 'center' }}>💳</span><span>Payment Methods</span>
-          </Link>
-        </nav>
-
-        <div className="v3-fan-side-footer">
-          <Link to="/">View Site ↗</Link>
-          <button onClick={handleSignOut}
-            style={{ background: 'none', border: 'none', color: 'var(--v3-muted)' }}>
-            Sign Out
-          </button>
-          <button onClick={handleCancelAccount}
-            style={{
-              background: 'none', border: 'none', color: 'var(--v3-danger)',
-              fontSize: '0.74rem', cursor: 'pointer', padding: '8px 0',
-              fontFamily: 'inherit', textAlign: 'center', width: '100%',
-            }}>
-            Cancel my account
-          </button>
-          <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center', fontSize: '0.7rem' }}>
-            <Link to="/terms" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>Terms</Link>
-            <Link to="/privacy" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>Privacy</Link>
-            <Link to="/2257" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>2257</Link>
-          </div>
-        </div>
-      </aside>
+      <FanSidebar creator={creator} />
 
       <main className="v3-fan-main">
         {/* Top bar */}
@@ -171,7 +121,11 @@ const FanDashboard = () => {
             <p className="sub">{tagline}</p>
           </div>
           <div className="right">
-            <div className="bell" title="Notifications">🔔<span className="dot">{ppvReceived || messages.filter(m => !m.isRead && m.senderType === 'creator').length || 1}</span></div>
+            <Link to="/chat" className="bell" title="Notifications"
+              style={{ position: 'relative', textDecoration: 'none', color: 'inherit' }}>
+              🔔
+              {unreadFromCreator > 0 && <span className="dot">{unreadFromCreator}</span>}
+            </Link>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#ddd' }}>
                 <div style={{ width: '100%', height: '100%', background: 'var(--v3-terracotta)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.78rem', fontWeight: 700 }}>
@@ -204,7 +158,7 @@ const FanDashboard = () => {
             <div className="icon-bubble">🔓</div>
           </div>
           <div className="v3-stat dark" style={{ position: 'relative' }}>
-            <span className="label">Bundles Owned</span>
+            <span className="label">Collections Unlocked</span>
             <span className="value">{bundlesOwned}</span>
             <span style={{ fontSize: '0.74rem', opacity: 0.7 }}>Lifetime access</span>
             <div className="icon-bubble" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>📦</div>
@@ -223,8 +177,52 @@ const FanDashboard = () => {
           </div>
         </div>
 
+        {/* Purchase History */}
+        <div className="v3-card" style={{ marginTop: 18 }}>
+          <div className="v3-card-head">
+            <h3>My Purchases</h3>
+            <span style={{ fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+              {purchaseRows.length > 0 ? `Last ${purchaseRows.length}` : ''}
+            </span>
+          </div>
+          {purchaseRows.length === 0 ? (
+            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', margin: '8px 0 0' }}>
+              Nothing yet — your unlocks will show up here.
+            </p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', color: 'var(--v3-muted)', fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: 1 }}>
+                    <th style={{ padding: '8px 6px', fontWeight: 600 }}>Date</th>
+                    <th style={{ padding: '8px 6px', fontWeight: 600 }}>Type</th>
+                    <th style={{ padding: '8px 6px', fontWeight: 600 }}>Item</th>
+                    <th style={{ padding: '8px 6px', fontWeight: 600, textAlign: 'right' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchaseRows.map(r => (
+                    <tr key={r.id} style={{ borderTop: '1px solid var(--v3-rose-100)' }}>
+                      <td style={{ padding: '10px 6px', color: 'var(--v3-ink-soft)' }}>
+                        {r.date ? new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                      </td>
+                      <td style={{ padding: '10px 6px' }}>
+                        <span style={{ background: 'var(--v3-rose-100)', color: 'var(--v3-terracotta)', padding: '2px 8px', borderRadius: 12, fontSize: '0.74rem', fontWeight: 700 }}>
+                          {r.type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 6px', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 280, whiteSpace: 'nowrap' }}>{r.title}</td>
+                      <td style={{ padding: '10px 6px', textAlign: 'right', fontWeight: 700 }}>${r.amount.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* Two-column body */}
-        <div className="v3-fan-cols">
+        <div className="v3-fan-cols" style={{ marginTop: 18 }}>
           {/* LEFT — Latest content */}
           <div className="v3-card">
             <div className="v3-card-head">
@@ -332,6 +330,23 @@ const FanDashboard = () => {
             </div>
           </aside>
         </div>
+
+        {/* Quick link to full account settings */}
+        <Link to="/dashboard/settings" style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 18px', marginTop: 18, borderRadius: 14,
+          background: '#fff', border: '1px solid var(--v3-rose-100)',
+          textDecoration: 'none', color: 'var(--v3-ink)',
+        }}>
+          <span style={{ fontSize: '1.4rem' }}>⚙️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>Account & Settings</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+              Profile, password, payment cards, subscriptions, transaction history
+            </div>
+          </div>
+          <span style={{ color: 'var(--v3-muted)' }}>→</span>
+        </Link>
       </main>
     </div>
   );
@@ -359,8 +374,9 @@ const FanDashboard = () => {
         <h3>Quick Stats</h3>
         <div className="v3-dash-stats">
           <div className="item"><span className="val">{postsUnlocked}</span><span className="label">Posts<br/>Unlocked</span></div>
-          <div className="item"><span className="val">{bundlesOwned}</span><span className="label">Bundles<br/>Owned</span></div>
+          <div className="item"><span className="val">{bundlesOwned}</span><span className="label">Collections<br/>Unlocked</span></div>
           <div className="item"><span className="val">{ppvReceived}</span><span className="label">PPV<br/>Messages</span></div>
+          <div className="item"><span className="val">${totalSpent.toFixed(0)}</span><span className="label">Total<br/>Spent</span></div>
         </div>
       </section>
 

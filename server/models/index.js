@@ -93,6 +93,9 @@ const applyMigrations = async () => {
   await addIfMissing('Creators', 'aiApprovalTimeoutSec', { type: DataTypes.INTEGER, defaultValue: 600 });
   await addIfMissing('Creators', 'telegramBotToken', { type: DataTypes.STRING, allowNull: true });
   await addIfMissing('Creators', 'telegramChatId', { type: DataTypes.STRING, allowNull: true });
+
+  // Dedicated chat avatar (separate from logo + hero)
+  await addIfMissing('Creators', 'chatAvatarUrl', { type: DataTypes.STRING, allowNull: true });
 };
 
 const syncDatabase = async () => {

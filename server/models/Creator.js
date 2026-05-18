@@ -113,6 +113,10 @@ const Creator = sequelize.define('Creator', {
   // Telegram bot integration (mobile notifications + remote approval)
   telegramBotToken: { type: DataTypes.STRING, allowNull: true },
   telegramChatId: { type: DataTypes.STRING, allowNull: true },
+
+  // Dedicated chat avatar — separate from logoUrl (brand) and profileImage (hero).
+  // Used in chat header, message bubbles, typing indicator, dashboard "Latest Message" card.
+  chatAvatarUrl: { type: DataTypes.STRING, allowNull: true },
 });
 
 module.exports = Creator;

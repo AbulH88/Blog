@@ -735,6 +735,49 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           </div>
         </div>
 
+        {/* Chat avatar — your face photo for DMs. Separate from logo (brand) and hero (homepage) */}
+        <div className="av2-card">
+          <p className="av2-section-label">Chat Avatar</p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
+            The round profile picture fans see in chat — next to your messages, in the chat header, and in their dashboard "Latest Message" card. Change this whenever you want; the website logo stays the same. Square (1:1) crops best.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+            <DragDropUpload
+              accept="image/*"
+              onFiles={async (files) => {
+                if (!files.length) return;
+                setStatus('Uploading chat avatar…');
+                const res = await uploadImage(files[0]);
+                if (res.url) {
+                  setFormData((prev: any) => ({ ...prev, chatAvatarUrl: res.url }));
+                  setStatus('Chat avatar uploaded — remember to Save Changes');
+                  setTimeout(() => setStatus(''), 4000);
+                } else {
+                  setStatus('Upload failed');
+                }
+              }}
+              title={formData.chatAvatarUrl ? 'Replace chat avatar' : 'Drop chat avatar here'}
+              hint="PNG / JPG · square works best"
+              icon="◉"
+              style={{ width: 260, padding: '18px 22px' }}
+            />
+            {formData.chatAvatarUrl && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 96, height: 96, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--v3-line)' }}>
+                  <img src={formData.chatAvatarUrl.startsWith('http') ? formData.chatAvatarUrl : `${SERVER_URL}${formData.chatAvatarUrl}`}
+                       alt="Chat avatar preview"
+                       style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+                <button type="button"
+                  onClick={() => setFormData({ ...formData, chatAvatarUrl: '' })}
+                  style={{ background: 'none', border: 'none', color: 'var(--v3-danger)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="av2-card">
           <p className="av2-section-label">Social Links</p>
           <label className="av2-label">Instagram</label>

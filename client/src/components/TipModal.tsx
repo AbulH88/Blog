@@ -87,11 +87,19 @@ export default function TipModal({ creatorId, creatorName, onClose, onSuccess }:
           style={{ width: '100%', padding: 10, marginBottom: 12, borderRadius: 8, border: '1px solid #333', background: '#0f0f0f', color: '#fff', resize: 'vertical' }}
         />
 
-        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 12 }}>
-          {defaultCard
-            ? <>Paying with {defaultCard.brand} •••• {defaultCard.last4}</>
-            : <>No saved card — you'll be redirected to checkout. <a href="/dashboard/payment-methods" style={{ color: 'var(--v3-terracotta, #c45c3a)' }}>Add a card</a> for one-tap.</>
-          }
+        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 12, lineHeight: 1.5 }}>
+          {defaultCard ? (
+            <>Paying with {defaultCard.brand} •••• {defaultCard.last4}</>
+          ) : (
+            <>
+              No saved card — you'll be redirected to checkout.{' '}
+              <a href="/dashboard/settings/payments"
+                style={{ color: 'var(--v3-terracotta, #c45c3a)', whiteSpace: 'nowrap' }}>
+                Add a card
+              </a>{' '}
+              for one-tap.
+            </>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

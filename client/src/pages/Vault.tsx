@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   getPosts, CREATOR_SLUG, SERVER_URL,
   getPublicCollections, unlockCollection,
@@ -9,6 +9,7 @@ import {
 import MobileBottomNav from '../components/MobileBottomNav';
 import JoinPremiumModal from '../components/JoinPremiumModal';
 import VaultTile from '../components/VaultTile';
+import FanSidebar from '../components/FanSidebar';
 
 const fullUrl = (p: string) => (p?.startsWith('http') ? p : `${SERVER_URL}${p}`);
 
@@ -18,11 +19,7 @@ const Vault = ({ config }: { config: any }) => {
   const [unlockingId, setUnlockingId] = useState<number | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
   const [defaultCard, setDefaultCard] = useState<SavedCard | null>(null);
-  const navigate = useNavigate();
-  const location = useLocation();
-
   const isLoggedIn = !!localStorage.getItem('fanToken');
-  const fanUser = JSON.parse(localStorage.getItem('fanUser') || 'null');
 
   const refresh = async () => {
     const [postsData, bundleData] = await Promise.all([
@@ -74,12 +71,6 @@ const Vault = ({ config }: { config: any }) => {
     if (followCheckout(res)) return;
     if (res?.success) await refresh();
     else alert(res?.error || 'Unlock failed');
-  };
-
-  const handleSignOut = () => {
-    localStorage.removeItem('fanToken');
-    localStorage.removeItem('fanUser');
-    navigate('/');
   };
 
   const handle = (config?.links?.instagram?.split('/').filter(Boolean).pop()) || (config?.siteTitle?.toLowerCase() || 'cristina') + '_official';
@@ -186,57 +177,7 @@ const Vault = ({ config }: { config: any }) => {
   // ── DESKTOP shell ──────────────────────────────────────────
   const DesktopShell = (
     <div className="v3-vault-shell">
-      <aside className="v3-fan-side">
-        <div className="v3-fan-brand">
-          {config?.logoUrl ? (
-            <img src={fullUrl(config.logoUrl)} alt={creatorName} />
-          ) : (
-            <>{creatorName.toUpperCase()}<small>FAN ACCOUNT</small></>
-          )}
-        </div>
-
-        <div className="v3-fan-profile">
-          <div className="avatar">
-            {avatar && <img src={fullUrl(avatar)} alt={creatorName} />}
-          </div>
-          <div className="handle">@{fanUser?.username || 'guest'}</div>
-          <div className="role">{isLoggedIn ? 'Following' : 'Guest'}</div>
-        </div>
-
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-          <Link to="/dashboard" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>🏠</span><span>Dashboard</span>
-          </Link>
-          <Link to="/vault"
-            className={`v3-fan-nav-btn ${location.pathname === '/vault' ? 'active' : ''}`}>
-            <span style={{ width: 20, textAlign: 'center' }}>💎</span><span>The Vault</span>
-          </Link>
-          <Link to="/chat" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>💬</span><span>Messages</span>
-          </Link>
-          <Link to="/gallery" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>🖼</span><span>Gallery</span>
-          </Link>
-          <Link to="/blog" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>📓</span><span>Journal</span>
-          </Link>
-          <Link to="/about" className="v3-fan-nav-btn">
-            <span style={{ width: 20, textAlign: 'center' }}>✨</span><span>About</span>
-          </Link>
-        </nav>
-
-        <div className="v3-fan-side-footer">
-          <Link to="/">View Site ↗</Link>
-          {isLoggedIn ? (
-            <button onClick={handleSignOut}
-              style={{ background: 'none', border: 'none', color: 'var(--v3-muted)' }}>
-              Sign Out
-            </button>
-          ) : (
-            <Link to="/login">Sign In</Link>
-          )}
-        </div>
-      </aside>
+      <FanSidebar creator={config} guestMode={!isLoggedIn} />
 
       <main className="v3-vault-main">
         {renderHeader()}

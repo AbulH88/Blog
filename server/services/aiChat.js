@@ -10,16 +10,17 @@
  * (Ollama, Together, ArliAI) means changing one URL + one auth header.
  */
 const { Message, Collection, User } = require('../models');
+const { classifyIntent } = require('./intentClassifier');
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_OUTPUT_TOKENS = 300;
 const HISTORY_WINDOW = 20;
 
 /** Build the system prompt from creator fields + vault + recent context. */
-function buildSystemPrompt({ creator, collections, messagesSincePpv }) {
+function buildSystemPrompt({ creator, collections, messagesSincePpv, allowPpvThisTurn = true, intentGuidance = '' }) {
   const persona = creator.aiPersonaPrompt?.trim() || defaultPersona(creator);
   const nsfw = creator.aiNsfwLevel || 'flirty';
-  const ppvEnabled = creator.aiPpvEnabled !== false;
+  const ppvEnabled = creator.aiPpvEnabled !== false && allowPpvThisTurn;
   const cadence = creator.aiPpvCadence || 8;
 
   const nsfwRule = {
@@ -53,7 +54,7 @@ Voice rules:
 - Never engage with: minors, real-people impersonation (other celebs), violence, illegal acts, doxxing.
 
 NSFW rule: ${nsfwRule}
-${ppvRule}
+${intentGuidance ? `\nSituation hint for THIS reply: ${intentGuidance}\n` : ''}${ppvRule}
 
 Reply with ONLY the message text (no quotes, no narration, no "Cristina:" prefix). If attaching a PPV, end with the sentinel tag and nothing after it.`;
 }
@@ -156,8 +157,22 @@ async function generateReply({ creator, fanId, history }) {
   }
   const messagesSincePpv = await countMessagesSincePpv(creator.id, fanId);
 
-  const systemPrompt = buildSystemPrompt({ creator, collections, messagesSincePpv });
+  // "Vibe reader" — classify the fan's last message so we only allow PPV
+  // when intent justifies it (asked for content / escalating). Compliments
+  // and small talk get text-only replies.
+  const lastFanMessage = [...history].reverse().find(m => m.senderType === 'fan');
   const messageHistory = buildMessageHistory(history);
+  const intent = await classifyIntent({
+    fanMessage: lastFanMessage?.content || '',
+    recentHistory: messageHistory,
+  });
+  console.log(`[ai] creator=${creator.id} fan=${fanId} intent=${intent.intent} allowPpv=${intent.allowPpv} reason="${intent.reasoning}"`);
+
+  const systemPrompt = buildSystemPrompt({
+    creator, collections, messagesSincePpv,
+    allowPpvThisTurn: intent.allowPpv,
+    intentGuidance: intent.guidance,
+  });
 
   const reply = await callOpenRouter({
     model: creator.aiModel || 'sao10k/l3.3-euryale-70b',
