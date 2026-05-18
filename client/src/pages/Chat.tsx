@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
-import { getChatHistory, unlockMessage, SERVER_URL, CREATOR_SLUG, getCreator } from '../api';
+import { getChatHistory, SERVER_URL, CREATOR_SLUG, getCreator } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
 import TipModal from '../components/TipModal';
 import FanSidebar from '../components/FanSidebar';
+import PayMethodPicker from '../components/PayMethodPicker';
 
 const fullUrl = (p?: string | null) => {
   if (!p) return '';
@@ -37,6 +38,11 @@ const Chat = ({ config }: { config: any }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [creatorId, setCreatorId] = useState<number | null>(null);
   const [tipOpen, setTipOpen] = useState(false);
+  const [payTarget, setPayTarget] = useState<{
+    msgId: number;
+    amount: number;
+    title: string;
+  } | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef<string[]>([]);
@@ -95,23 +101,20 @@ const Chat = ({ config }: { config: any }) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  const handleUnlock = async (msgId: number, provider: string = 'mock') => {
-    const res = await unlockMessage(msgId, provider);
-    if (res?.redirectUrl) {
-      const ret = encodeURIComponent('/chat');
-      window.location.href = `${res.redirectUrl}${res.redirectUrl.includes('?') ? '&' : '?'}return=${ret}&tx=${res.transactionId}`;
-      return;
-    }
-    if (res?.success) {
-      setMessages(prev => prev.map(m => m.id === msgId ? {
-        ...m,
-        isUnlocked: true,
-        content: res.message?.content ?? m.content,
-        collection: res.message?.collection ?? m.collection,
-      } : m));
-    } else if (res?.error) {
-      alert(res.error);
-    }
+  const handleUnlock = (msgId: number) => {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+    const amount = parseFloat(msg.ppvPrice || 0);
+    const title = msg.collection?.title || (msg.collectionId ? 'Bundle' : 'PPV message');
+    setPayTarget({ msgId, amount, title });
+  };
+
+  const onPaySuccess = async () => {
+    if (!payTarget) return;
+    // Refresh chat history so unlocked content shows up
+    const fresh = await getChatHistory(CREATOR_SLUG);
+    setMessages(Array.isArray(fresh) ? fresh : []);
+    setPayTarget(null);
   };
 
   if (loading) {
@@ -340,6 +343,17 @@ const Chat = ({ config }: { config: any }) => {
               isUnlocked: true,
             }]);
           }}
+        />
+      )}
+      {payTarget && (
+        <PayMethodPicker
+          productType="ppv_message"
+          productId={payTarget.msgId}
+          amount={payTarget.amount}
+          title={payTarget.title}
+          returnPath="/chat"
+          onClose={() => setPayTarget(null)}
+          onSuccess={onPaySuccess}
         />
       )}
     </>

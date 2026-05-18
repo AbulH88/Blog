@@ -2,23 +2,26 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getPosts, CREATOR_SLUG, SERVER_URL,
-  getPublicCollections, unlockCollection,
-  unlockPost, getPaymentMethods, chargeSavedMethod,
-  type SavedCard,
+  getPublicCollections,
 } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
 import JoinPremiumModal from '../components/JoinPremiumModal';
 import VaultTile from '../components/VaultTile';
 import FanSidebar from '../components/FanSidebar';
+import PayMethodPicker from '../components/PayMethodPicker';
 
 const fullUrl = (p: string) => (p?.startsWith('http') ? p : `${SERVER_URL}${p}`);
 
 const Vault = ({ config }: { config: any }) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [bundles, setBundles] = useState<any[]>([]);
-  const [unlockingId, setUnlockingId] = useState<number | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
-  const [defaultCard, setDefaultCard] = useState<SavedCard | null>(null);
+  const [payTarget, setPayTarget] = useState<{
+    type: 'post_unlock' | 'collection_unlock';
+    id: number;
+    amount: number;
+    title: string;
+  } | null>(null);
   const isLoggedIn = !!localStorage.getItem('fanToken');
 
   const refresh = async () => {
@@ -32,45 +35,22 @@ const Vault = ({ config }: { config: any }) => {
 
   useEffect(() => { refresh(); }, []);
 
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    getPaymentMethods().then(r => {
-      setDefaultCard((r.methods || []).find((m: SavedCard) => m.isDefault) || null);
-    }).catch(() => {});
-  }, [isLoggedIn]);
 
-  const followCheckout = (res: { success?: boolean; error?: string; redirectUrl?: string; transactionId?: number }) => {
-    if (res?.redirectUrl) {
-      const ret = encodeURIComponent('/vault');
-      window.location.href = `${res.redirectUrl}${res.redirectUrl.includes('?') ? '&' : '?'}return=${ret}&tx=${res.transactionId}`;
-      return true;
-    }
-    return false;
+  const handleUnlockBundle = async (bundleId: number) => {
+    if (!isLoggedIn) { setJoinOpen(true); return; }
+    const bundle = bundles.find(b => b.id === bundleId);
+    if (!bundle) return;
+    const disc = Math.min(90, Math.max(0, parseInt(bundle.discountPercent || 0, 10)));
+    const amount = Number((parseFloat(bundle.price || 0) * (1 - disc / 100)).toFixed(2));
+    setPayTarget({ type: 'collection_unlock', id: bundleId, amount, title: bundle.title || 'Bundle' });
   };
 
-  const handleUnlockBundle = async (bundleId: number, provider: string = 'mock') => {
+  const handleUnlockPost = async (postId: number) => {
     if (!isLoggedIn) { setJoinOpen(true); return; }
-    setUnlockingId(bundleId);
-    // One-tap with saved default card when available
-    const res = defaultCard
-      ? await chargeSavedMethod(defaultCard.id, 'collection_unlock', bundleId)
-      : await unlockCollection(bundleId, provider);
-    setUnlockingId(null);
-    if (followCheckout(res)) return;
-    if (res?.success) await refresh();
-    else alert(res?.error || 'Unlock failed');
-  };
-
-  const handleUnlockPost = async (postId: number, provider: string = 'mock') => {
-    if (!isLoggedIn) { setJoinOpen(true); return; }
-    setUnlockingId(postId);
-    const res = defaultCard
-      ? await chargeSavedMethod(defaultCard.id, 'post_unlock', postId)
-      : await unlockPost(postId, provider);
-    setUnlockingId(null);
-    if (followCheckout(res)) return;
-    if (res?.success) await refresh();
-    else alert(res?.error || 'Unlock failed');
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    const amount = parseFloat(post.price || 0);
+    setPayTarget({ type: 'post_unlock', id: postId, amount, title: post.title || post.caption?.slice(0, 40) || 'Post' });
   };
 
   const handle = (config?.links?.instagram?.split('/').filter(Boolean).pop()) || (config?.siteTitle?.toLowerCase() || 'cristina') + '_official';
@@ -110,7 +90,7 @@ const Vault = ({ config }: { config: any }) => {
               bundle={b}
               bundlePosts={b.posts || []}
               onUnlock={handleUnlockBundle}
-              unlocking={unlockingId === b.id}
+              unlocking={payTarget?.type === 'collection_unlock' && payTarget.id === b.id}
             />
           ))}
         </div>
@@ -138,7 +118,7 @@ const Vault = ({ config }: { config: any }) => {
               variant="post"
               post={p}
               onUnlock={handleUnlockPost}
-              unlocking={unlockingId === p.id}
+              unlocking={payTarget?.type === 'post_unlock' && payTarget.id === p.id}
             />
           ))}
         </div>
@@ -209,6 +189,17 @@ const Vault = ({ config }: { config: any }) => {
         fanvueUrl={config?.fanvueUrl}
         creatorName={creatorName}
       />
+      {payTarget && (
+        <PayMethodPicker
+          productType={payTarget.type}
+          productId={payTarget.id}
+          amount={payTarget.amount}
+          title={payTarget.title}
+          returnPath="/vault"
+          onClose={() => setPayTarget(null)}
+          onSuccess={async () => { setPayTarget(null); await refresh(); }}
+        />
+      )}
     </>
   );
 };
