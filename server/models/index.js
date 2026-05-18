@@ -99,6 +99,50 @@ const applyMigrations = async () => {
 
   // Fan wallet — pre-funded balance fans use for one-tap unlocks
   await addIfMissing('Users', 'walletBalance', { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 });
+
+  // Relax Transactions.creatorId — make it nullable (wallet_deposit has no creator).
+  // SQLite has no ALTER COLUMN, so we rebuild the table preserving rows.
+  try {
+    const [rows] = await sequelize.query("SELECT sql FROM sqlite_master WHERE type='table' AND name='Transactions'");
+    const ddl = rows[0]?.sql || '';
+    const needsRebuild = /`?creatorId`?\s+INTEGER\s+NOT\s+NULL/i.test(ddl);
+    if (needsRebuild) {
+      await sequelize.query('PRAGMA foreign_keys = OFF');
+      await sequelize.query(`
+        CREATE TABLE Transactions_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          creatorId INTEGER,
+          type TEXT NOT NULL,
+          amount DECIMAL(10,2) NOT NULL,
+          currency VARCHAR(255) DEFAULT 'USD',
+          stripePaymentId VARCHAR(255),
+          description VARCHAR(255) DEFAULT '',
+          referenceId INTEGER,
+          createdAt DATETIME NOT NULL,
+          updatedAt DATETIME NOT NULL,
+          status VARCHAR(255) DEFAULT 'completed',
+          provider VARCHAR(255),
+          providerInvoiceId VARCHAR(255),
+          providerChargeId VARCHAR(255),
+          webhookReceivedAt DATETIME
+        )
+      `);
+      await sequelize.query(`
+        INSERT INTO Transactions_new
+          (id, userId, creatorId, type, amount, currency, stripePaymentId, description, referenceId, createdAt, updatedAt, status, provider, providerInvoiceId, providerChargeId, webhookReceivedAt)
+        SELECT
+          id, userId, creatorId, type, amount, currency, stripePaymentId, description, referenceId, createdAt, updatedAt, status, provider, providerInvoiceId, providerChargeId, webhookReceivedAt
+        FROM Transactions
+      `);
+      await sequelize.query('DROP TABLE Transactions');
+      await sequelize.query('ALTER TABLE Transactions_new RENAME TO Transactions');
+      await sequelize.query('PRAGMA foreign_keys = ON');
+      console.log('+ relaxed Transactions.creatorId to nullable (preserved all rows)');
+    }
+  } catch (err) {
+    console.warn('Transactions schema relax failed:', err.message);
+  }
 };
 
 const syncDatabase = async () => {

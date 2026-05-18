@@ -4,10 +4,16 @@ const sequelize = require('../database');
 const Transaction = sequelize.define('Transaction', {
   id:              { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   userId:          { type: DataTypes.INTEGER, allowNull: false },
-  creatorId:       { type: DataTypes.INTEGER, allowNull: false },
+  // Nullable for platform-level transactions (wallet_deposit isn't tied to a creator)
+  creatorId:       { type: DataTypes.INTEGER, allowNull: true },
+  // STRING (not ENUM) so we can add new transaction kinds without DB migration pain.
+  // Validated against the known set:
   type: {
-    type: DataTypes.ENUM('subscription', 'post_unlock', 'ppv_message', 'tip', 'collection_unlock'),
+    type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      isIn: [['subscription', 'post_unlock', 'ppv_message', 'tip', 'collection_unlock', 'wallet_deposit']],
+    },
   },
   amount:          { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   currency:        { type: DataTypes.STRING,  defaultValue: 'USD' },
