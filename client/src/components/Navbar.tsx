@@ -88,7 +88,7 @@ const Navbar = ({
           {fanUser ? (
             <>
               <Link to="/dashboard" className="v3-btn v3-btn-outline" style={{ fontSize: '0.72rem', padding: '10px 18px' }}>
-                {fanUser.username}
+                Dashboard
               </Link>
               <button onClick={handleLogout} className="v3-btn v3-btn-primary" style={{ fontSize: '0.72rem' }}>
                 Sign out

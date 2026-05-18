@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   CREATOR_SLUG, SERVER_URL,
@@ -30,6 +30,17 @@ const FanDashboard = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notifsOpen, setNotifsOpen] = useState(false);
+  const bellRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!notifsOpen) return;
+    const close = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setNotifsOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [notifsOpen]);
 
   useEffect(() => {
     if (!localStorage.getItem('fanToken')) { navigate('/login'); return; }
@@ -108,6 +119,18 @@ const FanDashboard = () => {
   // ── Unread + notification count (proper, no `|| 1`) ──
   const unreadFromCreator = messages.filter(m => m.senderType === 'creator' && !m.isRead).length;
 
+  // Notifications: unread creator messages (newest first), capped to 6
+  const notifications = [...messages]
+    .filter(m => m.senderType === 'creator')
+    .sort((a, b) => new Date(b.sentAt || 0).getTime() - new Date(a.sentAt || 0).getTime())
+    .slice(0, 6)
+    .map(m => ({
+      id: m.id,
+      preview: m.isPPV ? '🔒 Sent you a PPV message' : (m.content || '📎 Sent media'),
+      time: m.sentAt,
+      unread: !m.isRead,
+    }));
+
   // ── DESKTOP shell ──────────────────────────────────────────
   const DesktopShell = (
     <div className="v3-fan-shell">
@@ -121,11 +144,67 @@ const FanDashboard = () => {
             <p className="sub">{tagline}</p>
           </div>
           <div className="right">
-            <Link to="/chat" className="bell" title="Notifications"
-              style={{ position: 'relative', textDecoration: 'none', color: 'inherit' }}>
-              🔔
-              {unreadFromCreator > 0 && <span className="dot">{unreadFromCreator}</span>}
-            </Link>
+            <div ref={bellRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setNotifsOpen(o => !o)}
+                className="bell"
+                title="Notifications"
+                style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: 0, fontFamily: 'inherit', color: 'inherit' }}>
+                🔔
+                {unreadFromCreator > 0 && <span className="dot">{unreadFromCreator}</span>}
+              </button>
+              {notifsOpen && (
+                <div style={{
+                  position: 'absolute', top: 36, right: 0, width: 320, zIndex: 100,
+                  background: '#fff', borderRadius: 14, boxShadow: '0 10px 36px rgba(0,0,0,0.14)',
+                  border: '1px solid var(--v3-rose-100)', overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--v3-rose-100)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <strong style={{ fontSize: '0.92rem' }}>Notifications</strong>
+                    {unreadFromCreator > 0 && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--v3-muted)' }}>
+                        {unreadFromCreator} new
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                    {notifications.length === 0 ? (
+                      <p style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--v3-muted)', fontSize: '0.86rem', margin: 0 }}>
+                        You're all caught up 🎉
+                      </p>
+                    ) : (
+                      notifications.map(n => (
+                        <Link key={n.id} to="/chat"
+                          onClick={() => setNotifsOpen(false)}
+                          style={{
+                            display: 'flex', gap: 10, padding: '10px 14px',
+                            textDecoration: 'none', color: 'inherit',
+                            background: n.unread ? 'var(--v3-rose-50)' : 'transparent',
+                            borderBottom: '1px solid var(--v3-rose-50)',
+                          }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--v3-rose-100)' }}>
+                            {avatar && <img src={fullUrl(avatar)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', fontWeight: n.unread ? 600 : 400 }}>
+                              {n.preview}
+                            </p>
+                            <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: 'var(--v3-muted)' }}>
+                              {fmtTime(n.time)} · {creatorName}
+                            </p>
+                          </div>
+                          {n.unread && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--v3-terracotta)', marginTop: 6, flexShrink: 0 }} />}
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                  <Link to="/chat" onClick={() => setNotifsOpen(false)}
+                    style={{ display: 'block', padding: '10px 14px', textAlign: 'center', fontSize: '0.84rem', fontWeight: 700, color: 'var(--v3-terracotta)', textDecoration: 'none', borderTop: '1px solid var(--v3-rose-100)', background: 'var(--v3-cream)' }}>
+                    View all messages →
+                  </Link>
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#ddd' }}>
                 <div style={{ width: '100%', height: '100%', background: 'var(--v3-terracotta)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.78rem', fontWeight: 700 }}>

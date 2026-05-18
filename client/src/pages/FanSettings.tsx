@@ -3,12 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   CREATOR_SLUG,
   getCreator, getMyTransactions, getMySubscriptions, unsubscribe,
-  getPaymentMethods, addPaymentMethod, removePaymentMethod, setDefaultPaymentMethod,
+  getPaymentMethods, removePaymentMethod, setDefaultPaymentMethod,
   updateMyProfile, changeMyPassword,
   type SavedCard,
 } from '../api';
 import FanSidebar from '../components/FanSidebar';
 import MobileBottomNav from '../components/MobileBottomNav';
+import AddCardModal from '../components/AddCardModal';
 
 type Section = 'account' | 'payments' | 'notifications' | 'privacy' | 'help';
 type PaymentsTab = 'cards' | 'subscriptions' | 'history';
@@ -42,8 +43,7 @@ const FanSettings = () => {
   // Payments
   const [methods, setMethods] = useState<SavedCard[]>([]);
   const [paymentsTab, setPaymentsTab] = useState<PaymentsTab>('cards');
-  const [cardForm, setCardForm] = useState({ number: '', expMonth: 12, expYear: 2030, cvc: '' });
-  const [addingCard, setAddingCard] = useState(false);
+  const [addCardOpen, setAddCardOpen] = useState(false);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
 
@@ -96,19 +96,6 @@ const FanSettings = () => {
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
       setProfileMsg({ type: 'ok', text: 'Password changed ✓' });
     } finally { setSavingProfile(false); }
-  };
-
-  const addCard = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddingCard(true);
-    const r = await addPaymentMethod(cardForm, true);
-    setAddingCard(false);
-    if (r?.method) {
-      setCardForm({ number: '', expMonth: 12, expYear: 2030, cvc: '' });
-      reloadCards();
-    } else {
-      alert(r?.error || 'Failed to save card');
-    }
   };
 
   const removeCard = async (id: number) => {
@@ -290,42 +277,18 @@ const FanSettings = () => {
             </ul>
           )}
 
-          <h3 style={{ ...cardHeadStyle, marginTop: 10 }}>Add a card</h3>
-          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 10px' }}>
-            Test mode — cards are not charged. Real gateway integration ships with Phase 6.
-          </p>
-          <form onSubmit={addCard} style={{ display: 'grid', gap: 10, maxWidth: 420 }}>
-            <Field label="Card number">
-              <input required placeholder="4242 4242 4242 4242"
-                value={cardForm.number}
-                onChange={e => setCardForm({ ...cardForm, number: e.target.value })}
-                style={inputStyle} />
-            </Field>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <Field label="MM">
-                <input required type="number" min={1} max={12}
-                  value={cardForm.expMonth}
-                  onChange={e => setCardForm({ ...cardForm, expMonth: Number(e.target.value) })}
-                  style={inputStyle} />
-              </Field>
-              <Field label="YYYY">
-                <input required type="number" min={2024} max={2050}
-                  value={cardForm.expYear}
-                  onChange={e => setCardForm({ ...cardForm, expYear: Number(e.target.value) })}
-                  style={inputStyle} />
-              </Field>
-              <Field label="CVC">
-                <input required value={cardForm.cvc}
-                  onChange={e => setCardForm({ ...cardForm, cvc: e.target.value })}
-                  style={inputStyle} />
-              </Field>
-            </div>
-            <div>
-              <button type="submit" disabled={addingCard} style={primaryBtn(addingCard)}>
-                {addingCard ? 'Saving…' : 'Save card'}
-              </button>
-            </div>
-          </form>
+          <button
+            type="button"
+            onClick={() => setAddCardOpen(true)}
+            style={{
+              marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'var(--v3-terracotta)', color: '#fff', border: 'none',
+              borderRadius: 22, padding: '10px 20px', fontSize: '0.86rem', fontWeight: 700,
+              cursor: 'pointer',
+            }}>
+            <span style={{ fontSize: '1.1rem' }}>＋</span>
+            Add new card
+          </button>
         </div>
       )}
 
@@ -518,6 +481,13 @@ const FanSettings = () => {
         {detailPanel}
         <MobileBottomNav />
       </div>
+
+      {addCardOpen && (
+        <AddCardModal
+          onClose={() => setAddCardOpen(false)}
+          onAdded={reloadCards}
+        />
+      )}
     </>
   );
 };
