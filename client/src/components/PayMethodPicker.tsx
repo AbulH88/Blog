@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   getPaymentMethods, getActivePaymentProviders, chargeSavedMethod,
   unlockPost, unlockCollection, unlockMessage,
+  getWallet, spendFromWallet,
   type SavedCard,
 } from '../api';
 
@@ -33,18 +34,21 @@ export default function PayMethodPicker({
 }: Props) {
   const [cards, setCards] = useState<SavedCard[]>([]);
   const [providers, setProviders] = useState<string[]>([]);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [m, p] = await Promise.all([
+      const [m, p, w] = await Promise.all([
         getPaymentMethods().catch(() => ({ methods: [] })),
         getActivePaymentProviders().catch(() => ({ providers: [] })),
+        getWallet().catch(() => ({ balance: 0 })),
       ]);
       setCards(m.methods || []);
       setProviders(p.providers || []);
+      setWalletBalance(parseFloat(w?.balance || 0));
       setLoading(false);
     })();
   }, []);
@@ -106,6 +110,28 @@ export default function PayMethodPicker({
     }
   };
 
+  // Handler: pay from prepaid wallet balance
+  const payFromWallet = async () => {
+    setBusy(true); setError(null);
+    try {
+      const res = await spendFromWallet(productType, productId);
+      if (res?.success || res?.alreadyUnlocked) {
+        onSuccess?.();
+        onClose();
+      } else if (res?.error) {
+        setError(res.error);
+      } else {
+        setError('Wallet charge failed');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Wallet charge failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const walletCanCover = walletBalance >= amount;
+
   return (
     <div
       onClick={onClose}
@@ -156,6 +182,37 @@ export default function PayMethodPicker({
             <p style={{ textAlign: 'center', color: 'var(--v3-muted)', padding: '20px 0' }}>Loading…</p>
           ) : (
             <>
+              {/* Wallet — top option when balance is sufficient */}
+              {walletBalance > 0 && (
+                <>
+                  <p style={sectionLabel}>Wallet</p>
+                  <button
+                    onClick={walletCanCover ? payFromWallet : undefined}
+                    disabled={busy || !walletCanCover}
+                    style={{
+                      ...methodRow,
+                      opacity: walletCanCover ? 1 : 0.6,
+                      cursor: walletCanCover ? 'pointer' : 'not-allowed',
+                      border: walletCanCover ? '2px solid var(--v3-terracotta)' : '1px solid var(--v3-rose-100)',
+                      background: walletCanCover ? 'var(--v3-rose-50)' : '#fff',
+                    }}>
+                    <span style={{ fontSize: '1.4rem' }}>💰</span>
+                    <span style={{ flex: 1, textAlign: 'left' }}>
+                      <strong>Pay from wallet</strong>
+                      <p style={subtext}>
+                        Balance: ${walletBalance.toFixed(2)}
+                        {!walletCanCover && (
+                          <span style={{ color: 'var(--v3-danger)', marginLeft: 6 }}>
+                            (need ${(amount - walletBalance).toFixed(2)} more)
+                          </span>
+                        )}
+                      </p>
+                    </span>
+                    <span style={arrow}>{walletCanCover ? '⚡' : '→'}</span>
+                  </button>
+                </>
+              )}
+
               {/* Saved cards */}
               {cards.length > 0 && (
                 <>

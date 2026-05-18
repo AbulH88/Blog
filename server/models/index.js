@@ -96,6 +96,9 @@ const applyMigrations = async () => {
 
   // Dedicated chat avatar (separate from logo + hero)
   await addIfMissing('Creators', 'chatAvatarUrl', { type: DataTypes.STRING, allowNull: true });
+
+  // Fan wallet — pre-funded balance fans use for one-tap unlocks
+  await addIfMissing('Users', 'walletBalance', { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 });
 };
 
 const syncDatabase = async () => {

@@ -85,6 +85,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/collections', collectionRoutes);
 app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/instagram', require('./routes/instagramRoutes'));
 app.use('/api/ai', require('./routes/aiChatRoutes'));
 

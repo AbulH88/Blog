@@ -479,6 +479,50 @@ export const chargeSavedMethod = async (
   return res.json();
 };
 
+// ─── Wallet (fan pre-funded balance) ─────────────────────────────────────────
+
+export interface WalletState {
+  balance: number;
+  recentDeposits: Array<{
+    id: number;
+    amount: number;
+    status: string;
+    provider: string;
+    date: string;
+  }>;
+}
+
+export const getWallet = async (): Promise<WalletState> => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/wallet/me`, {
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
+export const depositToWallet = async (amount: number, provider: string = 'nowpayments') => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/wallet/deposit`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, provider }),
+  });
+  return res.json();
+};
+
+export const spendFromWallet = async (
+  productType: 'post_unlock' | 'collection_unlock' | 'ppv_message',
+  productId: number,
+) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/wallet/spend`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productType, productId }),
+  });
+  return res.json();
+};
+
 export const sendTip = async (creatorId: number, amount: number, opts: { message?: string; paymentMethodId?: number; provider?: string } = {}) => {
   const fanToken = localStorage.getItem('fanToken');
   const res = await fetch(`${API_URL}/payments/tip`, {

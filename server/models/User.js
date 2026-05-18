@@ -9,6 +9,10 @@ const User = sequelize.define('User', {
   avatarUrl: { type: DataTypes.STRING, defaultValue: '' },
   isBlocked: { type: DataTypes.BOOLEAN, defaultValue: false },
   lastLoginAt: { type: DataTypes.DATE },
+
+  // Pre-funded wallet — fans deposit crypto/card here, then one-tap unlock from balance.
+  // Stored in USD (the platform's accounting currency); crypto deposits are auto-converted.
+  walletBalance: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
 });
 
 module.exports = User;

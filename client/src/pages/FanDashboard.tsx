@@ -3,10 +3,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   CREATOR_SLUG, SERVER_URL,
   getPosts, getPublicCollections, getChatHistory, getCreator,
-  getMyTransactions,
+  getMyTransactions, getWallet,
 } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
 import FanSidebar from '../components/FanSidebar';
+import WalletCard from '../components/WalletCard';
 
 const fullUrl = (p?: string | null) => {
   if (!p) return '';
@@ -29,6 +30,7 @@ const FanDashboard = () => {
   const [bundles, setBundles] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notifsOpen, setNotifsOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
@@ -45,18 +47,20 @@ const FanDashboard = () => {
   useEffect(() => {
     if (!localStorage.getItem('fanToken')) { navigate('/login'); return; }
     (async () => {
-      const [c, p, b, m, t] = await Promise.all([
+      const [c, p, b, m, t, w] = await Promise.all([
         getCreator().catch(() => null),
         getPosts(CREATOR_SLUG).catch(() => ({ posts: [] })),
         getPublicCollections(CREATOR_SLUG).catch(() => []),
         getChatHistory(CREATOR_SLUG).catch(() => []),
         getMyTransactions().catch(() => []),
+        getWallet().catch(() => ({ balance: 0 })),
       ]);
       setCreator(c);
       setPosts(p?.posts || []);
       setBundles(Array.isArray(b) ? b : []);
       setMessages(Array.isArray(m) ? m : []);
       setTransactions(Array.isArray(t) ? t : []);
+      setWalletBalance(parseFloat(w?.balance || 0));
       setLoading(false);
     })();
   }, [navigate]);
@@ -215,6 +219,15 @@ const FanDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Wallet */}
+        <WalletCard
+          balance={walletBalance}
+          onDeposited={async () => {
+            const w = await getWallet().catch(() => ({ balance: 0 }));
+            setWalletBalance(parseFloat(w?.balance || 0));
+          }}
+        />
 
         {/* Message creator CTA */}
         <Link to="/chat" className="v3-fan-cta">
@@ -441,6 +454,14 @@ const FanDashboard = () => {
           <p className="tagline">{tagline}</p>
         </div>
       </div>
+
+      <WalletCard
+        balance={walletBalance}
+        onDeposited={async () => {
+          const w = await getWallet().catch(() => ({ balance: 0 }));
+          setWalletBalance(parseFloat(w?.balance || 0));
+        }}
+      />
 
       <Link to="/chat" className="v3-dash-cta">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

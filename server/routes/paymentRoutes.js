@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { Transaction, Post, Collection, Message, PaymentMethod, Creator } = require('../models');
+const { Transaction, Post, Collection, Message, PaymentMethod, Creator, User } = require('../models');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { getProvider, hasProvider } = require('../payments/registry');
 
@@ -9,11 +9,20 @@ const router = express.Router();
 /**
  * Mark the underlying product (post / collection / chat message) as unlocked
  * for the fan once a Transaction flips to 'completed'. Idempotent.
+ * Also credits the wallet for wallet_deposit transactions.
  */
 async function applyUnlock(tx) {
   if (tx.type === 'ppv_message' && tx.referenceId) {
     const msg = await Message.findByPk(tx.referenceId);
     if (msg && !msg.isUnlocked) await msg.update({ isUnlocked: true });
+  }
+  if (tx.type === 'wallet_deposit') {
+    const user = await User.findByPk(tx.userId);
+    if (user) {
+      const current = parseFloat(user.walletBalance || 0);
+      const add = parseFloat(tx.amount || 0);
+      await user.update({ walletBalance: Number((current + add).toFixed(2)) });
+    }
   }
   // post_unlock and collection_unlock are derived from Transaction rows
   // (the routes filter by status:'completed'), so nothing else to flip.
