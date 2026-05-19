@@ -139,6 +139,9 @@ const setupSocket = (io) => {
           content,
           isUnlocked: true,
         });
+        require('./services/events').log('chat_message_sent', {
+          userId: user.userId, creatorId: creator.id, props: { length: (content || '').length },
+        });
 
         const payload = { ...msg.toJSON() };
         io.to(`fan:${user.userId}`).emit('new_message', payload);

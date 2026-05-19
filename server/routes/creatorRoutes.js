@@ -56,6 +56,20 @@ router.patch('/:slug/password', requireAuth, requireCreator, async (req, res) =>
 });
 
 // Creator — analytics dashboard
+// Funnel report — distinct-user counts per event in the past N days
+router.get('/:slug/funnel', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await Creator.findOne({ where: { slug: req.params.slug } });
+    if (!creator || creator.id !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
+    const days = Math.min(365, Math.max(1, parseInt(req.query.days || '30', 10)));
+    const events = require('../services/events');
+    const data = await events.funnel({ days });
+    res.json({ days, events: data || {} });
+  } catch (err) {
+    res.status(500).json({ error: 'Funnel fetch failed', detail: err.message });
+  }
+});
+
 router.get('/:slug/analytics', requireAuth, requireCreator, async (req, res) => {
   try {
     const creator = await Creator.findOne({ where: { slug: req.params.slug } });

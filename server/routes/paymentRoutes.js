@@ -12,6 +12,7 @@ const router = express.Router();
  * Also credits the wallet for wallet_deposit transactions.
  */
 async function applyUnlock(tx) {
+  const events = require('../services/events');
   if (tx.type === 'ppv_message' && tx.referenceId) {
     const msg = await Message.findByPk(tx.referenceId);
     if (msg && !msg.isUnlocked) await msg.update({ isUnlocked: true });
@@ -23,6 +24,14 @@ async function applyUnlock(tx) {
       const add = parseFloat(tx.amount || 0);
       await user.update({ walletBalance: Number((current + add).toFixed(2)) });
     }
+    events.log('deposit_completed', {
+      userId: tx.userId, props: { amount: parseFloat(tx.amount || 0), provider: tx.provider },
+    });
+  } else if (['post_unlock', 'collection_unlock', 'ppv_message'].includes(tx.type)) {
+    events.log('unlock_completed', {
+      userId: tx.userId, creatorId: tx.creatorId,
+      props: { type: tx.type, amount: parseFloat(tx.amount || 0), provider: tx.provider },
+    });
   }
   // post_unlock and collection_unlock are derived from Transaction rows
   // (the routes filter by status:'completed'), so nothing else to flip.

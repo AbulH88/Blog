@@ -107,6 +107,14 @@ export const getCreatorAnalytics = async () => {
   return res.json();
 };
 
+/** Funnel report — distinct-user counts per event over the past N days. */
+export const getCreatorFunnel = async (days = 30) => {
+  const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/funnel?days=${days}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
 // Creator — list of fans with per-fan spend + activity (used in Audience tab)
 export const getFans = async () => {
   const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/subscribers`, {

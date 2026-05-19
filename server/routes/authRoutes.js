@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const { User, Creator, Subscription, Message } = require('../models');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { sendPasswordResetEmail, sendEmailVerification } = require('../services/email');
+const events = require('../services/events');
 require('dotenv').config();
 
 const router = express.Router();
@@ -78,6 +79,7 @@ router.post('/register', async (req, res) => {
     }
 
     const token = signToken({ userId: user.id, role: 'fan', email: user.email });
+    events.log('fan_signed_up', { userId: user.id, props: { username: user.username } });
     res.status(201).json({ token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (err) {
     res.status(500).json({ error: 'Registration failed', detail: err.message });
@@ -230,6 +232,7 @@ router.get('/verify-email', async (req, res) => {
     }
 
     await user.update({ emailVerified: true, emailVerifyToken: null });
+    events.log('email_verified', { userId: user.id });
     res.json({ ok: true, email: user.email });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -365,6 +368,7 @@ router.delete('/me', requireAuth, async (req, res) => {
       emailVerifyToken: null,
     });
 
+    events.log('account_deleted', { userId: user.id });
     res.json({ ok: true, message: 'Account deleted. Transaction records retained per tax/payment-processor requirements.' });
   } catch (err) {
     res.status(500).json({ error: 'Account deletion failed', detail: err.message });

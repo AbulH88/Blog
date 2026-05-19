@@ -8,6 +8,7 @@ const Message     = require('./Message');
 const Transaction = require('./Transaction');
 const PaymentMethod = require('./PaymentMethod');
 const PendingPpv  = require('./PendingPpv');
+const Event       = require('./Event');
 
 // Associations
 Creator.hasMany(Post,        { foreignKey: 'creatorId', as: 'posts' });
@@ -180,5 +181,5 @@ const syncDatabase = async () => {
 
 module.exports = {
   sequelize, syncDatabase,
-  Creator, User, Post, Collection, Subscription, Message, Transaction, PaymentMethod, PendingPpv,
+  Creator, User, Post, Collection, Subscription, Message, Transaction, PaymentMethod, PendingPpv, Event,
 };

@@ -12,6 +12,7 @@ import AdminMessages from './AdminMessages';
 import AdminAiChatbot from './AdminAiChatbot';
 import AdminBroadcast from './AdminBroadcast';
 import DragDropUpload from '../components/DragDropUpload';
+import FunnelCard from '../components/FunnelCard';
 
 type Tab =
   | 'overview' | 'biobuilder' | 'analytics' | 'content' | 'gallery'
@@ -382,6 +383,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         <p style={{ margin: '0 0 22px', fontSize: '0.92rem', color: 'var(--v3-muted)' }}>
           Manage your links and track performance.
         </p>
+        <FunnelCard />
 
         {/* Stat cards with sparklines */}
         <div className="v3-stat-grid">

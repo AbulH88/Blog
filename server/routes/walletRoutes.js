@@ -193,6 +193,11 @@ router.post('/spend', requireAuth, async (req, res) => {
       if (m && !m.isUnlocked) await m.update({ isUnlocked: true });
     }
 
+    require('../services/events').log('unlock_completed', {
+      userId: req.user.userId, creatorId,
+      props: { type: effectiveType, amount, provider: 'wallet' },
+    });
+
     res.json({
       success: true,
       transactionId: tx.id,
