@@ -33,10 +33,12 @@ const Navbar = ({
     navigate('/');
   };
 
-  // Chrome visibility: /dashboard, /chat, /vault and any /dashboard/* sub-route
+  // Chrome visibility: /admin, /dashboard, /chat, /vault and any /dashboard/* sub-route
   // all have their own shells (sidebar on desktop, immersive layout on mobile).
   // Global navbar/footer never renders on those pages.
   const isFullyHidden =
+    location.pathname === '/admin' ||
+    location.pathname.startsWith('/admin/') ||
     location.pathname === '/chat' ||
     location.pathname === '/vault' ||
     location.pathname === '/dashboard' ||

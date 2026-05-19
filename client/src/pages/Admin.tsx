@@ -1813,26 +1813,19 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
       <aside className="v3-admin-side">
         <div className="v3-admin-brand">
           {config?.logoUrl ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '4px 0 8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '4px 0' }}>
               <img
                 src={config.logoUrl.startsWith('http') ? config.logoUrl : `${SERVER_URL}${config.logoUrl}`}
                 alt={config?.siteTitle || 'Logo'}
-                style={{ maxHeight: 130, maxWidth: 180, objectFit: 'contain' }}
+                style={{ maxHeight: 84, maxWidth: 140, objectFit: 'contain' }}
               />
-              <small style={{ display: 'block' }}>BIO ADMIN</small>
+              <small style={{ display: 'block', fontSize: '0.66rem', letterSpacing: 2, color: 'var(--v3-muted)' }}>BIO ADMIN · @{handle}</small>
             </div>
           ) : (
             <>
               {(config?.siteTitle || 'CRISTINA').toUpperCase()} <span style={{ color: 'var(--v3-muted)' }}>|</span> <small>BIO ADMIN</small>
             </>
           )}
-        </div>
-
-        <div className="v3-admin-profile">
-          <div className="avatar">
-            {avatar && <img src={avatar.startsWith('http') ? avatar : `${SERVER_URL}${avatar}`} alt="" />}
-          </div>
-          <div className="handle">@{handle}</div>
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
