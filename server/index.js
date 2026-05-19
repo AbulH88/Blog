@@ -150,6 +150,34 @@ app.use(trackTraffic);
 // ─── robots.txt — respects Creator.searchIndexable ───────────────────────────
 // Adult sites usually want to be invisible to Google/Bing/IG bots by default.
 // Creator can flip the toggle in Admin → Visibility to allow indexing.
+// ─── Health check — hit by UptimeRobot every 5 min ──────────────────────────
+// Returns 200 with { status: "ok" } when the server can talk to the DB, else
+// 503. Designed to be cheap (DB ping is a single round-trip). Cache-Control:
+// no-store so a cached CF response doesn't lie about live status.
+const startedAt = Date.now();
+app.get('/api/health', async (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const { sequelize } = require('./models');
+    await sequelize.authenticate(); // SELECT 1 under the hood — < 1ms on SQLite
+    const uptimeSec = Math.round((Date.now() - startedAt) / 1000);
+    res.json({
+      status: 'ok',
+      uptime: uptimeSec,
+      timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version || 'dev',
+      db: 'reachable',
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: 'degraded',
+      timestamp: new Date().toISOString(),
+      db: 'unreachable',
+      error: err.message,
+    });
+  }
+});
+
 app.get('/robots.txt', async (req, res) => {
   try {
     const { Creator } = require('./models');
