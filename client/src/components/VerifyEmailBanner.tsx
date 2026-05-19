@@ -35,13 +35,20 @@ export default function VerifyEmailBanner() {
 
   const handleResend = async () => {
     setSending(true);
-    const res = await resendVerificationEmail();
-    setSending(false);
-    if (res?.ok) {
-      setSent(true);
-      setCooldown(60);
-    } else if (res?.error) {
-      alert(res.error);
+    try {
+      const res = await resendVerificationEmail();
+      if (res?.ok) {
+        setSent(true);
+        setCooldown(60);
+      } else if (res?.error) {
+        alert(res.error);
+      } else {
+        alert('Could not send right now — please try again in a moment.');
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Network error — please try again.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -56,7 +63,7 @@ export default function VerifyEmailBanner() {
     }}>
       <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>✉️</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <strong style={{ color: '#3d2f17' }}>Verify your email to unlock deposits &amp; purchases.</strong>
+        <strong style={{ color: '#3d2f17' }}>Verify your email before your first deposit.</strong>
         <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#7a6634' }}>
           We sent a link to <span style={{ fontWeight: 600 }}>{email}</span>. Tap it to finish setting up.
         </p>

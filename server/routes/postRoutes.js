@@ -196,7 +196,7 @@ router.delete('/:id', requireAuth, requireCreator, async (req, res) => {
 });
 
 // POST /api/posts/:id/unlock — fan pays the post's price to unlock it
-router.post('/:id/unlock', requireAuth, requireVerifiedEmail, async (req, res) => {
+router.post('/:id/unlock', requireAuth, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
 

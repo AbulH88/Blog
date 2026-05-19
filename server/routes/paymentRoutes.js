@@ -87,7 +87,7 @@ router.get('/status/:transactionId', requireAuth, async (req, res) => {
 // Body: { creatorId, amount, message?, paymentMethodId?, provider? }
 // - With paymentMethodId: one-tap charge with a saved card.
 // - Without: falls back to provider.createCheckout (mock/crypto redirect).
-router.post('/tip', requireAuth, requireVerifiedEmail, async (req, res) => {
+router.post('/tip', requireAuth, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
     const { creatorId, amount, message, paymentMethodId } = req.body || {};

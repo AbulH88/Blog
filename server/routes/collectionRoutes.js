@@ -182,7 +182,7 @@ router.patch('/remove-post/:postId', requireAuth, requireCreator, async (req, re
 });
 
 // POST /api/collections/:id/unlock — fan unlocks a collection (mock — real payment via Stripe later)
-router.post('/:id/unlock', requireAuth, requireVerifiedEmail, async (req, res) => {
+router.post('/:id/unlock', requireAuth, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan access required' });
 
