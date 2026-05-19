@@ -14,14 +14,16 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, Date.now() + '-' + Math.round(Math.random() * 1e6) + path.extname(file.originalname)),
 });
 const allowed = /jpeg|jpg|png|webp|gif|mp4|mov|mp3|m4a/;
+// Images flow through processImageUploads after multer (resize → 2000px / JPEG q82).
 const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB upper bound (was 500)
   fileFilter: (req, file, cb) => {
     const ok = allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype);
     cb(ok ? null : new Error('Invalid file type'), ok);
   },
 });
+const { processImageUploads } = require('../middleware/imageProcess');
 
 const decodeFan = (authHeader) => {
   if (!authHeader?.startsWith('Bearer ')) return null;
@@ -121,7 +123,7 @@ router.get('/:creatorSlug', async (req, res) => {
 });
 
 // POST /api/posts — creator uploads a new post
-router.post('/', requireAuth, requireCreator, upload.array('media', 10), async (req, res) => {
+router.post('/', requireAuth, requireCreator, upload.array('media', 10), processImageUploads, async (req, res) => {
   try {
     const creator = await Creator.findByPk(req.user.creatorId);
     if (!creator) return res.status(404).json({ error: 'Creator not found' });

@@ -74,15 +74,19 @@ const storage = multer.diskStorage({
 });
 
 const allowedTypes = /jpeg|jpg|png|webp|gif|mp4|mov|mp3|m4a/;
+// Images are post-processed by sharp (see middleware/imageProcess) so the
+// pre-resize cap is mostly a sanity check against disk-fill DoS. Videos are
+// passed through; ffmpeg transcoding is a future enhancement.
 const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB upper bound (was 500)
   fileFilter: (req, file, cb) => {
     const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mime = allowedTypes.test(file.mimetype);
     cb(ext && mime ? null : new Error('Invalid file type'), ext && mime);
   },
 });
+const { processImageUploads } = require('./middleware/imageProcess');
 
 // ─── V1 Legacy helpers (config.json — kept for backward compat during migration) ─
 const CONFIG_PATH = path.join(__dirname, 'data', 'config.json');
@@ -199,7 +203,7 @@ app.post('/api/config', (req, res) => {
   }
 });
 
-app.post('/api/upload', upload.single('image'), (req, res) => {
+app.post('/api/upload', upload.single('image'), processImageUploads, (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   res.json({ url: `/uploads/${req.file.filename}` });
 });
