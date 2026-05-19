@@ -188,6 +188,7 @@ const Vault = ({ config }: { config: any }) => {
         onClose={() => setJoinOpen(false)}
         fanvueUrl={config?.fanvueUrl}
         creatorName={creatorName}
+        avatarUrl={config?.chatAvatarUrl || config?.images?.hero || config?.images?.heroSlider?.[0] || config?.logoUrl}
       />
       {payTarget && (
         <PayMethodPicker

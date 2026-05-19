@@ -8,11 +8,13 @@ const Navbar = ({
   instagramHandle,
   fanvueUrl,
   logoUrl,
+  avatarUrl,
 }: {
   siteTitle: string;
   instagramHandle?: string;
   fanvueUrl?: string;
   logoUrl?: string;
+  avatarUrl?: string;
 }) => {
   const [fanUser, setFanUser] = useState<any>(null);
   const [joinOpen, setJoinOpen] = useState(false);
@@ -111,6 +113,7 @@ const Navbar = ({
         onClose={() => setJoinOpen(false)}
         fanvueUrl={fanvueUrl}
         creatorName={siteTitle}
+        avatarUrl={avatarUrl}
       />
     </div>
   );

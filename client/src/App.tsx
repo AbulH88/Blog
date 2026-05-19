@@ -113,7 +113,12 @@ function App() {
           </Routes>
         ) : (
           <>
-            <Navbar siteTitle={config.siteTitle} fanvueUrl={config.fanvueUrl} logoUrl={config.logoUrl} />
+            <Navbar
+              siteTitle={config.siteTitle}
+              fanvueUrl={config.fanvueUrl}
+              logoUrl={config.logoUrl}
+              avatarUrl={config.chatAvatarUrl || config.images?.hero || config.images?.heroSlider?.[0] || config.logoUrl}
+            />
             <main className="container">
               <Routes>
                 <Route path="/" element={<Home config={config} />} />

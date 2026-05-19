@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { SERVER_URL } from '../api';
 
 interface Props {
   open: boolean;
@@ -9,13 +10,22 @@ interface Props {
    *  so it stays hidden from IG / Meta / Twitter crawlers. */
   fanvueUrl?: string;
   creatorName?: string;
+  /** Optional avatar/logo to put inside the invitation seal. */
+  avatarUrl?: string;
 }
 
+const fullUrl = (p?: string) => {
+  if (!p) return '';
+  if (p.startsWith('http')) return p;
+  return p.startsWith('/') ? `${SERVER_URL}${p}` : `${SERVER_URL}/${p}`;
+};
+
 /**
- * "Get Premium Access" modal — shown to visitors before login.
+ * Invitation-card modal — editorial style matching the v3 theme.
+ * Replaces the older "chooser" design now that Fanvue is gated behind login.
  * Desktop: centered card. Mobile: bottom sheet.
  */
-const JoinPremiumModal = ({ open, onClose, creatorName }: Props) => {
+const JoinPremiumModal = ({ open, onClose, creatorName, avatarUrl }: Props) => {
   const navigate = useNavigate();
   const isLoggedIn = typeof window !== 'undefined' && !!localStorage.getItem('fanToken');
 
@@ -37,49 +47,57 @@ const JoinPremiumModal = ({ open, onClose, creatorName }: Props) => {
     navigate(isLoggedIn ? '/dashboard' : '/register');
   };
 
-  const name = creatorName || 'me';
+  const name = creatorName || 'the creator';
+  const avatarSrc = fullUrl(avatarUrl);
 
   return (
-    <div className="v3-modal-backdrop" onClick={onClose}>
-      <div className="v3-modal-card" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        {/* Hero */}
-        <div className="v3-modal-hero">
-          <button className="v3-modal-close" onClick={onClose} aria-label="Close">×</button>
-          <div className="v3-modal-hero-emoji">✨</div>
-          <h2>Get Premium Access</h2>
-          <p>Choose how you'd like to connect with {name}</p>
-        </div>
+    <div className="v3-invite-backdrop" onClick={onClose}>
+      <div className="v3-invite-card" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <button className="v3-invite-close" onClick={onClose} aria-label="Close">×</button>
 
-        {/* Body */}
-        <div className="v3-modal-body">
-          <button className="v3-option-card primary" onClick={handleJoinDirect}>
-            <span className="ico">{isLoggedIn ? '👋' : '✨'}</span>
-            <span className="meta">
-              <span className="t">{isLoggedIn ? 'Go to your Dashboard' : 'Join Free Here'}</span>
-              <span className="s">
-                {isLoggedIn
-                  ? 'Continue to your personal space'
-                  : 'Chat directly · Unlock what you love · Free signup'}
-              </span>
-              {!isLoggedIn && <span className="pill">No card required</span>}
-            </span>
-            <span className="arrow">→</span>
-          </button>
-
-          {!isLoggedIn && (
-            <p className="v3-modal-foot">
-              Already a member? <Link to="/login" onClick={onClose}>Sign in</Link>
-            </p>
+        {/* Seal — avatar inside a circular border */}
+        <div className="v3-invite-seal">
+          {avatarSrc ? (
+            <img src={avatarSrc} alt={name} />
+          ) : (
+            <span className="initial">{name.slice(0, 1).toUpperCase()}</span>
           )}
-
-          <p className="v3-modal-secure">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            Secure &amp; private · You're in control
-          </p>
         </div>
+
+        <p className="v3-invite-eyebrow">YOU'RE INVITED</p>
+
+        <h2 className="v3-invite-title">
+          Step inside <span className="ital">{name}'s</span> private world
+        </h2>
+
+        <p className="v3-invite-lede">
+          Real conversations, unfiltered content, the side of me reserved for the people who actually show up.
+        </p>
+
+        <ul className="v3-invite-perks">
+          <li><span className="check">✓</span> Direct messages — no bots, no filters</li>
+          <li><span className="check">✓</span> Exclusive photos &amp; videos in the Vault</li>
+          <li><span className="check">✓</span> Tip jar, PPV, requests — your call</li>
+        </ul>
+
+        <button className="v3-invite-cta" onClick={handleJoinDirect}>
+          {isLoggedIn ? 'Continue to your Dashboard' : 'Join free — takes 30 seconds'}
+          <span className="arrow">→</span>
+        </button>
+
+        {!isLoggedIn && (
+          <p className="v3-invite-signin">
+            Already inside? <Link to="/login" onClick={onClose}>Sign in</Link>
+          </p>
+        )}
+
+        <p className="v3-invite-foot">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          18+ only · Secure &amp; private · Cancel anytime
+        </p>
       </div>
     </div>
   );

@@ -2147,7 +2147,198 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   align-self: flex-start;
 }
 
-/* ───── Get Premium Access modal — v2 design ──────────────── */
+/* ───── Get Premium Access — Invitation card (v3 design) ───── */
+.v3-invite-backdrop {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(30, 18, 14, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0;
+  animation: v3-fade-in 0.18s ease;
+}
+@media (min-width: 600px) {
+  .v3-invite-backdrop { align-items: center; padding: 24px; }
+}
+
+.v3-invite-card {
+  position: relative;
+  width: 100%; max-width: 420px;
+  background: #fffaf4;
+  border-radius: 20px 20px 0 0;
+  padding: 44px 26px 26px;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  animation: v3-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Soft cream texture */
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(231, 158, 130, 0.10), transparent 45%),
+    radial-gradient(circle at 85% 100%, rgba(245, 197, 197, 0.18), transparent 50%);
+}
+@media (min-width: 600px) {
+  .v3-invite-card {
+    border-radius: 22px;
+    padding: 52px 32px 30px;
+    animation: v3-zoom-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+.v3-invite-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--v3-rose-100);
+  color: var(--v3-ink-soft);
+  font-size: 1.2rem; line-height: 1;
+  cursor: pointer; transition: background 0.18s, transform 0.18s;
+}
+.v3-invite-close:hover {
+  background: #fff;
+  transform: rotate(90deg);
+}
+
+/* Avatar seal — circular border with double-ring like a wax stamp */
+.v3-invite-seal {
+  width: 78px; height: 78px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--v3-terracotta);
+  padding: 4px;
+  box-shadow:
+    0 0 0 2px var(--v3-cream),
+    0 0 0 3px var(--v3-terracotta),
+    0 10px 24px rgba(199, 90, 62, 0.25);
+}
+.v3-invite-seal img {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+.v3-invite-seal .initial {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #E6927A, #C75A3E);
+  color: #fff; font-family: var(--v3-heading);
+  font-size: 2rem;
+}
+
+.v3-invite-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.68rem; letter-spacing: 3px;
+  color: var(--v3-terracotta);
+  font-weight: 700;
+}
+
+.v3-invite-title {
+  font-family: var(--v3-heading);
+  font-size: 1.55rem;
+  line-height: 1.2;
+  letter-spacing: -0.3px;
+  color: var(--v3-ink);
+  margin: 0 0 12px;
+}
+.v3-invite-title .ital {
+  font-family: var(--v3-display);
+  font-style: italic;
+  color: var(--v3-terracotta);
+  font-weight: 400;
+}
+@media (max-width: 400px) {
+  .v3-invite-title { font-size: 1.35rem; }
+}
+
+.v3-invite-lede {
+  font-family: var(--v3-body);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--v3-ink-soft);
+  margin: 0 auto 18px;
+  max-width: 320px;
+}
+
+.v3-invite-perks {
+  list-style: none;
+  padding: 14px 18px;
+  margin: 0 0 22px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--v3-rose-100);
+  border-radius: 14px;
+  text-align: left;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.v3-invite-perks li {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.88rem;
+  color: var(--v3-ink);
+}
+.v3-invite-perks .check {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--v3-terracotta);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 800;
+}
+
+.v3-invite-cta {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #E6927A 0%, #C75A3E 100%);
+  color: #fff;
+  border: none; border-radius: 50px;
+  font-family: inherit; font-size: 0.96rem; font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(199, 90, 62, 0.28);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.v3-invite-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(199, 90, 62, 0.36);
+}
+.v3-invite-cta .arrow {
+  transition: transform 0.18s;
+}
+.v3-invite-cta:hover .arrow { transform: translateX(3px); }
+
+.v3-invite-signin {
+  margin: 14px 0 0;
+  font-size: 0.84rem;
+  color: var(--v3-ink-soft);
+}
+.v3-invite-signin a {
+  color: var(--v3-terracotta);
+  text-decoration: none;
+  font-weight: 700;
+}
+.v3-invite-signin a:hover { text-decoration: underline; }
+
+.v3-invite-foot {
+  margin: 14px 0 0;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 0.7rem;
+  color: var(--v3-muted);
+}
+.v3-invite-foot svg { color: var(--v3-success); }
+
+@keyframes v3-slide-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes v3-zoom-in {
+  from { transform: scale(0.94); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+@keyframes v3-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ───── Legacy modal styles (still used by other modals; keep) ───── */
 .v3-modal-backdrop {
   position: fixed;
   inset: 0;
