@@ -176,6 +176,39 @@ export const changeMyPassword = async (payload: { currentPassword: string; newPa
   return res.json();
 };
 
+export const requestPasswordReset = async (email: string) => {
+  const res = await fetch(`${API_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  return res.json();
+};
+
+export const checkResetToken = async (token: string) => {
+  const res = await fetch(`${API_URL}/auth/reset-password/check?token=${encodeURIComponent(token)}`);
+  return res.json();
+};
+
+export const submitPasswordReset = async (token: string, newPassword: string) => {
+  const res = await fetch(`${API_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword }),
+  });
+  return res.json();
+};
+
+export const deleteMyAccount = async (currentPassword: string) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/auth/me`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword }),
+  });
+  return res.json();
+};
+
 // ─── Media ─────────────────────────────────────────────────────────────────────
 
 export const uploadImage = async (file: File) => {

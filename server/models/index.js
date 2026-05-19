@@ -100,6 +100,12 @@ const applyMigrations = async () => {
   // Fan wallet — pre-funded balance fans use for one-tap unlocks
   await addIfMissing('Users', 'walletBalance', { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 });
 
+  // Password reset + email verification
+  await addIfMissing('Users', 'passwordResetToken', { type: DataTypes.STRING, allowNull: true });
+  await addIfMissing('Users', 'passwordResetExpires', { type: DataTypes.DATE, allowNull: true });
+  await addIfMissing('Users', 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
+  await addIfMissing('Users', 'emailVerifyToken', { type: DataTypes.STRING, allowNull: true });
+
   // Relax Transactions.creatorId — make it nullable (wallet_deposit has no creator).
   // SQLite has no ALTER COLUMN, so we rebuild the table preserving rows.
   try {

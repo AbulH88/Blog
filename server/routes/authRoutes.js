@@ -1,8 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { Op } = require('sequelize');
 const { User, Creator, Subscription, Message } = require('../models');
 const { requireAuth } = require('../middleware/authMiddleware');
+const { sendPasswordResetEmail } = require('../services/email');
 require('dotenv').config();
 
 const router = express.Router();
@@ -185,6 +188,115 @@ router.patch('/me/password', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Password change failed', detail: err.message });
+  }
+});
+
+// ─── Forgot password ─────────────────────────────────────────────────────────
+// Request a reset — always returns 200 (don't leak which emails exist).
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const user = await User.findOne({ where: { email } });
+    if (user) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 60 min
+      await user.update({ passwordResetToken: token, passwordResetExpires: expires });
+
+      const base = process.env.PUBLIC_APP_URL || process.env.SITE_URL || 'http://localhost:5173';
+      const resetUrl = `${base.replace(/\/$/, '')}/reset-password?token=${token}`;
+
+      try {
+        await sendPasswordResetEmail({ to: user.email, username: user.username, resetUrl });
+      } catch (mailErr) {
+        console.warn('[auth] failed to send reset email:', mailErr.message);
+        // Don't reveal mail send failure to caller — still return 200
+      }
+    }
+    res.json({ ok: true, message: "If an account exists, we've sent reset instructions." });
+  } catch (err) {
+    res.status(500).json({ error: 'Forgot-password failed', detail: err.message });
+  }
+});
+
+// Validate token (used by the reset page on mount to show a clean error early)
+router.get('/reset-password/check', async (req, res) => {
+  try {
+    const token = String(req.query?.token || '');
+    if (!token) return res.status(400).json({ valid: false, error: 'No token' });
+    const user = await User.findOne({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpires: { [Op.gt]: new Date() },
+      },
+    });
+    if (!user) return res.json({ valid: false, error: 'Invalid or expired token' });
+    res.json({ valid: true, email: user.email });
+  } catch (err) {
+    res.status(500).json({ valid: false, error: err.message });
+  }
+});
+
+// Actually reset the password — single-use token.
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body || {};
+    if (!token || !newPassword) return res.status(400).json({ error: 'token and newPassword required' });
+    if (String(newPassword).length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+
+    const user = await User.findOne({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpires: { [Op.gt]: new Date() },
+      },
+    });
+    if (!user) return res.status(401).json({ error: 'Invalid or expired reset link' });
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    await user.save();
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Reset failed', detail: err.message });
+  }
+});
+
+// ─── Account deletion (GDPR right-to-erasure) ────────────────────────────────
+// Soft-delete: keep audit trail (transactions) but anonymize the user record
+// and revoke access. Hard-delete is impractical because Verotel/NOWPayments
+// need transaction records for 7 years per their MSA + tax requirements.
+router.delete('/me', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+    const { currentPassword } = req.body || {};
+    if (!currentPassword) return res.status(400).json({ error: 'currentPassword required to confirm deletion' });
+
+    const user = await User.findByPk(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) return res.status(401).json({ error: 'Incorrect password' });
+
+    // Anonymize — keep userId on Transaction rows for accounting, but scrub PII.
+    const anonId = `deleted-${user.id}-${Date.now()}`;
+    await user.update({
+      email: `${anonId}@deleted.local`,
+      username: 'deleted user',
+      passwordHash: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12), // random unguessable
+      isBlocked: true,
+      avatarUrl: '',
+      walletBalance: 0,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+      emailVerifyToken: null,
+    });
+
+    res.json({ ok: true, message: 'Account deleted. Transaction records retained per tax/payment-processor requirements.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Account deletion failed', detail: err.message });
   }
 });
 

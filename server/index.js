@@ -6,10 +6,13 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { Server } = require('socket.io');
 
 const { syncDatabase } = require('./models');
 const { initPayments } = require('./payments');
+const sentryService = require('./services/sentry');
 const authRoutes = require('./routes/authRoutes');
 const creatorRoutes = require('./routes/creatorRoutes');
 const postRoutes = require('./routes/postRoutes');
@@ -19,6 +22,7 @@ const collectionRoutes = require('./routes/collectionRoutes');
 const setupSocket = require('./socket');
 
 const app = express();
+sentryService.init(app); // no-op if SENTRY_DSN unset
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
@@ -28,9 +32,38 @@ app.set('io', io);
 const PORT = process.env.PORT || 5000;
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
+// Security headers — relaxed CSP because frontend is served from the same origin
+// in production (Nginx serves /var/www/<creator>-build/) but talks to /api/.
+app.use(helmet({
+  contentSecurityPolicy: false, // disabled for now; frontend handles its own CSP if needed
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow /uploads/ to be embedded
+}));
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '1mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Rate limits — protect against brute-force on auth + spam on tipping/wallet.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 20, // 20 attempts per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many auth attempts. Please try again in 15 minutes.' },
+});
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  max: 60, // 60 writes per IP per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Slow down a bit.' },
+});
+// Apply selectively — only on the endpoints that need it. Webhooks must NOT be limited.
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/creator/login', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/wallet', writeLimiter);
 
 // ─── Multer (local upload — replaced by S3 in production) ─────────────────────
 const storage = multer.diskStorage({
@@ -170,6 +203,9 @@ syncDatabase()
 
     await telegram.initFromDb();
     await ppvApproval.rehydrate({ io, sendCreatorMessage });
+
+    // Sentry error handler — mount AFTER all routes, BEFORE listen
+    sentryService.mountErrorHandler(app);
 
     server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
   })

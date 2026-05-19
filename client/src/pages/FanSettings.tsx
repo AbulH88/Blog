@@ -4,7 +4,7 @@ import {
   CREATOR_SLUG,
   getCreator, getMyTransactions, getMySubscriptions, unsubscribe,
   getPaymentMethods, removePaymentMethod, setDefaultPaymentMethod,
-  updateMyProfile, changeMyPassword,
+  updateMyProfile, changeMyPassword, deleteMyAccount,
   type SavedCard,
 } from '../api';
 import FanSidebar from '../components/FanSidebar';
@@ -384,14 +384,58 @@ const FanSettings = () => {
   const renderPrivacy = () => (
     <>
       <h2 style={panelHeadStyle}>Privacy and safety</h2>
-      <div className="v3-card">
-        <p style={{ color: 'var(--v3-ink-soft)', fontSize: '0.9rem' }}>
-          Privacy settings coming soon. Review our policies below for how your data is handled.
+
+      <div className="v3-card" style={{ marginBottom: 16 }}>
+        <h3 style={cardHeadStyle}>Our policies</h3>
+        <p style={{ color: 'var(--v3-ink-soft)', fontSize: '0.9rem', marginBottom: 12 }}>
+          Review how your data is handled and your rights as a user.
         </p>
-        <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
-          <Link to="/privacy" style={{ color: 'var(--v3-terracotta)', fontWeight: 700, textDecoration: 'none' }}>Privacy Policy →</Link>
-          <Link to="/terms" style={{ color: 'var(--v3-terracotta)', fontWeight: 700, textDecoration: 'none' }}>Terms of Service →</Link>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <Link to="/privacy" style={linkStyle}>Privacy Policy →</Link>
+          <Link to="/terms" style={linkStyle}>Terms of Service →</Link>
+          <Link to="/2257" style={linkStyle}>2257 Compliance →</Link>
         </div>
+      </div>
+
+      <div className="v3-card" style={{ borderColor: 'rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.03)' }}>
+        <h3 style={{ ...cardHeadStyle, color: 'var(--v3-danger)' }}>Delete my account</h3>
+        <p style={{ fontSize: '0.88rem', color: 'var(--v3-ink-soft)', lineHeight: 1.5, margin: '0 0 12px' }}>
+          Permanently delete your account, profile, and content access. Your transaction
+          history is retained for tax/payment-processor compliance (required by law) but
+          will be anonymized. <strong>This action cannot be undone.</strong>
+        </p>
+        <button
+          onClick={async () => {
+            const pwd = window.prompt(
+              'To confirm account deletion, type your current password:\n\n' +
+              '⚠️ This will permanently delete your account. You will lose access immediately.\n\n' +
+              '(Cancel to abort)'
+            );
+            if (!pwd) return;
+            const confirmAgain = window.confirm(
+              'Are you absolutely sure? This cannot be undone.\n\n' +
+              'Click OK to delete your account permanently.'
+            );
+            if (!confirmAgain) return;
+
+            const res = await deleteMyAccount(pwd);
+            if (res?.ok) {
+              alert('Account deleted. Goodbye.');
+              localStorage.removeItem('fanToken');
+              localStorage.removeItem('fanUser');
+              navigate('/');
+            } else {
+              alert(res?.error || 'Deletion failed');
+            }
+          }}
+          style={{
+            background: 'transparent', color: 'var(--v3-danger)',
+            border: '1px solid var(--v3-danger)', borderRadius: 22,
+            padding: '9px 20px', fontSize: '0.86rem', fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+          Delete my account permanently
+        </button>
       </div>
     </>
   );

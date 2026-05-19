@@ -96,12 +96,19 @@ const Login = () => {
         </form>
 
         {mode === 'fan' && (
-          <p style={{ textAlign: 'center', marginTop: 22, fontSize: '0.88rem', color: 'var(--v3-ink-soft)' }}>
-            No account?{' '}
-            <Link to="/register" style={{ color: 'var(--v3-terracotta)', textDecoration: 'none', fontWeight: 700 }}>
-              Join free
-            </Link>
-          </p>
+          <>
+            <p style={{ textAlign: 'center', marginTop: 14, fontSize: '0.84rem' }}>
+              <Link to="/forgot-password" style={{ color: 'var(--v3-ink-soft)', textDecoration: 'none' }}>
+                Forgot your password?
+              </Link>
+            </p>
+            <p style={{ textAlign: 'center', marginTop: 14, fontSize: '0.88rem', color: 'var(--v3-ink-soft)' }}>
+              No account?{' '}
+              <Link to="/register" style={{ color: 'var(--v3-terracotta)', textDecoration: 'none', fontWeight: 700 }}>
+                Join free
+              </Link>
+            </p>
+          </>
         )}
       </div>
     </div>
