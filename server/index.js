@@ -110,6 +110,40 @@ const trackTraffic = (req, res, next) => {
 };
 app.use(trackTraffic);
 
+// ─── robots.txt — respects Creator.searchIndexable ───────────────────────────
+// Adult sites usually want to be invisible to Google/Bing/IG bots by default.
+// Creator can flip the toggle in Admin → Visibility to allow indexing.
+app.get('/robots.txt', async (req, res) => {
+  try {
+    const { Creator } = require('./models');
+    const creator = await Creator.findOne({ attributes: ['searchIndexable'] });
+    const indexable = creator?.searchIndexable === true;
+    res.type('text/plain');
+    if (indexable) {
+      res.send(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n`);
+    } else {
+      // Block everything — including IG/Facebook/Twitter preview bots.
+      res.send([
+        '# Site is private during launch — no indexing allowed.',
+        'User-agent: *',
+        'Disallow: /',
+        '',
+        '# Block social-media preview bots specifically',
+        'User-agent: facebookexternalhit',
+        'Disallow: /',
+        'User-agent: Twitterbot',
+        'Disallow: /',
+        'User-agent: Instagram',
+        'Disallow: /',
+        'User-agent: meta-externalagent',
+        'Disallow: /',
+      ].join('\n'));
+    }
+  } catch {
+    res.type('text/plain').send('User-agent: *\nDisallow: /\n');
+  }
+});
+
 // ─── V2 Routes ─────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/creator', creatorRoutes);

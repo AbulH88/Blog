@@ -60,29 +60,37 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
     }
   };
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 760;
+
   return (
     <div
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 2000,
         background: 'rgba(0,0,0,0.55)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20, backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center',
+        padding: isMobile ? 0 : 20,
+        backdropFilter: 'blur(4px)',
+        overflowY: 'auto',
       }}>
       <div
         onClick={e => e.stopPropagation()}
+        className="v3-deposit-modal"
         style={{
-          background: '#fff', borderRadius: 18,
+          background: '#fff',
+          borderRadius: isMobile ? 0 : 18,
           width: '100%', maxWidth: 880,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          minHeight: isMobile ? '100vh' : 'auto',
+          boxShadow: isMobile ? 'none' : '0 20px 60px rgba(0,0,0,0.25)',
           overflow: 'hidden',
           display: 'grid',
-          gridTemplateColumns: '1fr 1.4fr',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1.4fr',
         }}>
-        {/* LEFT — preview card (decorative, NOWPayments-style) */}
+        {/* LEFT — preview card (decorative, NOWPayments-style). Hidden on mobile. */}
         <div style={{
+          display: isMobile ? 'none' : 'flex',
           background: 'linear-gradient(135deg, #fff8f3 0%, #ffe8e0 100%)',
-          padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          padding: 28, flexDirection: 'column', justifyContent: 'space-between',
           position: 'relative', overflow: 'hidden',
         }}>
           <div style={{ position: 'relative', zIndex: 1 }}>

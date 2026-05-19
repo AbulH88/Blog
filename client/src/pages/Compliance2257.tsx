@@ -1,4 +1,16 @@
 const Compliance2257 = ({ config }: { config: any }) => {
+  // Hidden by admin toggle — show a generic 404-style notice instead.
+  if (config?.disclosureVisible === false) {
+    return (
+      <div style={{ minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '1.4rem', margin: 0 }}>Page not found</h1>
+          <p style={{ margin: '12px 0 0', color: 'var(--v3-muted)' }}>This page has been moved or is no longer available.</p>
+        </div>
+      </div>
+    );
+  }
+
   const brand = config?.siteTitle || 'this Site';
   const year = new Date().getFullYear();
   const supportEmail = `support@${(config?.siteTitle || 'thecristinaadam').toLowerCase().replace(/\s+/g, '')}.com`;

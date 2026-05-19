@@ -76,6 +76,21 @@ function App() {
           og.setAttribute('content', data.seo.ogImage);
         }
       }
+
+      // Respect the search-indexable toggle — inject/remove <meta robots>
+      const existingRobots = document.querySelector('meta[name="robots"]');
+      if (!data.searchIndexable) {
+        if (existingRobots) {
+          existingRobots.setAttribute('content', 'noindex, nofollow, noarchive, nosnippet');
+        } else {
+          const m = document.createElement('meta');
+          m.name = 'robots';
+          m.content = 'noindex, nofollow, noarchive, nosnippet';
+          document.head.appendChild(m);
+        }
+      } else if (existingRobots) {
+        existingRobots.remove();
+      }
     };
     fetchConfig();
   }, []);
@@ -86,7 +101,9 @@ function App() {
 
   return (
     <Router>
-      {!isVerified && !isMaintenance && <AgeGate onVerify={() => setIsVerified(true)} />}
+      {!isVerified && !isMaintenance && config?.ageGateEnabled !== false && (
+        <AgeGate onVerify={() => setIsVerified(true)} />
+      )}
       <div className="app">
         {isMaintenance ? (
           <Routes>

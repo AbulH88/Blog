@@ -109,7 +109,9 @@ const FanSidebar = ({ creator, guestMode = false }: Props) => {
         <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center', fontSize: '0.7rem' }}>
           <Link to="/terms" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>Terms</Link>
           <Link to="/privacy" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>Privacy</Link>
-          <Link to="/2257" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>Disclosure</Link>
+          {creator?.disclosureVisible !== false && (
+            <Link to="/2257" style={{ color: 'var(--v3-muted)', textDecoration: 'none' }}>Disclosure</Link>
+          )}
         </div>
       </div>
     </aside>

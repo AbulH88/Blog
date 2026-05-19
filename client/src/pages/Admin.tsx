@@ -761,6 +761,61 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           </div>
         </div>
 
+        {/* Visibility toggles — hide compliance UI until needed (e.g. for card processors) */}
+        <div className="av2-card">
+          <p className="av2-section-label">Visibility &amp; Privacy</p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
+            Toggle visibility of compliance pages and search-engine indexing. Card processors
+            (Verotel, CCBill, etc.) typically require the age gate + Content Disclosure to be
+            visible — turn them ON before applying.
+          </p>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={formData.ageGateEnabled !== false}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, ageGateEnabled: e.target.checked }))}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>Show 18+ age gate</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+                Required by most adult content card processors. Recommended ON.
+              </div>
+            </div>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: '1px solid var(--v3-line)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={formData.disclosureVisible !== false}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, disclosureVisible: e.target.checked }))}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>Show Content Disclosure page</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+                The /2257 page + footer links. Hide for crypto-only launch, turn ON for card processors.
+              </div>
+            </div>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: '1px solid var(--v3-line)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={formData.searchIndexable === true}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, searchIndexable: e.target.checked }))}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>Allow search engine indexing</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+                When OFF: Google/Bing/IG bots blocked via robots.txt + noindex meta. Recommended OFF for privacy.
+              </div>
+            </div>
+          </label>
+        </div>
+
         <div className="av2-card">
           <p className="av2-section-label">Social Links</p>
           <label className="av2-label">Instagram</label>

@@ -117,6 +117,18 @@ const Creator = sequelize.define('Creator', {
   // Dedicated chat avatar — separate from logoUrl (brand) and profileImage (hero).
   // Used in chat header, message bubbles, typing indicator, dashboard "Latest Message" card.
   chatAvatarUrl: { type: DataTypes.STRING, allowNull: true },
+
+  // Visibility toggles — creator can hide certain compliance UI until needed.
+  // Age gate: required for adult content in many jurisdictions, OFF only when card
+  //   processor not in use. Default ON.
+  // Content Disclosure: legal/compliance page at /2257. Toggle hides it from nav
+  //   and serves 404 at the URL. Default ON.
+  ageGateEnabled: { type: DataTypes.BOOLEAN, defaultValue: true },
+  disclosureVisible: { type: DataTypes.BOOLEAN, defaultValue: true },
+
+  // Search engine indexing — if false, robots.txt serves Disallow: * and pages
+  //   include <meta robots="noindex,nofollow">. Default false (private launch).
+  searchIndexable: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
 module.exports = Creator;

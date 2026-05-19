@@ -48,6 +48,10 @@ const normalize = (creator: any) => ({
   chatAvatarUrl: creator.chatAvatarUrl || '',
   featuredLinks: creator.featuredLinks || [],
   instagramPosts: creator.instagramPosts || [],
+  // Visibility toggles
+  ageGateEnabled: creator.ageGateEnabled !== false,
+  disclosureVisible: creator.disclosureVisible !== false,
+  searchIndexable: creator.searchIndexable === true,
 });
 
 const denormalize = (config: any) => {
@@ -71,6 +75,9 @@ const denormalize = (config: any) => {
     chatAvatarUrl: config.chatAvatarUrl || null,
     featuredLinks: config.featuredLinks || [],
     instagramPosts: config.instagramPosts || [],
+    ageGateEnabled: config.ageGateEnabled !== false,
+    disclosureVisible: config.disclosureVisible !== false,
+    searchIndexable: config.searchIndexable === true,
   };
   if (config.newPassword) data.newPassword = config.newPassword;
   return data;
