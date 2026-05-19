@@ -88,6 +88,32 @@ const FanSidebar = ({ creator, guestMode = false }: Props) => {
       </nav>
 
       <div className="v3-fan-side-footer">
+        {/* Fanvue — only shown to logged-in fans (kept behind login wall so
+            IG / Meta / Twitter crawlers never see the link). */}
+        {!guestMode && creator?.fanvueUrl && (
+          <a
+            href={creator.fanvueUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px', marginBottom: 10,
+              background: 'linear-gradient(135deg, #fff7f1 0%, #ffe6dc 100%)',
+              border: '1px solid var(--v3-rose-100)',
+              borderRadius: 12, textDecoration: 'none',
+              color: 'var(--v3-ink)', fontSize: '0.84rem', fontWeight: 700,
+            }}>
+            <span style={{ fontSize: '1.05rem' }}>💎</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              Watch on Fanvue
+              <span style={{ display: 'block', fontSize: '0.68rem', fontWeight: 500, color: 'var(--v3-muted)' }}>
+                Verified · alt checkout
+              </span>
+            </span>
+            <span style={{ color: 'var(--v3-muted)', fontSize: '0.9rem' }}>↗</span>
+          </a>
+        )}
+
         {guestMode ? (
           <Link to="/login">Sign In</Link>
         ) : (

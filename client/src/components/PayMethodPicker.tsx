@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   getPaymentMethods, getActivePaymentProviders, chargeSavedMethod,
   unlockPost, unlockCollection, unlockMessage,
-  getWallet, spendFromWallet,
+  getWallet, spendFromWallet, getCreator,
   type SavedCard,
 } from '../api';
 
@@ -35,20 +35,23 @@ export default function PayMethodPicker({
   const [cards, setCards] = useState<SavedCard[]>([]);
   const [providers, setProviders] = useState<string[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [fanvueUrl, setFanvueUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [m, p, w] = await Promise.all([
+      const [m, p, w, c] = await Promise.all([
         getPaymentMethods().catch(() => ({ methods: [] })),
         getActivePaymentProviders().catch(() => ({ providers: [] })),
         getWallet().catch(() => ({ balance: 0 })),
+        getCreator().catch(() => null),
       ]);
       setCards(m.methods || []);
       setProviders(p.providers || []);
       setWalletBalance(typeof w?.balance === 'number' ? w.balance : parseFloat(w?.balance || '0'));
+      setFanvueUrl(c?.fanvueUrl || '');
       setLoading(false);
     })();
   }, []);
@@ -287,6 +290,31 @@ export default function PayMethodPicker({
                 <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', textAlign: 'center', padding: '14px 0' }}>
                   No payment methods configured. Contact support.
                 </p>
+              )}
+
+              {/* Fanvue alt path — logged-in only, never exposed to crawlers */}
+              {fanvueUrl && (
+                <>
+                  <p style={{ ...sectionLabel, marginTop: 14, textAlign: 'center' }}>
+                    Or prefer another platform?
+                  </p>
+                  <a
+                    href={fanvueUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      ...methodRow,
+                      background: 'linear-gradient(135deg, #fff7f1 0%, #ffe6dc 100%)',
+                      textDecoration: 'none',
+                    }}>
+                    <span style={{ fontSize: '1.4rem' }}>💎</span>
+                    <span style={{ flex: 1, textAlign: 'left' }}>
+                      <strong>Unlock on Fanvue</strong>
+                      <p style={subtext}>Pay with card on my verified Fanvue page</p>
+                    </span>
+                    <span style={arrow}>↗</span>
+                  </a>
+                </>
               )}
             </>
           )}

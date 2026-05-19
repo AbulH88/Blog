@@ -4,15 +4,18 @@ import { useNavigate, Link } from 'react-router-dom';
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** Deprecated — kept for prop compatibility but no longer rendered in this modal.
+   *  Fanvue is now exposed only to logged-in fans (FanSidebar + PayMethodPicker)
+   *  so it stays hidden from IG / Meta / Twitter crawlers. */
   fanvueUrl?: string;
   creatorName?: string;
 }
 
 /**
- * "Get Premium Access" modal — two-option chooser with a hero header.
+ * "Get Premium Access" modal — shown to visitors before login.
  * Desktop: centered card. Mobile: bottom sheet.
  */
-const JoinPremiumModal = ({ open, onClose, fanvueUrl, creatorName }: Props) => {
+const JoinPremiumModal = ({ open, onClose, creatorName }: Props) => {
   const navigate = useNavigate();
   const isLoggedIn = typeof window !== 'undefined' && !!localStorage.getItem('fanToken');
 
@@ -28,12 +31,6 @@ const JoinPremiumModal = ({ open, onClose, fanvueUrl, creatorName }: Props) => {
   }, [open, onClose]);
 
   if (!open) return null;
-
-  const handleFanvue = () => {
-    if (!fanvueUrl) return;
-    window.open(fanvueUrl, '_blank', 'noopener,noreferrer');
-    onClose();
-  };
 
   const handleJoinDirect = () => {
     onClose();
@@ -55,18 +52,6 @@ const JoinPremiumModal = ({ open, onClose, fanvueUrl, creatorName }: Props) => {
 
         {/* Body */}
         <div className="v3-modal-body">
-          {fanvueUrl && (
-            <button className="v3-option-card fanvue" onClick={handleFanvue}>
-              <span className="ico">💎</span>
-              <span className="meta">
-                <span className="t">Watch on Fanvue</span>
-                <span className="s">My verified Fanvue page — trusted &amp; secure</span>
-                <span className="pill">Recommended</span>
-              </span>
-              <span className="arrow">→</span>
-            </button>
-          )}
-
           <button className="v3-option-card primary" onClick={handleJoinDirect}>
             <span className="ico">{isLoggedIn ? '👋' : '✨'}</span>
             <span className="meta">
