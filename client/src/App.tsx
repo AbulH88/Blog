@@ -27,6 +27,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import NotFound from './pages/NotFound';
+import DMCA from './pages/DMCA';
 
 const Maintenance = () => (
   <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', background: '#000', color: '#fff' }}>
@@ -77,6 +78,24 @@ function App() {
           if (!og) { og = document.createElement('meta'); og.setAttribute('property', 'og:image'); document.head.appendChild(og); }
           og.setAttribute('content', data.seo.ogImage);
         }
+      }
+
+      // OG title / description / url — kept in sync with siteTitle even when
+      // seo.* fields aren't filled in. Logo is a safe fallback for og:image.
+      const setOg = (prop: string, value?: string | null) => {
+        if (!value) return;
+        let el: HTMLMetaElement | null = document.querySelector(`meta[property="${prop}"]`);
+        if (!el) { el = document.createElement('meta'); el.setAttribute('property', prop); document.head.appendChild(el); }
+        el.setAttribute('content', value);
+      };
+      setOg('og:title', data.seo?.metaTitle || data.siteTitle);
+      setOg('og:description', data.seo?.metaDescription || data.homeBio?.slice(0, 200));
+      setOg('og:url', window.location.origin);
+      // Fall back to logoUrl → hero image → favicon
+      const ogImg = data.seo?.ogImage || data.logoUrl || data.images?.hero || data.images?.heroSlider?.[0];
+      if (ogImg) {
+        const fullOgImg = ogImg.startsWith('http') ? ogImg : `${window.location.origin}${ogImg}`;
+        setOg('og:image', fullOgImg);
       }
 
       // Respect the search-indexable toggle — inject/remove <meta robots>
@@ -138,6 +157,7 @@ function App() {
                 <Route path="/terms" element={<Terms config={config} />} />
                 <Route path="/privacy" element={<Privacy config={config} />} />
                 <Route path="/2257" element={<Compliance2257 config={config} />} />
+                <Route path="/dmca" element={<DMCA />} />
                 <Route path="/payment/return" element={<PaymentReturn />} />
                 <Route path="/dashboard/payment-methods" element={<Navigate to="/dashboard/settings/payments" replace />} />
                 <Route path="/dashboard/settings" element={<FanSettings />} />

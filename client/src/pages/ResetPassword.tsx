@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { checkResetToken, submitPasswordReset } from '../api';
+import PasswordInput from '../components/PasswordInput';
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -93,19 +94,22 @@ export default function ResetPassword() {
             )}
 
             <label style={fieldLabel}>New password (≥ 8 characters)</label>
-            <input
-              type="password" autoFocus required
+            <PasswordInput
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              style={input}
+              onChange={setNewPassword}
+              required
+              autoComplete="new-password"
+              showStrength
+              style={{ marginBottom: 14 }}
             />
 
             <label style={fieldLabel}>Confirm new password</label>
-            <input
-              type="password" required
+            <PasswordInput
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              style={input}
+              onChange={setConfirmPassword}
+              required
+              autoComplete="new-password"
+              style={{ marginBottom: 14 }}
             />
 
             <button

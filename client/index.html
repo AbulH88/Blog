@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Default to no-index. App.tsx removes this dynamically when Creator.searchIndexable is true. -->
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+
+    <!-- Open Graph / Twitter Card defaults. App.tsx overrides these at runtime with
+         the live creator config. These fallbacks are what social-preview crawlers
+         (Slack, iMessage, etc.) see before any JS runs. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Cristina Adam" />
+    <meta property="og:description" content="A private creative space — direct messages and members-only content." />
+    <meta property="og:image" content="/favicon.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+
     <title>client</title>
   </head>
   <body>

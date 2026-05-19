@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { fanRegister } from '../api';
+import PasswordInput from '../components/PasswordInput';
 
 const Register = ({ config }: { config: any }) => {
   const [email, setEmail] = useState('');
@@ -54,10 +55,21 @@ const Register = ({ config }: { config: any }) => {
             onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
           <input type="text" placeholder="Username" value={username}
             onChange={(e) => setUsername(e.target.value)} required style={inputStyle} />
-          <input type="password" placeholder="Password (min 8 characters)" value={password}
-            onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
-          <input type="password" placeholder="Confirm password" value={confirm}
-            onChange={(e) => setConfirm(e.target.value)} required style={inputStyle} />
+          <PasswordInput
+            value={password}
+            onChange={setPassword}
+            placeholder="Password (min 8 characters)"
+            required
+            autoComplete="new-password"
+            showStrength
+          />
+          <PasswordInput
+            value={confirm}
+            onChange={setConfirm}
+            placeholder="Confirm password"
+            required
+            autoComplete="new-password"
+          />
           {error && <p style={{ color: 'var(--v3-danger)', fontSize: '0.84rem', margin: 0 }}>{error}</p>}
           <button type="submit" disabled={loading} className="v3-btn v3-btn-primary"
             style={{ marginTop: 4, opacity: loading ? 0.7 : 1, width: '100%' }}>

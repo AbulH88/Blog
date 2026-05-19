@@ -10,6 +10,7 @@ import {
 import FanSidebar from '../components/FanSidebar';
 import MobileBottomNav from '../components/MobileBottomNav';
 import AddCardModal from '../components/AddCardModal';
+import PasswordInput from '../components/PasswordInput';
 
 type Section = 'account' | 'payments' | 'notifications' | 'privacy' | 'help';
 type PaymentsTab = 'cards' | 'subscriptions' | 'history';
@@ -173,13 +174,13 @@ const FanSettings = () => {
         <h3 style={cardHeadStyle}>Change password</h3>
         <div style={{ display: 'grid', gap: 10 }}>
           <Field label="Current password">
-            <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} style={inputStyle} />
+            <PasswordInput value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
           </Field>
           <Field label="New password (≥ 8 chars)">
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} style={inputStyle} />
+            <PasswordInput value={newPassword} onChange={setNewPassword} autoComplete="new-password" showStrength />
           </Field>
           <Field label="Confirm new password">
-            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={inputStyle} />
+            <PasswordInput value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
           </Field>
           <div>
             <button onClick={changePassword} disabled={savingProfile} style={primaryBtn(savingProfile)}>

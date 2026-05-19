@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { creatorLogin, fanLogin } from '../api';
+import PasswordInput from '../components/PasswordInput';
 
 type Mode = 'creator' | 'fan';
 
@@ -82,8 +83,13 @@ const Login = () => {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <input type="email" placeholder="Email address" value={email}
             onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
-          <input type="password" placeholder="Password" value={password}
-            onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
+          <PasswordInput
+            value={password}
+            onChange={setPassword}
+            placeholder="Password"
+            required
+            autoComplete="current-password"
+          />
           {error && <p style={{ color: 'var(--v3-danger)', fontSize: '0.84rem', margin: 0 }}>{error}</p>}
           <button
             type="submit"

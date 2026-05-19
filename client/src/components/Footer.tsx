@@ -44,6 +44,7 @@ const Footer = ({ config }: { config: any }) => {
       <div className="v3-footer-links">
         <a href="/privacy">Privacy Policy</a>
         <a href="/terms">Terms</a>
+        <a href="/dmca">DMCA</a>
         {config?.disclosureVisible !== false && <a href="/2257">Disclosure</a>}
       </div>
     </footer>
