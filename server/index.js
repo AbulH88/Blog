@@ -38,7 +38,27 @@ app.use(helmet({
   contentSecurityPolicy: false, // disabled for now; frontend handles its own CSP if needed
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow /uploads/ to be embedded
 }));
-app.use(cors());
+// CORS allow-list — driven by env var ALLOWED_ORIGINS (comma-separated list).
+// Dev fallback: localhost on common ports. In prod, set this to the public
+// frontend URL(s) so a malicious site can't call your API from a user's browser.
+// `*` is intentionally NOT allowed alongside credentials.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => {
+    // No Origin header → same-origin request / mobile WebView / curl / SSR — allow.
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    // Returning false (not an Error) omits the Access-Control-Allow-Origin
+    // header so the browser blocks the response. We don't throw because
+    // throwing produces a 500; cleanest is silent header-omit + log.
+    console.warn('[cors] blocked origin:', origin);
+    return cb(null, false);
+  },
+  credentials: true,
+}));
 app.use(bodyParser.json({ limit: '1mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
