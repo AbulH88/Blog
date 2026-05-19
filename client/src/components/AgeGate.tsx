@@ -138,7 +138,7 @@ const AgeGate = ({ onVerify }: { onVerify: () => void }) => {
           lineHeight: 1.5,
         }}>
           Records of age verification consent are stored on your device.
-          See our <a href="/2257" target="_blank" style={{ color: '#C75A3E' }}>2257 Compliance</a> statement.
+          See our <a href="/2257" target="_blank" style={{ color: '#C75A3E' }}>AI Content Notice</a>.
         </p>
       </div>
     </div>
