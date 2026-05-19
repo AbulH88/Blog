@@ -6,8 +6,8 @@ const Compliance2257 = ({ config }: { config: any }) => {
   return (
     <div className="v3-legal">
       <div className="v3-legal-inner">
-        <h1>AI-Generated Content Notice</h1>
-        <p className="updated">Statement on Content Generation &amp; 18 U.S.C. § 2257</p>
+        <h1>Content Disclosure</h1>
+        <p className="updated">Statement on Content Production &amp; 18 U.S.C. § 2257</p>
 
         <div className="callout">
           <strong>All visual content on {brand} is computer-generated using artificial

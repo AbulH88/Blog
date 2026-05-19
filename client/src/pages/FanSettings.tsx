@@ -393,7 +393,7 @@ const FanSettings = () => {
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           <Link to="/privacy" style={linkStyle}>Privacy Policy →</Link>
           <Link to="/terms" style={linkStyle}>Terms of Service →</Link>
-          <Link to="/2257" style={linkStyle}>AI Content Notice →</Link>
+          <Link to="/2257" style={linkStyle}>Content Disclosure →</Link>
         </div>
       </div>
 
@@ -448,7 +448,7 @@ const FanSettings = () => {
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px' }}>
           <li style={{ padding: '8px 0' }}><Link to="/terms" style={linkStyle}>Terms of Service →</Link></li>
           <li style={{ padding: '8px 0' }}><Link to="/privacy" style={linkStyle}>Privacy Policy →</Link></li>
-          <li style={{ padding: '8px 0' }}><Link to="/2257" style={linkStyle}>AI Content Notice →</Link></li>
+          <li style={{ padding: '8px 0' }}><Link to="/2257" style={linkStyle}>Content Disclosure →</Link></li>
         </ul>
         <h3 style={cardHeadStyle}>Need help?</h3>
         <p style={{ fontSize: '0.9rem', color: 'var(--v3-ink-soft)' }}>
