@@ -1,6 +1,6 @@
 const express = require('express');
 const { Message, Creator, User, Subscription, Transaction, Collection, Post } = require('../models');
-const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+const { requireAuth, requireCreator, requireVerifiedEmail } = require('../middleware/authMiddleware');
 const { getProvider } = require('../payments/registry');
 const { Op } = require('sequelize');
 
@@ -116,7 +116,7 @@ router.get('/:creatorSlug/thread/:fanId', requireAuth, requireCreator, async (re
 });
 
 // POST /api/chat/:messageId/unlock — fan pays to unlock PPV message
-router.post('/:messageId/unlock', requireAuth, async (req, res) => {
+router.post('/:messageId/unlock', requireAuth, requireVerifiedEmail, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan access required' });
 

@@ -63,6 +63,8 @@ app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/creator/login', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/auth/resend-verification', authLimiter);
+app.use('/api/auth/verify-email', authLimiter);
 app.use('/api/wallet', writeLimiter);
 
 // ─── Multer (local upload — replaced by S3 in production) ─────────────────────

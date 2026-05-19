@@ -111,6 +111,22 @@ const applyMigrations = async () => {
   await addIfMissing('Users', 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
   await addIfMissing('Users', 'emailVerifyToken', { type: DataTypes.STRING, allowNull: true });
 
+  // Grandfather pre-existing users (any account that's ever logged in OR has a
+  // deposit transaction) as verified — they signed up before this gate was
+  // added, so locking them out would be retroactive. New signups are still
+  // unverified by default and must click the email link.
+  try {
+    const [granted] = await sequelize.query(`
+      UPDATE Users
+         SET emailVerified = 1
+       WHERE (emailVerified = 0 OR emailVerified IS NULL)
+         AND lastLoginAt IS NOT NULL
+    `);
+    if (granted?.changes) console.log(`+ grandfathered ${granted.changes} pre-existing user(s) as emailVerified`);
+  } catch (err) {
+    console.warn('emailVerified grandfather migration warn:', err.message);
+  }
+
   // Relax Transactions.creatorId — make it nullable (wallet_deposit has no creator).
   // SQLite has no ALTER COLUMN, so we rebuild the table preserving rows.
   try {

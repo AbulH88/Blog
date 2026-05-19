@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Transaction, Post, Collection, Message, PaymentMethod, Creator, User } = require('../models');
-const { requireAuth } = require('../middleware/authMiddleware');
+const { requireAuth, requireVerifiedEmail } = require('../middleware/authMiddleware');
 const { getProvider, hasProvider } = require('../payments/registry');
 
 const router = express.Router();
@@ -87,7 +87,7 @@ router.get('/status/:transactionId', requireAuth, async (req, res) => {
 // Body: { creatorId, amount, message?, paymentMethodId?, provider? }
 // - With paymentMethodId: one-tap charge with a saved card.
 // - Without: falls back to provider.createCheckout (mock/crypto redirect).
-router.post('/tip', requireAuth, async (req, res) => {
+router.post('/tip', requireAuth, requireVerifiedEmail, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
     const { creatorId, amount, message, paymentMethodId } = req.body || {};
@@ -235,7 +235,7 @@ router.post('/methods/:id/default', requireAuth, async (req, res) => {
 // ─── One-tap charge with a saved method ──────────────────────────────────────
 // Body: { paymentMethodId, productType: 'post_unlock'|'collection_unlock'|'ppv_message', productId }
 // Server looks up price (never trust client-supplied amount) and charges.
-router.post('/charge', requireAuth, async (req, res) => {
+router.post('/charge', requireAuth, requireVerifiedEmail, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
     const { paymentMethodId, productType, productId } = req.body || {};

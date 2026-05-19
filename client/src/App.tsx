@@ -25,6 +25,7 @@ import PaymentReturn from './pages/PaymentReturn';
 import FanSettings from './pages/FanSettings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 
 const Maintenance = () => (
   <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', background: '#000', color: '#fff' }}>
@@ -130,6 +131,7 @@ function App() {
                 <Route path="/register" element={<Register config={config} />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/dashboard" element={<FanDashboard />} />
                 <Route path="/chat" element={<Chat config={config} />} />
                 <Route path="/terms" element={<Terms config={config} />} />

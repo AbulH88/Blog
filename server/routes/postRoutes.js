@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { Post, Creator, Subscription, Transaction } = require('../models');
-const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+const { requireAuth, requireCreator, requireVerifiedEmail } = require('../middleware/authMiddleware');
 const { getProvider } = require('../payments/registry');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
@@ -196,7 +196,7 @@ router.delete('/:id', requireAuth, requireCreator, async (req, res) => {
 });
 
 // POST /api/posts/:id/unlock — fan pays the post's price to unlock it
-router.post('/:id/unlock', requireAuth, async (req, res) => {
+router.post('/:id/unlock', requireAuth, requireVerifiedEmail, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
 

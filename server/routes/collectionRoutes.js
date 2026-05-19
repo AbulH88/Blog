@@ -1,7 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { Collection, Post, Creator, Transaction } = require('../models');
-const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+const { requireAuth, requireCreator, requireVerifiedEmail } = require('../middleware/authMiddleware');
 const { getProvider } = require('../payments/registry');
 require('dotenv').config();
 
@@ -182,7 +182,7 @@ router.patch('/remove-post/:postId', requireAuth, requireCreator, async (req, re
 });
 
 // POST /api/collections/:id/unlock — fan unlocks a collection (mock — real payment via Stripe later)
-router.post('/:id/unlock', requireAuth, async (req, res) => {
+router.post('/:id/unlock', requireAuth, requireVerifiedEmail, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan access required' });
 

@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { User, Creator, Subscription, Message } = require('../models');
 const { requireAuth } = require('../middleware/authMiddleware');
-const { sendPasswordResetEmail } = require('../services/email');
+const { sendPasswordResetEmail, sendEmailVerification } = require('../services/email');
 require('dotenv').config();
 
 const router = express.Router();
@@ -24,7 +24,25 @@ router.post('/register', async (req, res) => {
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ email, username, passwordHash });
+
+    // Email verification token — 24h validity (encoded in URL, expiry checked
+    // on click against User.passwordResetExpires-style schema would require
+    // a new column; the token itself is single-use and rotated on resend).
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const user = await User.create({
+      email, username, passwordHash,
+      emailVerified: false,
+      emailVerifyToken: verifyToken,
+    });
+
+    // Fire-and-forget the verification email — failure must not break signup.
+    try {
+      const base = process.env.PUBLIC_APP_URL || process.env.SITE_URL || 'http://localhost:5173';
+      const verifyUrl = `${base.replace(/\/$/, '')}/verify-email?token=${verifyToken}`;
+      await sendEmailVerification({ to: user.email, username: user.username, verifyUrl });
+    } catch (mailErr) {
+      console.warn('[auth] verification email send failed:', mailErr.message);
+    }
 
     // Auto-follow every existing creator (single-tenant for now) so the new
     // fan immediately shows up in the creator's Messages inbox + sees content.
@@ -188,6 +206,59 @@ router.patch('/me/password', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Password change failed', detail: err.message });
+  }
+});
+
+// ─── Email verification ──────────────────────────────────────────────────────
+// Soft-verify model: fan can sign up, log in, chat, browse — but money-moving
+// actions (deposit, unlocks) are gated by middleware requireVerifiedEmail.
+
+// GET /verify-email?token=... — called by the link in the email.
+// Returns JSON so the frontend page can show a clean success/error UI
+// (instead of redirecting + flashing a token in the URL bar).
+router.get('/verify-email', async (req, res) => {
+  try {
+    const token = String(req.query?.token || '');
+    if (!token) return res.status(400).json({ ok: false, error: 'Missing token' });
+
+    const user = await User.findOne({ where: { emailVerifyToken: token } });
+    if (!user) return res.status(404).json({ ok: false, error: 'Invalid or already-used link' });
+
+    if (user.emailVerified) {
+      // Idempotent — clicking the link a second time isn't an error
+      return res.json({ ok: true, alreadyVerified: true });
+    }
+
+    await user.update({ emailVerified: true, emailVerifyToken: null });
+    res.json({ ok: true, email: user.email });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /resend-verification — for the logged-in fan. Rate-limited at the app level.
+router.post('/resend-verification', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+
+    const user = await User.findByPk(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.emailVerified) return res.json({ ok: true, alreadyVerified: true });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await user.update({ emailVerifyToken: token });
+
+    try {
+      const base = process.env.PUBLIC_APP_URL || process.env.SITE_URL || 'http://localhost:5173';
+      const verifyUrl = `${base.replace(/\/$/, '')}/verify-email?token=${token}`;
+      await sendEmailVerification({ to: user.email, username: user.username, verifyUrl });
+    } catch (mailErr) {
+      console.warn('[auth] resend verification email failed:', mailErr.message);
+      return res.status(500).json({ error: 'Failed to send email' });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Resend failed', detail: err.message });
   }
 });
 

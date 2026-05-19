@@ -206,6 +206,35 @@ export const submitPasswordReset = async (token: string, newPassword: string) =>
   return res.json();
 };
 
+// ─── Email verification (soft-verify model) ────────────────────────────────
+// Fan can sign up + log in immediately, but money-moving actions (deposit,
+// unlocks) return 402 { requiresEmailVerification: true } until verified.
+
+export const verifyEmailToken = async (token: string) => {
+  const res = await fetch(`${API_URL}/auth/verify-email?token=${encodeURIComponent(token)}`);
+  return res.json();
+};
+
+export const resendVerificationEmail = async () => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/auth/resend-verification`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
+/** Fetch the current fan's profile incl. emailVerified flag (for the banner). */
+export const getMe = async () => {
+  const fanToken = localStorage.getItem('fanToken');
+  if (!fanToken) return null;
+  const res = await fetch(`${API_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  if (!res.ok) return null;
+  return res.json();
+};
+
 export const deleteMyAccount = async (currentPassword: string) => {
   const fanToken = localStorage.getItem('fanToken');
   const res = await fetch(`${API_URL}/auth/me`, {

@@ -8,6 +8,7 @@ import {
 import MobileBottomNav from '../components/MobileBottomNav';
 import FanSidebar from '../components/FanSidebar';
 import WalletCard from '../components/WalletCard';
+import VerifyEmailBanner from '../components/VerifyEmailBanner';
 
 const fullUrl = (p?: string | null) => {
   if (!p) return '';
@@ -219,6 +220,9 @@ const FanDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Verify-email nudge — only shown when emailVerified === false */}
+        <VerifyEmailBanner />
 
         {/* Wallet */}
         <WalletCard
@@ -454,6 +458,8 @@ const FanDashboard = () => {
           <p className="tagline">{tagline}</p>
         </div>
       </div>
+
+      <VerifyEmailBanner />
 
       <WalletCard
         balance={walletBalance}

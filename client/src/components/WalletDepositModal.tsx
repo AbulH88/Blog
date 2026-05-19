@@ -53,6 +53,8 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
     if (res?.success) {
       onSuccess?.();
       onClose();
+    } else if (res?.requiresEmailVerification) {
+      setError('Please verify your email first — check your inbox or use the banner on your dashboard to resend the link.');
     } else if (res?.error) {
       setError(res.error);
     } else {

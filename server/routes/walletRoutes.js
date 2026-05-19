@@ -14,7 +14,7 @@
  */
 const express = require('express');
 const { User, Transaction } = require('../models');
-const { requireAuth } = require('../middleware/authMiddleware');
+const { requireAuth, requireVerifiedEmail } = require('../middleware/authMiddleware');
 const { getProvider, hasProvider } = require('../payments/registry');
 
 const router = express.Router();
@@ -48,7 +48,7 @@ router.get('/me', requireAuth, async (req, res) => {
 });
 
 // ─── POST deposit — create a NOWPayments invoice to add USD to wallet ────────
-router.post('/deposit', requireAuth, async (req, res) => {
+router.post('/deposit', requireAuth, requireVerifiedEmail, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
     const providerName = req.body?.provider || 'nowpayments';
@@ -97,7 +97,7 @@ router.post('/deposit', requireAuth, async (req, res) => {
 
 // ─── POST spend — debit wallet to unlock content (one-tap) ──────────────────
 // body: { productType: 'post_unlock'|'collection_unlock'|'ppv_message', productId }
-router.post('/spend', requireAuth, async (req, res) => {
+router.post('/spend', requireAuth, requireVerifiedEmail, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
     const { Post, Collection, Message } = require('../models');
