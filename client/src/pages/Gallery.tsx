@@ -68,9 +68,15 @@ const Gallery = ({ images }: { images: string[] }) => {
         </header>
 
         {visible.length === 0 ? (
-          <p style={{ marginTop: 40, color: 'rgba(255, 248, 240, 0.85)', fontStyle: 'italic' }}>
-            No photos yet — upload some in Admin → Gallery.
-          </p>
+          <div style={{
+            marginTop: 60, textAlign: 'center',
+            color: 'rgba(255, 248, 240, 0.85)',
+          }}>
+            <p style={{ fontSize: '2rem', margin: '0 0 6px', opacity: 0.7 }}>📷</p>
+            <p style={{ fontStyle: 'italic', fontSize: '1rem', margin: 0 }}>
+              No photos here yet — check back soon.
+            </p>
+          </div>
         ) : (
           <div className="v3-masonry">
             {visible.map((img, idx) => (

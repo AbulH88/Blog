@@ -26,6 +26,7 @@ import FanSettings from './pages/FanSettings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
+import NotFound from './pages/NotFound';
 
 const Maintenance = () => (
   <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', background: '#000', color: '#fff' }}>
@@ -142,7 +143,7 @@ function App() {
                 <Route path="/dashboard/settings" element={<FanSettings />} />
                 <Route path="/dashboard/settings/:section" element={<FanSettings />} />
                 <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
-                <Route path="*" element={<Navigate to="/" />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
             <Footer config={config} />

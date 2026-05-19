@@ -129,9 +129,15 @@ const Chat = ({ config }: { config: any }) => {
   const renderMessages = () => (
     <>
       {messages.length === 0 && (
-        <p style={{ textAlign: 'center', color: 'var(--v3-ink-soft)', marginTop: 30, fontSize: '0.9rem' }}>
-          Say hi to {creatorName} 👋
-        </p>
+        <div style={{ textAlign: 'center', color: 'var(--v3-ink-soft)', marginTop: 40, padding: '0 20px' }}>
+          <p style={{ fontSize: '2rem', margin: '0 0 6px' }}>💬</p>
+          <h3 style={{ fontFamily: 'var(--v3-heading)', fontSize: '1.15rem', color: 'var(--v3-ink)', margin: '0 0 6px' }}>
+            Start a conversation with {creatorName}
+          </h3>
+          <p style={{ fontSize: '0.86rem', margin: 0, lineHeight: 1.5 }}>
+            Replies are personal — no bots, no scripts. Tell her what you're into.
+          </p>
+        </div>
       )}
 
       {messages.map((msg, idx) => {

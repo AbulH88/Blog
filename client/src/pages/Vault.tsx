@@ -107,9 +107,15 @@ const Vault = ({ config }: { config: any }) => {
       </p>
 
       {standalone.length === 0 ? (
-        <p style={{ textAlign: 'center', color: 'var(--v3-muted)', fontSize: '0.86rem', padding: '32px 0' }}>
-          No content posted yet — check back soon ✨
-        </p>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--v3-ink-soft)' }}>
+          <p style={{ fontSize: '2.4rem', margin: '0 0 8px', opacity: 0.55 }}>✨</p>
+          <h3 style={{ fontFamily: 'var(--v3-heading)', fontSize: '1.3rem', color: 'var(--v3-ink)', margin: '0 0 6px' }}>
+            The vault is being curated
+          </h3>
+          <p style={{ fontSize: '0.9rem', margin: 0, lineHeight: 1.5, maxWidth: 360, marginInline: 'auto' }}>
+            New posts drop here regularly. In the meantime, say hi in the chat — that's usually where the good stuff starts.
+          </p>
+        </div>
       ) : (
         <div className="v3-lock-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
           {standalone.slice(0, 12).map(p => (
