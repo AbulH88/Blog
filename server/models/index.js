@@ -112,61 +112,82 @@ const applyMigrations = async () => {
   await addIfMissing('Users', 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
   await addIfMissing('Users', 'emailVerifyToken', { type: DataTypes.STRING, allowNull: true });
 
-  // Grandfather pre-existing users (any account that's ever logged in OR has a
-  // deposit transaction) as verified — they signed up before this gate was
-  // added, so locking them out would be retroactive. New signups are still
-  // unverified by default and must click the email link.
+  // Grandfather pre-existing users (any account that's ever logged in) as
+  // verified — they signed up before this gate was added, so locking them
+  // out would be retroactive. New signups are still unverified by default.
+  // Portable: use User.update() instead of raw SQL so booleans + row-count
+  // work on both SQLite and Postgres.
   try {
-    const [granted] = await sequelize.query(`
-      UPDATE Users
-         SET emailVerified = 1
-       WHERE (emailVerified = 0 OR emailVerified IS NULL)
-         AND lastLoginAt IS NOT NULL
-    `);
-    if (granted?.changes) console.log(`+ grandfathered ${granted.changes} pre-existing user(s) as emailVerified`);
+    const { Op } = require('sequelize');
+    const [affected] = await User.update(
+      { emailVerified: true },
+      {
+        where: {
+          [Op.and]: [
+            { lastLoginAt: { [Op.ne]: null } },
+            {
+              [Op.or]: [
+                { emailVerified: false },
+                { emailVerified: null },
+              ],
+            },
+          ],
+        },
+      },
+    );
+    if (affected) console.log(`+ grandfathered ${affected} pre-existing user(s) as emailVerified`);
   } catch (err) {
     console.warn('emailVerified grandfather migration warn:', err.message);
   }
 
   // Relax Transactions.creatorId — make it nullable (wallet_deposit has no creator).
-  // SQLite has no ALTER COLUMN, so we rebuild the table preserving rows.
+  // Postgres: simple ALTER COLUMN. SQLite: no ALTER COLUMN exists, so we rebuild
+  // the table while preserving rows.
   try {
-    const [rows] = await sequelize.query("SELECT sql FROM sqlite_master WHERE type='table' AND name='Transactions'");
-    const ddl = rows[0]?.sql || '';
-    const needsRebuild = /`?creatorId`?\s+INTEGER\s+NOT\s+NULL/i.test(ddl);
-    if (needsRebuild) {
-      await sequelize.query('PRAGMA foreign_keys = OFF');
-      await sequelize.query(`
-        CREATE TABLE Transactions_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          userId INTEGER NOT NULL,
-          creatorId INTEGER,
-          type TEXT NOT NULL,
-          amount DECIMAL(10,2) NOT NULL,
-          currency VARCHAR(255) DEFAULT 'USD',
-          stripePaymentId VARCHAR(255),
-          description VARCHAR(255) DEFAULT '',
-          referenceId INTEGER,
-          createdAt DATETIME NOT NULL,
-          updatedAt DATETIME NOT NULL,
-          status VARCHAR(255) DEFAULT 'completed',
-          provider VARCHAR(255),
-          providerInvoiceId VARCHAR(255),
-          providerChargeId VARCHAR(255),
-          webhookReceivedAt DATETIME
-        )
-      `);
-      await sequelize.query(`
-        INSERT INTO Transactions_new
-          (id, userId, creatorId, type, amount, currency, stripePaymentId, description, referenceId, createdAt, updatedAt, status, provider, providerInvoiceId, providerChargeId, webhookReceivedAt)
-        SELECT
-          id, userId, creatorId, type, amount, currency, stripePaymentId, description, referenceId, createdAt, updatedAt, status, provider, providerInvoiceId, providerChargeId, webhookReceivedAt
-        FROM Transactions
-      `);
-      await sequelize.query('DROP TABLE Transactions');
-      await sequelize.query('ALTER TABLE Transactions_new RENAME TO Transactions');
-      await sequelize.query('PRAGMA foreign_keys = ON');
-      console.log('+ relaxed Transactions.creatorId to nullable (preserved all rows)');
+    const dialect = sequelize.getDialect();
+    if (dialect === 'postgres') {
+      // Idempotent: if already nullable, the statement is a no-op-equivalent.
+      await sequelize.query('ALTER TABLE "Transactions" ALTER COLUMN "creatorId" DROP NOT NULL');
+      console.log('+ relaxed Transactions.creatorId to nullable (postgres)');
+    } else {
+      // SQLite path — rebuild only if still NOT NULL.
+      const [rows] = await sequelize.query("SELECT sql FROM sqlite_master WHERE type='table' AND name='Transactions'");
+      const ddl = rows[0]?.sql || '';
+      const needsRebuild = /`?creatorId`?\s+INTEGER\s+NOT\s+NULL/i.test(ddl);
+      if (needsRebuild) {
+        await sequelize.query('PRAGMA foreign_keys = OFF');
+        await sequelize.query(`
+          CREATE TABLE Transactions_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId INTEGER NOT NULL,
+            creatorId INTEGER,
+            type TEXT NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            currency VARCHAR(255) DEFAULT 'USD',
+            stripePaymentId VARCHAR(255),
+            description VARCHAR(255) DEFAULT '',
+            referenceId INTEGER,
+            createdAt DATETIME NOT NULL,
+            updatedAt DATETIME NOT NULL,
+            status VARCHAR(255) DEFAULT 'completed',
+            provider VARCHAR(255),
+            providerInvoiceId VARCHAR(255),
+            providerChargeId VARCHAR(255),
+            webhookReceivedAt DATETIME
+          )
+        `);
+        await sequelize.query(`
+          INSERT INTO Transactions_new
+            (id, userId, creatorId, type, amount, currency, stripePaymentId, description, referenceId, createdAt, updatedAt, status, provider, providerInvoiceId, providerChargeId, webhookReceivedAt)
+          SELECT
+            id, userId, creatorId, type, amount, currency, stripePaymentId, description, referenceId, createdAt, updatedAt, status, provider, providerInvoiceId, providerChargeId, webhookReceivedAt
+          FROM Transactions
+        `);
+        await sequelize.query('DROP TABLE Transactions');
+        await sequelize.query('ALTER TABLE Transactions_new RENAME TO Transactions');
+        await sequelize.query('PRAGMA foreign_keys = ON');
+        console.log('+ relaxed Transactions.creatorId to nullable (sqlite rebuild)');
+      }
     }
   } catch (err) {
     console.warn('Transactions schema relax failed:', err.message);
