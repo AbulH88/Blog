@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { getCreator } from './api';
 import './styles/main.css';
@@ -8,31 +8,42 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import AgeGate from './components/AgeGate';
 
+// Eager — small + likely visited (home, login flow, footer pages)
 import Home from './pages/Home';
-import Gallery from './pages/Gallery';
-import Vault from './pages/Vault';
-import Blog from './pages/Blog';
-import About from './pages/About';
-import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import FanDashboard from './pages/FanDashboard';
-import Chat from './pages/Chat';
-import Terms from './pages/Terms';
-import Privacy from './pages/Privacy';
-import Compliance2257 from './pages/Compliance2257';
-import PaymentReturn from './pages/PaymentReturn';
-import FanSettings from './pages/FanSettings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import NotFound from './pages/NotFound';
-import DMCA from './pages/DMCA';
+
+// Lazy — heavy or behind-login pages. Saves ~150KB from the initial bundle.
+// Fans browsing Home → Vault don't download Admin's 1800-line component
+// until they actually visit /admin (which most never will).
+const Gallery        = lazy(() => import('./pages/Gallery'));
+const Vault          = lazy(() => import('./pages/Vault'));
+const Blog           = lazy(() => import('./pages/Blog'));
+const About          = lazy(() => import('./pages/About'));
+const Admin          = lazy(() => import('./pages/Admin'));
+const FanDashboard   = lazy(() => import('./pages/FanDashboard'));
+const Chat           = lazy(() => import('./pages/Chat'));
+const Terms          = lazy(() => import('./pages/Terms'));
+const Privacy        = lazy(() => import('./pages/Privacy'));
+const Compliance2257 = lazy(() => import('./pages/Compliance2257'));
+const PaymentReturn  = lazy(() => import('./pages/PaymentReturn'));
+const FanSettings    = lazy(() => import('./pages/FanSettings'));
+const DMCA           = lazy(() => import('./pages/DMCA'));
 
 const Maintenance = () => (
   <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', background: '#000', color: '#fff' }}>
     <h1>Coming Soon</h1>
     <p>We are currently updating our digital experience. Please check back later.</p>
+  </div>
+);
+
+const RouteLoader = () => (
+  <div className="loading" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--v3-muted)' }}>
+    Loading…
   </div>
 );
 
@@ -127,11 +138,13 @@ function App() {
       )}
       <div className="app">
         {isMaintenance ? (
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
-            <Route path="*" element={<Maintenance />} />
-          </Routes>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
+              <Route path="*" element={<Maintenance />} />
+            </Routes>
+          </Suspense>
         ) : (
           <>
             <Navbar
@@ -141,30 +154,32 @@ function App() {
               avatarUrl={config.chatAvatarUrl || config.images?.hero || config.images?.heroSlider?.[0] || config.logoUrl}
             />
             <main className="container">
-              <Routes>
-                <Route path="/" element={<Home config={config} />} />
-                <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
-                <Route path="/vault" element={<Vault config={config} />} />
-                <Route path="/blog" element={<Blog blog={config.blog} />} />
-                <Route path="/about" element={<About config={config} />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register config={config} />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/verify-email" element={<VerifyEmail />} />
-                <Route path="/dashboard" element={<FanDashboard />} />
-                <Route path="/chat" element={<Chat config={config} />} />
-                <Route path="/terms" element={<Terms config={config} />} />
-                <Route path="/privacy" element={<Privacy config={config} />} />
-                <Route path="/2257" element={<Compliance2257 config={config} />} />
-                <Route path="/dmca" element={<DMCA />} />
-                <Route path="/payment/return" element={<PaymentReturn />} />
-                <Route path="/dashboard/payment-methods" element={<Navigate to="/dashboard/settings/payments" replace />} />
-                <Route path="/dashboard/settings" element={<FanSettings />} />
-                <Route path="/dashboard/settings/:section" element={<FanSettings />} />
-                <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <Suspense fallback={<RouteLoader />}>
+                <Routes>
+                  <Route path="/" element={<Home config={config} />} />
+                  <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
+                  <Route path="/vault" element={<Vault config={config} />} />
+                  <Route path="/blog" element={<Blog blog={config.blog} />} />
+                  <Route path="/about" element={<About config={config} />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register config={config} />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
+                  <Route path="/dashboard" element={<FanDashboard />} />
+                  <Route path="/chat" element={<Chat config={config} />} />
+                  <Route path="/terms" element={<Terms config={config} />} />
+                  <Route path="/privacy" element={<Privacy config={config} />} />
+                  <Route path="/2257" element={<Compliance2257 config={config} />} />
+                  <Route path="/dmca" element={<DMCA />} />
+                  <Route path="/payment/return" element={<PaymentReturn />} />
+                  <Route path="/dashboard/payment-methods" element={<Navigate to="/dashboard/settings/payments" replace />} />
+                  <Route path="/dashboard/settings" element={<FanSettings />} />
+                  <Route path="/dashboard/settings/:section" element={<FanSettings />} />
+                  <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </main>
             <Footer config={config} />
           </>

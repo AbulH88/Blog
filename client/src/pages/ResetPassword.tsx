@@ -134,8 +134,3 @@ const fieldLabel: React.CSSProperties = {
   display: 'block', fontSize: '0.78rem', color: 'var(--v3-muted)',
   marginTop: 12, marginBottom: 4, fontWeight: 600,
 };
-const input: React.CSSProperties = {
-  width: '100%', padding: '11px 14px', borderRadius: 10,
-  border: '1px solid var(--v3-rose-100)', fontSize: '0.96rem',
-  boxSizing: 'border-box', outline: 'none',
-};
