@@ -62,6 +62,16 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,ht
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+// gzip / deflate compression on all API responses. Cloudflare also compresses
+// edge-side, but origin compression saves bandwidth between VPS and CF, and
+// is what fans see on cache MISS (the first hit per file per region).
+// level=6 is the sweet spot — ~70% size reduction with minimal CPU cost.
+const compression = require('compression');
+app.use(compression({
+  level: 6,
+  threshold: 1024, // don't bother for responses < 1 KB
+}));
+
 app.use(cors({
   origin: (origin, cb) => {
     // No Origin header → same-origin request / mobile WebView / curl / SSR — allow.
