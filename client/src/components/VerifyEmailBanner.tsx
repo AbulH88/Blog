@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getMe, resendVerificationEmail } from '../api';
+import { useToast } from './Toast';
 
 /**
  * Yellow banner shown on Dashboard / Settings until the fan verifies their
@@ -12,6 +13,7 @@ export default function VerifyEmailBanner() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     (async () => {
@@ -40,13 +42,14 @@ export default function VerifyEmailBanner() {
       if (res?.ok) {
         setSent(true);
         setCooldown(60);
+        toast.success('Verification email sent — check your inbox.');
       } else if (res?.error) {
-        alert(res.error);
+        toast.error(res.error);
       } else {
-        alert('Could not send right now — please try again in a moment.');
+        toast.error('Could not send right now — please try again in a moment.');
       }
     } catch (err: any) {
-      alert(err?.message || 'Network error — please try again.');
+      toast.error(err?.message || 'Network error — please try again.');
     } finally {
       setSending(false);
     }
