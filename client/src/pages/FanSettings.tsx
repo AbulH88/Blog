@@ -278,18 +278,7 @@ const FanSettings = () => {
             </ul>
           )}
 
-          <button
-            type="button"
-            onClick={() => setAddCardOpen(true)}
-            style={{
-              marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'var(--v3-terracotta)', color: '#fff', border: 'none',
-              borderRadius: 22, padding: '10px 20px', fontSize: '0.86rem', fontWeight: 700,
-              cursor: 'pointer',
-            }}>
-            <span style={{ fontSize: '1.1rem' }}>＋</span>
-            Add new card
-          </button>
+          {/* Add card disabled — raw PAN collection removed pending PCI-compliant processor */}
         </div>
       )}
 
@@ -531,12 +520,6 @@ const FanSettings = () => {
         <MobileBottomNav />
       </div>
 
-      {addCardOpen && (
-        <AddCardModal
-          onClose={() => setAddCardOpen(false)}
-          onAdded={reloadCards}
-        />
-      )}
     </>
   );
 };

@@ -59,7 +59,19 @@ const PORT = process.env.PORT || 5000;
 // Security headers — relaxed CSP because frontend is served from the same origin
 // in production (Nginx serves /var/www/<creator>-build/) but talks to /api/.
 app.use(helmet({
-  contentSecurityPolicy: false, // disabled for now; frontend handles its own CSP if needed
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      mediaSrc: ["'self'", 'https:'],
+      connectSrc: ["'self'", 'wss:', 'ws:', 'https:'],
+      fontSrc: ["'self'", 'https:'],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+    },
+  },
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow /uploads/ to be embedded
 }));
 // gzip / deflate compression on all API responses. Cloudflare also compresses

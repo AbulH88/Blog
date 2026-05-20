@@ -128,6 +128,7 @@ const setupSocket = (io) => {
     // Fan sends message to creator
     socket.on('fan_message', async ({ creatorSlug, content }) => {
       try {
+        if (!content || typeof content !== 'string' || content.length > 5000) return;
         const creator = await Creator.findOne({ where: { slug: creatorSlug } });
         if (!creator || user.role !== 'fan') return;
 
@@ -164,6 +165,7 @@ const setupSocket = (io) => {
     socket.on('creator_reply', async ({ fanId, content, isPPV, ppvPrice, mediaUrl, collectionId }) => {
       try {
         if (user.role !== 'creator') return;
+        if (content && (typeof content !== 'string' || content.length > 5000)) return;
         await sendCreatorMessage({
           io,
           creatorId: user.creatorId,
