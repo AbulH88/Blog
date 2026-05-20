@@ -3,7 +3,15 @@ const multer = require('multer');
 const path = require('path');
 const { Post, Creator, Subscription, Transaction } = require('../models');
 const { requireAuth, requireCreator, requireVerifiedEmail } = require('../middleware/authMiddleware');
-const { getProvider } = require('../payments/registry');
+const { getProvider, hasProvider } = require('../payments/registry');
+
+const PROD_PROVIDERS = ['nowpayments', 'card'];
+function resolveProvider(body) {
+  const name = body?.provider;
+  if (!name || (process.env.NODE_ENV === 'production' && !PROD_PROVIDERS.includes(name))) return null;
+  if (!hasProvider(name)) return null;
+  return name;
+}
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
@@ -220,7 +228,8 @@ router.post('/:id/unlock', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'This post is part of a bundle — unlock the bundle to access it.' });
     }
 
-    const providerName = req.body?.provider || 'mock';
+    const providerName = resolveProvider(req.body);
+    if (!providerName) return res.status(400).json({ error: 'Valid payment provider required (nowpayments or card)' });
     const provider = getProvider(providerName);
     const creator = await Creator.findByPk(post.creatorId);
 

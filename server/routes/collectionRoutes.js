@@ -2,7 +2,15 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { Collection, Post, Creator, Transaction } = require('../models');
 const { requireAuth, requireCreator, requireVerifiedEmail } = require('../middleware/authMiddleware');
-const { getProvider } = require('../payments/registry');
+const { getProvider, hasProvider } = require('../payments/registry');
+
+const PROD_PROVIDERS = ['nowpayments', 'card'];
+function resolveProvider(body) {
+  const name = body?.provider;
+  if (!name || (process.env.NODE_ENV === 'production' && !PROD_PROVIDERS.includes(name))) return null;
+  if (!hasProvider(name)) return null;
+  return name;
+}
 require('dotenv').config();
 
 const router = express.Router();
@@ -195,7 +203,8 @@ router.post('/:id/unlock', requireAuth, async (req, res) => {
     });
     if (existing) return res.json({ success: true, alreadyUnlocked: true });
 
-    const providerName = req.body?.provider || 'mock';
+    const providerName = resolveProvider(req.body);
+    if (!providerName) return res.status(400).json({ error: 'Valid payment provider required (nowpayments or card)' });
     const provider = getProvider(providerName);
     const creator = await Creator.findByPk(col.creatorId);
 

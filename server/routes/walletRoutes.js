@@ -13,7 +13,8 @@
  *  - Idempotent against repeated charges for the same product (relies on caller's check).
  */
 const express = require('express');
-const { User, Transaction } = require('../models');
+const { User, Transaction, sequelize } = require('../models');
+const { Op } = require('sequelize');
 const { requireAuth, requireVerifiedEmail } = require('../middleware/authMiddleware');
 const { getProvider, hasProvider } = require('../payments/registry');
 
@@ -162,16 +163,19 @@ router.post('/spend', requireAuth, async (req, res) => {
       return res.json({ success: true, alreadyUnlocked: true });
     }
 
-    // Atomic balance check + debit.
-    const user = await User.findByPk(req.user.userId);
-    const balance = parseFloat(user.walletBalance || 0);
-    if (balance < amount) {
+    // Atomic debit — single UPDATE that both checks and subtracts, no race condition.
+    const [rowsAffected] = await User.update(
+      { walletBalance: sequelize.literal(`walletBalance - ${amount}`) },
+      { where: { id: req.user.userId, walletBalance: { [Op.gte]: amount } } }
+    );
+    if (!rowsAffected) {
+      const user = await User.findByPk(req.user.userId, { attributes: ['walletBalance'] });
+      const balance = parseFloat(user?.walletBalance || 0);
       return res.status(402).json({
         error: 'Insufficient wallet balance',
         balance, required: amount, shortBy: Number((amount - balance).toFixed(2)),
       });
     }
-    await user.update({ walletBalance: Number((balance - amount).toFixed(2)) });
 
     const tx = await Transaction.create({
       userId: req.user.userId,
@@ -198,10 +202,11 @@ router.post('/spend', requireAuth, async (req, res) => {
       props: { type: effectiveType, amount, provider: 'wallet' },
     });
 
+    const updated = await User.findByPk(req.user.userId, { attributes: ['walletBalance'] });
     res.json({
       success: true,
       transactionId: tx.id,
-      newBalance: Number((balance - amount).toFixed(2)),
+      newBalance: parseFloat(updated.walletBalance || 0),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

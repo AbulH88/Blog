@@ -37,34 +37,52 @@ if [ ! -d "$SERVER_DIR" ]; then
   exit 1
 fi
 
-if [ ! -f "$SERVER_DIR/database.sqlite" ]; then
-  echo "[backup] WARN: database.sqlite not found in $SERVER_DIR — backing up uploads only" >&2
-fi
-
 mkdir -p "$BACKUP_DIR"
 
-# ── Create archive ──────────────────────────────────────────────────────────
+# ── Postgres dump (primary database) ────────────────────────────────────────
+DB_DUMP=""
+if [ -n "${DB_NAME:-}" ] || [ -n "${DATABASE_URL:-}" ]; then
+  DB_DUMP="$BACKUP_DIR/db-${TIMESTAMP}.dump"
+  echo "[backup] running pg_dump -> $DB_DUMP"
+  if [ -n "${DATABASE_URL:-}" ]; then
+    pg_dump -Fc "$DATABASE_URL" > "$DB_DUMP" || { echo "[backup] ERROR: pg_dump failed" >&2; exit 1; }
+  else
+    PGPASSWORD="${DB_PASSWORD:-}" pg_dump -Fc \
+      -h "${DB_HOST:-localhost}" \
+      -p "${DB_PORT:-5432}" \
+      -U "${DB_USER:-postgres}" \
+      "${DB_NAME}" > "$DB_DUMP" || { echo "[backup] ERROR: pg_dump failed" >&2; exit 1; }
+  fi
+  echo "[backup] pg_dump complete ($(du -h "$DB_DUMP" | cut -f1))"
+else
+  if [ ! -f "$SERVER_DIR/database.sqlite" ]; then
+    echo "[backup] WARN: no DB_NAME env var and no database.sqlite - DB not backed up" >&2
+  fi
+fi
+
+# ── Create archive (uploads + data) ─────────────────────────────────────────
 echo "[backup] $(date -u +'%Y-%m-%dT%H:%M:%SZ') creating $ARCHIVE"
 cd "$SERVER_DIR"
 
-# Pieces to include — only existing ones
 INCLUDE=()
 [ -f database.sqlite ] && INCLUDE+=("database.sqlite")
 [ -d uploads ]        && INCLUDE+=("uploads")
-[ -d data ]           && INCLUDE+=("data")  # legacy config.json + analytics
+[ -d data ]           && INCLUDE+=("data")
 
-if [ ${#INCLUDE[@]} -eq 0 ]; then
+if [ ${#INCLUDE[@]} -eq 0 ] && [ -z "$DB_DUMP" ]; then
   echo "[backup] ERROR: nothing to back up" >&2
   exit 1
 fi
 
-tar -czf "$BACKUP_DIR/$ARCHIVE" "${INCLUDE[@]}"
-SIZE_HUMAN=$(du -h "$BACKUP_DIR/$ARCHIVE" | cut -f1)
-echo "[backup] wrote $BACKUP_DIR/$ARCHIVE ($SIZE_HUMAN)"
+if [ ${#INCLUDE[@]} -gt 0 ]; then
+  tar -czf "$BACKUP_DIR/$ARCHIVE" "${INCLUDE[@]}"
+  echo "[backup] wrote $BACKUP_DIR/$ARCHIVE ($(du -h "$BACKUP_DIR/$ARCHIVE" | cut -f1))"
+fi
 
 # ── Local rotation ──────────────────────────────────────────────────────────
 echo "[backup] pruning local backups older than ${KEEP_DAYS}d"
 find "$BACKUP_DIR" -maxdepth 1 -name 'cristina-*.tar.gz' -mtime "+${KEEP_DAYS}" -print -delete || true
+find "$BACKUP_DIR" -maxdepth 1 -name 'db-*.dump' -mtime "+${KEEP_DAYS}" -print -delete || true
 
 # ── Off-site sync (optional) ────────────────────────────────────────────────
 if [ -n "$RCLONE_REMOTE" ]; then

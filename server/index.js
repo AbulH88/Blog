@@ -5,7 +5,6 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { Server } = require('socket.io');
@@ -13,6 +12,7 @@ const { Server } = require('socket.io');
 const { syncDatabase } = require('./models');
 const { initPayments } = require('./payments');
 const sentryService = require('./services/sentry');
+const { requireAuth, requireCreator } = require('./middleware/authMiddleware');
 const authRoutes = require('./routes/authRoutes');
 const creatorRoutes = require('./routes/creatorRoutes');
 const postRoutes = require('./routes/postRoutes');
@@ -21,11 +21,19 @@ const chatRoutes = require('./routes/chatRoutes');
 const collectionRoutes = require('./routes/collectionRoutes');
 const setupSocket = require('./socket');
 
+// Allowed origins — driven by ALLOWED_ORIGINS env var (comma-separated).
+// Must be set in production to your frontend domain(s).
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
 const app = express();
+app.set('trust proxy', 1); // required behind nginx/Cloudflare so req.ip is the real client IP
 sentryService.init(app); // no-op if SENTRY_DSN unset
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
 });
 
 // Socket.IO Redis adapter — when Redis is enabled, real-time events propagate
@@ -54,14 +62,6 @@ app.use(helmet({
   contentSecurityPolicy: false, // disabled for now; frontend handles its own CSP if needed
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow /uploads/ to be embedded
 }));
-// CORS allow-list — driven by env var ALLOWED_ORIGINS (comma-separated list).
-// Dev fallback: localhost on common ports. In prod, set this to the public
-// frontend URL(s) so a malicious site can't call your API from a user's browser.
-// `*` is intentionally NOT allowed alongside credentials.
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
 // gzip / deflate compression on all API responses. Cloudflare also compresses
 // edge-side, but origin compression saves bandwidth between VPS and CF, and
 // is what fans see on cache MISS (the first hit per file per region).
@@ -144,6 +144,16 @@ app.use('/api/auth/resend-verification', authLimiter);
 app.use('/api/auth/verify-email', authLimiter);
 app.use('/api/wallet', writeLimiter);
 
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  max: 20, // 20 AI requests per IP per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: limiterStore ? limiterStore('ai') : undefined,
+  message: { error: 'Too many AI requests. Please slow down.' },
+});
+app.use('/api/ai', aiLimiter);
+
 // ─── Multer (local upload — replaced by S3 in production) ─────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -165,33 +175,6 @@ const upload = multer({
 });
 const { processImageUploads } = require('./middleware/imageProcess');
 
-// ─── V1 Legacy helpers (config.json — kept for backward compat during migration) ─
-const CONFIG_PATH = path.join(__dirname, 'data', 'config.json');
-
-const getConfig = () => JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-const saveConfig = (config) => fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-
-// ─── Traffic tracking (V1) ─────────────────────────────────────────────────────
-const trackTraffic = (req, res, next) => {
-  if (req.path.startsWith('/api') || req.path.includes('.')) return next();
-  try {
-    const config = getConfig();
-    if (!config.analytics) config.analytics = { totalHits: 0, pages: {}, referrers: {} };
-    config.analytics.totalHits += 1;
-    const page = req.path || '/';
-    config.analytics.pages[page] = (config.analytics.pages[page] || 0) + 1;
-    const referrer = req.get('Referrer') || 'Direct';
-    const source = referrer.includes('instagram.com') ? 'Instagram'
-      : referrer.includes('t.co') || referrer.includes('twitter.com') ? 'Twitter/X'
-      : referrer.includes('facebook.com') ? 'Facebook'
-      : referrer.includes('tiktok.com') ? 'TikTok'
-      : 'Other/Direct';
-    config.analytics.referrers[source] = (config.analytics.referrers[source] || 0) + 1;
-    saveConfig(config);
-  } catch { /* non-fatal */ }
-  next();
-};
-app.use(trackTraffic);
 
 // ─── robots.txt — respects Creator.searchIndexable ───────────────────────────
 // Adult sites usually want to be invisible to Google/Bing/IG bots by default.
@@ -267,48 +250,8 @@ app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/instagram', require('./routes/instagramRoutes'));
 app.use('/api/ai', require('./routes/aiChatRoutes'));
 
-// ─── V1 Legacy Routes (kept during frontend migration to V2) ───────────────────
-app.get('/api/analytics', (req, res) => {
-  try {
-    res.json(getConfig().analytics || { totalHits: 0, pages: {}, referrers: {} });
-  } catch {
-    res.status(500).json({ error: 'Failed to fetch analytics' });
-  }
-});
-
-app.get('/api/config', (req, res) => {
-  try {
-    const { adminPassword, ...publicConfig } = getConfig();
-    res.json(publicConfig);
-  } catch {
-    res.status(500).json({ error: 'Failed to read config' });
-  }
-});
-
-app.post('/api/login', (req, res) => {
-  const { password } = req.body;
-  const config = getConfig();
-  if (password === config.adminPassword) {
-    res.json({ success: true, token: 'legacy-admin-token' });
-  } else {
-    res.status(401).json({ error: 'Invalid password' });
-  }
-});
-
-app.post('/api/config', (req, res) => {
-  try {
-    const updates = req.body;
-    const current = getConfig();
-    const updated = { ...current, ...updates };
-    if (updates.newPassword) { updated.adminPassword = updates.newPassword; delete updated.newPassword; }
-    saveConfig(updated);
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: 'Failed to save config' });
-  }
-});
-
-app.post('/api/upload', upload.single('image'), processImageUploads, (req, res) => {
+// ─── Admin upload ──────────────────────────────────────────────────────────────
+app.post('/api/upload', requireAuth, requireCreator, writeLimiter, upload.single('image'), processImageUploads, (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   res.json({ url: `/uploads/${req.file.filename}` });
 });

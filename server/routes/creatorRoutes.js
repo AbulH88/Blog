@@ -33,9 +33,20 @@ router.patch('/:slug', requireAuth, requireCreator, async (req, res) => {
     if (!creator) return res.status(404).json({ error: 'Creator not found' });
     if (creator.id !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
 
-    const { passwordHash, email, id, slug, newPassword, ...allowed } = req.body;
-    if (newPassword) {
-      allowed.passwordHash = await bcrypt.hash(newPassword, 12);
+    const ALLOWED_FIELDS = [
+      'displayName', 'bio', 'shortBio', 'profileImage', 'heroImages',
+      'galleryImages', 'theme', 'fanvueUrl', 'billingDescriptor', 'logoUrl',
+      'featuredLinks', 'instagramPosts', 'links', 'seo', 'blog', 'faq',
+      'mustHaves', 'isLive', 'maintenanceMode', 'welcomeMessage',
+      'welcomeEnabled', 'welcomePpvText', 'welcomeMediaUrl', 'welcomePpvPrice',
+      'chatAvatarUrl', 'ageGateEnabled', 'disclosureVisible', 'searchIndexable',
+      'aiAutoReplyEnabled', 'aiNsfwLevel', 'aiApprovalRequired', 'aiPersonaPrompt',
+    ];
+    const allowed = Object.fromEntries(
+      Object.entries(req.body).filter(([k]) => ALLOWED_FIELDS.includes(k))
+    );
+    if (req.body.newPassword) {
+      allowed.passwordHash = await bcrypt.hash(req.body.newPassword, 12);
     }
     await creator.update(allowed);
     // Bust the public cache so fans see the change on the next request
@@ -121,7 +132,11 @@ router.get('/:slug/link/:linkIdx', async (req, res) => {
     links[idx] = link;
     await creator.update({ featuredLinks: links });
 
-    return res.redirect(link.href || '/');
+    const target = link.href || '/';
+    if (!/^https?:\/\//i.test(target) && !target.startsWith('/')) {
+      return res.status(400).send('Invalid link target');
+    }
+    return res.redirect(target);
   } catch (err) {
     return res.status(500).send('Click tracker failed: ' + err.message);
   }

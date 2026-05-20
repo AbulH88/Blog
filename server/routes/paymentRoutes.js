@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { Transaction, Post, Collection, Message, PaymentMethod, Creator, User } = require('../models');
+const { Transaction, Post, Collection, Message, PaymentMethod, Creator, User, sequelize } = require('../models');
 const { requireAuth, requireVerifiedEmail } = require('../middleware/authMiddleware');
 const { getProvider, hasProvider } = require('../payments/registry');
 
@@ -18,12 +18,11 @@ async function applyUnlock(tx) {
     if (msg && !msg.isUnlocked) await msg.update({ isUnlocked: true });
   }
   if (tx.type === 'wallet_deposit') {
-    const user = await User.findByPk(tx.userId);
-    if (user) {
-      const current = parseFloat(user.walletBalance || 0);
-      const add = parseFloat(tx.amount || 0);
-      await user.update({ walletBalance: Number((current + add).toFixed(2)) });
-    }
+    const add = Number(parseFloat(tx.amount || 0).toFixed(2));
+    await User.update(
+      { walletBalance: sequelize.literal(`walletBalance + ${add}`) },
+      { where: { id: tx.userId } }
+    );
     events.log('deposit_completed', {
       userId: tx.userId, props: { amount: parseFloat(tx.amount || 0), provider: tx.provider },
     });
@@ -100,7 +99,14 @@ router.post('/tip', requireAuth, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
     const { creatorId, amount, message, paymentMethodId } = req.body || {};
-    const providerName = req.body?.provider || 'mock';
+    const PROD_PROVIDERS = ['nowpayments', 'card'];
+    const providerName = req.body?.provider;
+    if (!providerName || (process.env.NODE_ENV === 'production' && !PROD_PROVIDERS.includes(providerName))) {
+      return res.status(400).json({ error: 'Valid payment provider required (nowpayments or card)' });
+    }
+    if (!hasProvider(providerName)) {
+      return res.status(503).json({ error: `Provider ${providerName} not configured` });
+    }
 
     const amt = parseFloat(amount);
     if (!creatorId || !amt || amt < 1 || amt > 1000) {

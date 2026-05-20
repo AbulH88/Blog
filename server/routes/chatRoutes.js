@@ -1,7 +1,15 @@
 const express = require('express');
 const { Message, Creator, User, Subscription, Transaction, Collection, Post } = require('../models');
 const { requireAuth, requireCreator, requireVerifiedEmail } = require('../middleware/authMiddleware');
-const { getProvider } = require('../payments/registry');
+const { getProvider, hasProvider } = require('../payments/registry');
+
+const PROD_PROVIDERS = ['nowpayments', 'card'];
+function resolveProvider(body) {
+  const name = body?.provider;
+  if (!name || (process.env.NODE_ENV === 'production' && !PROD_PROVIDERS.includes(name))) return null;
+  if (!hasProvider(name)) return null;
+  return name;
+}
 const { Op } = require('sequelize');
 
 const router = express.Router();
@@ -126,7 +134,8 @@ router.post('/:messageId/unlock', requireAuth, async (req, res) => {
     if (msg.isUnlocked) return res.json({ success: true, message: msg });
     if (msg.fanId !== req.user.userId) return res.status(403).json({ error: 'Forbidden' });
 
-    const providerName = req.body?.provider || 'mock';
+    const providerName = resolveProvider(req.body);
+    if (!providerName) return res.status(400).json({ error: 'Valid payment provider required (nowpayments or card)' });
     const provider = getProvider(providerName);
     const creator = await Creator.findByPk(msg.creatorId);
     const isBundle = !!msg.collectionId;

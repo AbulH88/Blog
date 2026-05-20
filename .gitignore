@@ -9,6 +9,7 @@ dist/
 build/
 
 # Dev databases + backups
+server/data/config.json
 server/data/*.db
 server/data/*.db.bak
 server/data/*.db-journal
