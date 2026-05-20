@@ -589,7 +589,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                     <div key={post.id} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       <div style={{ width: 48, height: 48, flexShrink: 0, borderRadius: 8, overflow: 'hidden', background: 'var(--v3-cream-deep)' }}>
                         {post.mediaUrls?.[0]
-                          ? <img src={`${SERVER_URL}${post.mediaUrls[0]}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ? <img src={`${SERVER_URL}${post.mediaUrls[0]}`} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           : <span style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#999' }}>📝</span>}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
@@ -977,7 +977,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                     sliderDragIdx.current = null;
                     setFormData((prev: any) => ({ ...prev, images: { ...prev.images, heroSlider: next } }));
                   }}>
-                  <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
+                  <img src={img} alt="" loading="lazy" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
                   <button onClick={() => removeImage('slider', idx)} className="av2-img-remove">✕</button>
                 </div>
               ))}
@@ -1020,7 +1020,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                     galleryDragIdx.current = null;
                     setFormData((prev: any) => ({ ...prev, images: { ...prev.images, gallery: next } }));
                   }}>
-                  <img src={img} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
+                  <img src={img} alt="" loading="lazy" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
                   <button onClick={() => removeImage('gallery', idx)} className="av2-img-remove">✕</button>
                 </div>
               ))}
@@ -1470,7 +1470,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
           >
             <div className="av2-post-thumb">
               {post.mediaUrls?.[0]
-                ? <img src={`${SERVER_URL}${post.mediaUrls[0]}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ? <img src={`${SERVER_URL}${post.mediaUrls[0]}`} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <span style={{ fontSize: '1.2rem' }}>📝</span>}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>

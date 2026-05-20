@@ -456,7 +456,7 @@ const AdminMessages = ({ isDark }: { isDark: boolean }) => {
                             msg.mediaUrl.match(/\.(mp4|mov|webm)$/i) ? (
                               <video src={mediaUrlAbs(msg.mediaUrl)} controls style={{ display: 'block', width: '100%', maxWidth: 280, borderRadius: 8 }} />
                             ) : (
-                              <img src={mediaUrlAbs(msg.mediaUrl)} alt="" style={{ display: 'block', width: '100%', maxWidth: 280, borderRadius: 8 }} />
+                              <img src={mediaUrlAbs(msg.mediaUrl)} alt="" loading="lazy" style={{ display: 'block', width: '100%', maxWidth: 280, borderRadius: 8 }} />
                             )
                           )}
                           {msg.content && (

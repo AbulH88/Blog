@@ -223,7 +223,7 @@ const Chat = ({ config }: { config: any }) => {
                             ) : video ? (
                               <video src={url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                              <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <img src={url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             )}
                           </div>
                         );
@@ -235,7 +235,7 @@ const Chat = ({ config }: { config: any }) => {
                     {mediaAbs && (
                       isVideo
                         ? <video src={mediaAbs} controls style={{ width: '100%', borderRadius: 14, display: 'block', marginBottom: msg.content ? 8 : 0 }} />
-                        : <img src={mediaAbs} alt="" style={{ width: '100%', borderRadius: 14, display: 'block', marginBottom: msg.content ? 8 : 0 }} />
+                        : <img src={mediaAbs} alt="" loading="lazy" style={{ width: '100%', borderRadius: 14, display: 'block', marginBottom: msg.content ? 8 : 0 }} />
                     )}
                     {msg.content}
                   </>
