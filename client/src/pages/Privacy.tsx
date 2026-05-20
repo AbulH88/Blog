@@ -124,7 +124,8 @@ const Privacy = ({ config }: { config: any }) => {
 
         <h2>12. Contact</h2>
         <p>
-          Questions about your privacy? Email <a href="#">privacy@{(config?.slug || 'cristina')}.com</a>.
+          Questions about your privacy? Email <a href="mailto:privacy@thecristinaadam.com">privacy@thecristinaadam.com</a>.
+          For data export or deletion requests, see the Privacy section of your account settings.
         </p>
 
         <hr />

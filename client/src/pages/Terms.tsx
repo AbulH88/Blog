@@ -128,13 +128,16 @@ const Terms = ({ config }: { config: any }) => {
 
         <h2>13. Governing Law</h2>
         <p>
-          These Terms are governed by the laws of the State of [STATE], United States, without regard
-          to conflict-of-laws principles. Disputes will be resolved exclusively in the courts of [COUNTY], [STATE].
+          These Terms are governed by the laws of your operator's place of incorporation, without
+          regard to conflict-of-laws principles. The specific governing law and venue will be
+          updated here once {brand}'s legal entity is finalized. By using the Site, you agree to
+          resolve disputes informally first by contacting us at the email below.
         </p>
 
         <h2>14. Contact</h2>
         <p>
-          Questions? Email <a href="#">support@{(config?.slug || 'cristina')}.com</a>.
+          Questions? Email <a href="mailto:support@thecristinaadam.com">support@thecristinaadam.com</a>.
+          DMCA notices: see our <a href="/dmca" style={{ color: 'var(--v3-terracotta)' }}>DMCA page</a>.
         </p>
 
         <hr />
