@@ -2,18 +2,25 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { Creator, Subscription, Transaction } = require('../models');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
+const cache = require('../services/cache');
 
 const router = express.Router();
 
-// Public — fetch creator branding by slug (used by frontend on load)
-// Returns everything needed to render the site — no sensitive data
+// Public — fetch creator branding by slug (used by frontend on load).
+// Cached for 60s — this is the hottest endpoint by far (every page load
+// hits it). Cache is invalidated on PATCH /:slug below so creator-side
+// edits show up immediately.
 router.get('/:slug', async (req, res) => {
   try {
-    const creator = await Creator.findOne({ where: { slug: req.params.slug } });
-    if (!creator) return res.status(404).json({ error: 'Creator not found' });
-
-    const { passwordHash, email, ...publicData } = creator.toJSON();
-    res.json(publicData);
+    const slug = req.params.slug;
+    const data = await cache.getOrSet(`creator:public:${slug}`, 60, async () => {
+      const creator = await Creator.findOne({ where: { slug } });
+      if (!creator) return null;
+      const { passwordHash, email, ...publicData } = creator.toJSON();
+      return publicData;
+    });
+    if (!data) return res.status(404).json({ error: 'Creator not found' });
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch creator', detail: err.message });
   }
@@ -31,6 +38,8 @@ router.patch('/:slug', requireAuth, requireCreator, async (req, res) => {
       allowed.passwordHash = await bcrypt.hash(newPassword, 12);
     }
     await creator.update(allowed);
+    // Bust the public cache so fans see the change on the next request
+    await cache.del(`creator:public:${req.params.slug}`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update creator', detail: err.message });
