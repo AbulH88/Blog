@@ -353,6 +353,54 @@ syncDatabase()
     sentryService.mountErrorHandler(app);
 
     server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
+    // ─── Graceful shutdown ─────────────────────────────────────────────────────
+    // PM2 reload / SIGTERM / Ctrl-C all flow through here. We stop accepting
+    // new connections, let in-flight requests finish (up to 10s), then close
+    // Socket.IO + DB + Redis cleanly. Without this, pm2 reload drops live
+    // chat connections and can corrupt half-finished DB writes.
+    let shuttingDown = false;
+    const shutdown = async (signal) => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      console.log(`[shutdown] received ${signal}, draining…`);
+
+      const forceTimer = setTimeout(() => {
+        console.warn('[shutdown] 10s drain timeout — forcing exit');
+        process.exit(1);
+      }, 10000);
+      forceTimer.unref();
+
+      try {
+        // 1. Stop accepting new HTTP connections.
+        await new Promise((resolve) => server.close(resolve));
+        console.log('[shutdown] http closed');
+
+        // 2. Close Socket.IO so connected clients see a clean disconnect.
+        await new Promise((resolve) => io.close(() => resolve()));
+        console.log('[shutdown] socket.io closed');
+
+        // 3. Close Redis pub/sub clients (best-effort).
+        try {
+          if (redis.client?.quit)    await redis.client.quit();
+          if (redis.pubClient?.quit) await redis.pubClient.quit();
+          if (redis.subClient?.quit) await redis.subClient.quit();
+        } catch (e) { console.warn('[shutdown] redis quit warn:', e.message); }
+
+        // 4. Close DB pool last (everything else might want it).
+        const { sequelize } = require('./models');
+        await sequelize.close();
+        console.log('[shutdown] db closed');
+
+        console.log('[shutdown] clean exit');
+        process.exit(0);
+      } catch (err) {
+        console.error('[shutdown] error:', err.message);
+        process.exit(1);
+      }
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT',  () => shutdown('SIGINT'));
   })
   .catch((err) => {
     console.error('Failed to sync database:', err.message);
