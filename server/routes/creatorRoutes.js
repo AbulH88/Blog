@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { Creator, Subscription, Transaction } = require('../models');
+const { Creator, Subscription, Transaction, Post, sequelize } = require('../models');
+const { Op } = require('sequelize');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
 const cache = require('../services/cache');
 
@@ -95,21 +96,131 @@ router.get('/:slug/analytics', requireAuth, requireCreator, async (req, res) => 
     const creator = await Creator.findOne({ where: { slug: req.params.slug } });
     if (!creator || creator.id !== req.user.creatorId) return res.status(403).json({ error: 'Forbidden' });
 
-    const [totalSubs, activeSubs, totalRevenue, recentTransactions] = await Promise.all([
+    // Time window — last 30 days for the trend charts.
+    const now = new Date();
+    const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalSubs,
+      activeSubs,
+      totalRevenue,
+      recentTransactions,
+      completedTxns30d,
+      revenueByTypeRaw,
+      newSubs30d,
+      topPostsRaw,
+    ] = await Promise.all([
       Subscription.count({ where: { creatorId: creator.id } }),
       Subscription.count({ where: { creatorId: creator.id, status: 'active' } }),
-      Transaction.sum('amount', { where: { creatorId: creator.id } }),
+      Transaction.sum('amount', { where: { creatorId: creator.id, status: 'completed' } }),
       Transaction.findAll({
         where: { creatorId: creator.id },
         order: [['createdAt', 'DESC']],
         limit: 10,
       }),
+      // Daily revenue for last 30 days — group in JS rather than DB-specific SQL
+      // so this stays portable across SQLite (dev) and Postgres (prod).
+      Transaction.findAll({
+        where: {
+          creatorId: creator.id,
+          status: 'completed',
+          createdAt: { [Op.gte]: since30 },
+        },
+        attributes: ['amount', 'type', 'createdAt', 'referenceId'],
+        raw: true,
+      }),
+      // Lifetime revenue grouped by type — handy for the "where's money coming from" pie.
+      Transaction.findAll({
+        where: { creatorId: creator.id, status: 'completed' },
+        attributes: ['type', [sequelize.fn('SUM', sequelize.col('amount')), 'total']],
+        group: ['type'],
+        raw: true,
+      }),
+      // New subscribers per day for last 30 days — same JS-grouping approach.
+      Subscription.findAll({
+        where: { creatorId: creator.id, createdAt: { [Op.gte]: since30 } },
+        attributes: ['createdAt'],
+        raw: true,
+      }),
+      // Top earning posts — sum post_unlock revenue grouped by post id.
+      Transaction.findAll({
+        where: { creatorId: creator.id, type: 'post_unlock', status: 'completed' },
+        attributes: [
+          'referenceId',
+          [sequelize.fn('SUM', sequelize.col('amount')), 'total'],
+          [sequelize.fn('COUNT', sequelize.col('id')), 'unlocks'],
+        ],
+        group: ['referenceId'],
+        order: [[sequelize.literal('total'), 'DESC']],
+        limit: 5,
+        raw: true,
+      }),
     ]);
+
+    // Build 30-day bucket arrays (oldest → newest). One entry per day.
+    const dayMs = 24 * 60 * 60 * 1000;
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * dayMs);
+      const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+      days.push({ date: key, revenue: 0, newSubs: 0 });
+    }
+    const dayIndex = Object.fromEntries(days.map((d, i) => [d.date, i]));
+    for (const t of completedTxns30d) {
+      const k = new Date(t.createdAt).toISOString().slice(0, 10);
+      if (dayIndex[k] != null) days[dayIndex[k]].revenue += parseFloat(t.amount || 0);
+    }
+    for (const s of newSubs30d) {
+      const k = new Date(s.createdAt).toISOString().slice(0, 10);
+      if (dayIndex[k] != null) days[dayIndex[k]].newSubs += 1;
+    }
+
+    // Resolve top-post titles in one query so the frontend gets ready-to-render rows.
+    const topPostIds = topPostsRaw.map(r => r.referenceId).filter(Boolean);
+    const topPostMap = topPostIds.length
+      ? Object.fromEntries(
+          (await Post.findAll({
+            where: { id: topPostIds },
+            attributes: ['id', 'title', 'thumbnailUrl', 'price'],
+            raw: true,
+          })).map(p => [p.id, p])
+        )
+      : {};
+    const topPosts = topPostsRaw.map(r => ({
+      postId: r.referenceId,
+      title: topPostMap[r.referenceId]?.title || `Post #${r.referenceId}`,
+      thumbnailUrl: topPostMap[r.referenceId]?.thumbnailUrl || null,
+      price: parseFloat(topPostMap[r.referenceId]?.price || 0),
+      revenue: parseFloat(r.total || 0),
+      unlocks: parseInt(r.unlocks || 0, 10),
+    }));
+
+    const revenueByType = Object.fromEntries(
+      revenueByTypeRaw.map(r => [r.type, parseFloat(r.total || 0)])
+    );
+
+    // 30-day revenue + conversion rate. Conversion = active subs / total hits.
+    const revenue30d = days.reduce((sum, d) => sum + d.revenue, 0);
+    const totalHits = parseInt(creator.analytics?.totalHits || 0, 10);
+    const conversionRate = totalHits > 0 ? (activeSubs / totalHits) * 100 : 0;
+    const avgRevenuePerFan = activeSubs > 0 ? (totalRevenue || 0) / activeSubs : 0;
 
     res.json({
       traffic: creator.analytics,
-      subscribers: { total: totalSubs, active: activeSubs },
-      revenue: { total: totalRevenue || 0 },
+      subscribers: { total: totalSubs, active: activeSubs, new30d: newSubs30d.length },
+      revenue: {
+        total: parseFloat(totalRevenue || 0),
+        last30d: parseFloat(revenue30d.toFixed(2)),
+        byType: revenueByType,
+        avgPerFan: parseFloat(avgRevenuePerFan.toFixed(2)),
+      },
+      conversion: {
+        rate: parseFloat(conversionRate.toFixed(2)),
+        visitors: totalHits,
+        activeSubs,
+      },
+      daily: days,
+      topPosts,
       recentTransactions,
     });
   } catch (err) {

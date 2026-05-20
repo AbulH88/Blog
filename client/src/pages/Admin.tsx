@@ -1242,6 +1242,243 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
     );
   };
 
+  const renderAnalytics = () => {
+    const revenue = analytics?.revenue || { total: 0, last30d: 0, byType: {}, avgPerFan: 0 };
+    const conversion = analytics?.conversion || { rate: 0, visitors: 0, activeSubs: 0 };
+    const subs = analytics?.subscribers || { active: 0, new30d: 0 };
+    const daily: any[] = analytics?.daily || [];
+    const topPosts: any[] = analytics?.topPosts || [];
+    const recent: any[] = analytics?.recentTransactions || [];
+    const traffic = analytics?.traffic || { referrers: {} };
+    const referrers = Object.entries(traffic.referrers || {}).sort((a: any, b: any) => b[1] - a[1]).slice(0, 8);
+
+    const maxRev = Math.max(1, ...daily.map(d => d.revenue));
+    const maxSubs = Math.max(1, ...daily.map(d => d.newSubs));
+
+    const typeLabels: Record<string, { label: string; color: string }> = {
+      subscription:        { label: 'Subscriptions',  color: '#C75A3E' },
+      post_unlock:         { label: 'Post unlocks',   color: '#2C3E5C' },
+      collection_unlock:   { label: 'Bundle unlocks', color: '#C5A26B' },
+      ppv_message:         { label: 'PPV messages',   color: '#E6927A' },
+      tip:                 { label: 'Tips',           color: '#9B7DBE' },
+      wallet_deposit:      { label: 'Wallet deposits',color: '#6BA08C' },
+    };
+    const revByType = Object.entries(revenue.byType || {})
+      .map(([k, v]: any) => ({ key: k, value: Number(v) || 0, ...typeLabels[k] || { label: k, color: '#999' } }))
+      .filter(r => r.value > 0)
+      .sort((a, b) => b.value - a.value);
+    const revByTypeTotal = revByType.reduce((s, r) => s + r.value, 0);
+
+    return (
+      <div>
+        <h1 className="title">ANALYTICS</h1>
+        <p className="welcome">Where the money comes from and where you're growing.</p>
+        <p style={{ margin: '0 0 22px', fontSize: '0.92rem', color: 'var(--v3-muted)' }}>
+          Last 30 days unless otherwise noted.
+        </p>
+
+        {/* KPI cards */}
+        <div className="v3-stat-grid">
+          <div className="v3-stat peach" style={{ position: 'relative' }}>
+            <span className="label">Revenue (30 days)</span>
+            <span className="value">${revenue.last30d.toFixed(2)}</span>
+            <span style={{ fontSize: '0.78rem' }}>${revenue.total.toFixed(2)} lifetime</span>
+            <div className="icon-bubble">💰</div>
+          </div>
+          <div className="v3-stat dark" style={{ position: 'relative' }}>
+            <span className="label">Active Members</span>
+            <span className="value">{subs.active.toLocaleString()}</span>
+            <span style={{ fontSize: '0.74rem', opacity: 0.7 }}>+{subs.new30d} in 30 days</span>
+            <div className="icon-bubble" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>👥</div>
+          </div>
+          <div className="v3-stat pink" style={{ position: 'relative' }}>
+            <span className="label">Conversion Rate</span>
+            <span className="value">{conversion.rate.toFixed(2)}%</span>
+            <span style={{ fontSize: '0.78rem' }}>{conversion.activeSubs} of {conversion.visitors.toLocaleString()} visitors</span>
+            <div className="icon-bubble">📈</div>
+          </div>
+          <div className="v3-stat" style={{ background: '#F4E4E0', position: 'relative' }}>
+            <span className="label">Avg Revenue / Fan</span>
+            <span className="value">${revenue.avgPerFan.toFixed(2)}</span>
+            <span style={{ fontSize: '0.78rem', color: 'rgba(0,0,0,0.6)' }}>Lifetime per active fan</span>
+            <div className="icon-bubble">💎</div>
+          </div>
+        </div>
+
+        {/* Daily revenue chart */}
+        <div className="v3-card" style={{ marginTop: 18 }}>
+          <div className="v3-card-head">
+            <h3>Daily Revenue (last 30 days)</h3>
+            <span style={{ fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+              Peak: ${maxRev.toFixed(2)}
+            </span>
+          </div>
+          <svg viewBox="0 0 600 140" style={{ width: '100%', height: 140, overflow: 'visible' }}>
+            {daily.map((d, i) => {
+              const x = (i / 29) * 580 + 10;
+              const h = (d.revenue / maxRev) * 110;
+              return (
+                <g key={d.date}>
+                  <rect x={x - 7} y={130 - h} width={14} height={h} fill="#C75A3E" rx={2}>
+                    <title>{d.date}: ${d.revenue.toFixed(2)}</title>
+                  </rect>
+                </g>
+              );
+            })}
+            <line x1="0" y1="130" x2="600" y2="130" stroke="#ddd" strokeWidth="1" />
+          </svg>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--v3-muted)', marginTop: 4 }}>
+            <span>{daily[0]?.date.slice(5) || ''}</span>
+            <span>{daily[14]?.date.slice(5) || ''}</span>
+            <span>{daily[29]?.date.slice(5) || ''}</span>
+          </div>
+        </div>
+
+        {/* Revenue by type + New subscribers chart */}
+        <div className="v3-dash-cols" style={{ marginTop: 18 }}>
+          <div className="v3-card">
+            <div className="v3-card-head"><h3>Revenue by Source</h3></div>
+            {revByType.length === 0 ? (
+              <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', margin: 0 }}>No revenue yet.</p>
+            ) : (
+              <>
+                <div style={{ display: 'flex', height: 18, borderRadius: 9, overflow: 'hidden', marginBottom: 14 }}>
+                  {revByType.map(r => (
+                    <div key={r.key} title={`${r.label}: $${r.value.toFixed(2)}`}
+                      style={{ background: r.color, width: `${(r.value / revByTypeTotal) * 100}%` }} />
+                  ))}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {revByType.map(r => (
+                    <div key={r.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.86rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 2, background: r.color, display: 'inline-block' }} />
+                        {r.label}
+                      </span>
+                      <span style={{ fontWeight: 700 }}>${r.value.toFixed(2)} <span style={{ color: 'var(--v3-muted)', fontWeight: 500 }}>({((r.value / revByTypeTotal) * 100).toFixed(0)}%)</span></span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="v3-card">
+            <div className="v3-card-head"><h3>New Subscribers (30 days)</h3></div>
+            <svg viewBox="0 0 600 140" style={{ width: '100%', height: 140 }}>
+              {daily.map((d, i) => {
+                const x = (i / 29) * 580 + 10;
+                const h = (d.newSubs / maxSubs) * 110;
+                return (
+                  <rect key={d.date} x={x - 7} y={130 - h} width={14} height={h} fill="#2C3E5C" rx={2}>
+                    <title>{d.date}: {d.newSubs} new</title>
+                  </rect>
+                );
+              })}
+              <line x1="0" y1="130" x2="600" y2="130" stroke="#ddd" strokeWidth="1" />
+            </svg>
+            <p style={{ margin: '8px 0 0', fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+              {subs.new30d} new in last 30 days · peak day: {maxSubs}
+            </p>
+          </div>
+        </div>
+
+        {/* Top earning posts + Referrers */}
+        <div className="v3-dash-cols" style={{ marginTop: 18 }}>
+          <div className="v3-card">
+            <div className="v3-card-head"><h3>Top Earning Posts</h3></div>
+            {topPosts.length === 0 ? (
+              <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', margin: 0 }}>No post unlocks yet.</p>
+            ) : (
+              <table className="v3-bio-table">
+                <thead>
+                  <tr>
+                    <th>Post</th>
+                    <th style={{ width: 80, textAlign: 'right' }}>Unlocks</th>
+                    <th style={{ width: 100, textAlign: 'right' }}>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topPosts.map(p => (
+                    <tr key={p.postId}>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{p.title}</div>
+                        <div style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>${p.price.toFixed(2)} each</div>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{p.unlocks}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>${p.revenue.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="v3-card">
+            <div className="v3-card-head"><h3>Top Traffic Sources</h3></div>
+            {referrers.length === 0 ? (
+              <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', margin: 0 }}>No traffic data yet.</p>
+            ) : (
+              <table className="v3-bio-table">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th style={{ width: 100, textAlign: 'right' }}>Hits</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referrers.map(([src, count]: any) => (
+                    <tr key={src}>
+                      <td style={{ fontSize: '0.86rem' }}>{src}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Recent transactions */}
+        <div className="v3-card" style={{ marginTop: 18 }}>
+          <div className="v3-card-head"><h3>Recent Transactions</h3></div>
+          {recent.length === 0 ? (
+            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem', margin: 0 }}>No transactions yet.</p>
+          ) : (
+            <table className="v3-bio-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th style={{ width: 100 }}>Status</th>
+                  <th style={{ width: 100, textAlign: 'right' }}>Amount</th>
+                  <th style={{ width: 120, textAlign: 'right' }}>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent.map((t: any) => (
+                  <tr key={t.id}>
+                    <td style={{ fontSize: '0.82rem' }}>{(typeLabels[t.type]?.label) || t.type}</td>
+                    <td style={{ fontSize: '0.82rem', color: 'var(--v3-muted)' }}>{t.description || '—'}</td>
+                    <td>
+                      <span className={`v3-pill ${t.status === 'completed' ? 'success' : t.status === 'pending' ? 'warning' : ''}`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>${parseFloat(t.amount || 0).toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+                      {new Date(t.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderPlaceholder = (title: string, blurb: string) => (
     <div>
       <h1 className="title">{title.toUpperCase()}</h1>
@@ -1876,7 +2113,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         {/* Tab content */}
         {activeTab === 'overview'   && renderOverview()}
         {activeTab === 'biobuilder' && renderBioBuilder()}
-        {activeTab === 'analytics'  && renderPlaceholder('Analytics', 'Deeper traffic, click, and conversion analytics with charts.')}
+        {activeTab === 'analytics'  && renderAnalytics()}
         {activeTab === 'content'    && renderContent()}
         {activeTab === 'gallery'    && renderGallery()}
         {activeTab === 'messages'   && <AdminMessages isDark={isDark} />}
