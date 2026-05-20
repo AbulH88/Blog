@@ -2,12 +2,19 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 const bcrypt = require('bcryptjs');
 const { syncDatabase, Creator } = require('../models');
 
+const SEED_EMAIL = process.env.SEED_EMAIL || 'cristina@example.com';
+const SEED_PASSWORD = process.env.SEED_PASSWORD;
+if (!SEED_PASSWORD) {
+  console.error('ERROR: SEED_PASSWORD env var is required. Run: SEED_PASSWORD=yourpassword node scripts/seed.js');
+  process.exit(1);
+}
+
 const creators = [
   {
     slug: 'cristina',
     displayName: 'Cristina Adam',
-    email: 'cristina@example.com',
-    password: 'admin123',
+    email: SEED_EMAIL,
+    password: SEED_PASSWORD,
     shortBio: "NYC native. 19. Just a girl who spends too much on iced coffee and vintage tees she doesn't need.",
     bio: "NYC born and raised. 19.\n\nI'm Cristina Adam. If you've seen me, I was probably staring at a vintage rack in the East Village or complaining about the L train.\n\nThis site is my digital bedroom. Instagram is exhausting — here I post the stuff that actually matters to me.\n\nCurrent Mood:\n- Overpriced matcha.\n- Warehouse parties in Bushwick.\n- Collecting old film cameras I don't know how to use.\n- Staying up way too late playing Valorant.",
     subscriptionPrice: 9.99,
