@@ -41,14 +41,20 @@ const io = new Server(server, {
 // receive a message that arrived via worker-1's HTTP route. No-op when Redis
 // stubbed (dev mode → single-process, in-memory is fine).
 const redis = require('./services/redis');
-if (redis.isEnabled()) {
-  try {
-    const { createAdapter } = require('@socket.io/redis-adapter');
-    io.adapter(createAdapter(redis.pubClient, redis.subClient));
-    console.log('[socket.io] using Redis adapter');
-  } catch (err) {
-    console.warn('[socket.io] failed to attach Redis adapter:', err.message);
-  }
+// Attach the Socket.IO Redis adapter once the connection is confirmed ready.
+// isEnabled() is checked synchronously at require-time (before the async 'ready'
+// event fires), so we use once('ready') to avoid a race where the adapter never
+// attaches in PM2 cluster mode even when Redis is running.
+if (process.env.REDIS_URL || process.env.REDIS_HOST) {
+  redis.client.once('ready', () => {
+    try {
+      const { createAdapter } = require('@socket.io/redis-adapter');
+      io.adapter(createAdapter(redis.pubClient, redis.subClient));
+      console.log('[socket.io] using Redis adapter');
+    } catch (err) {
+      console.warn('[socket.io] failed to attach Redis adapter:', err.message);
+    }
+  });
 }
 
 setupSocket(io);
@@ -97,6 +103,10 @@ app.use(cors({
   },
   credentials: true,
 }));
+// Capture raw bytes for the NOWPayments webhook BEFORE the global JSON parser
+// consumes the body. Must be first so the route-level bodyParser.raw() sees
+// req._body unset and captures a Buffer (needed for HMAC verification).
+app.use('/api/payments/webhook/nowpayments', bodyParser.raw({ type: '*/*', limit: '1mb' }));
 app.use(bodyParser.json({ limit: '1mb' }));
 // /uploads/ is served with a long-lived immutable cache header. Filenames
 // embed a timestamp (Date.now() + random suffix) so they're effectively

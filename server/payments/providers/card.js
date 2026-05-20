@@ -64,11 +64,14 @@ class MockCardProvider extends CardProvider {
  */
 function createCardProvider() {
   const cfg = getCardProviderConfig();
-  switch ((cfg.provider || 'mock').toLowerCase()) {
-    case 'mock':
-    default:
-      return new MockCardProvider();
+  const providerName = (cfg.provider || '').toLowerCase();
+  if (!providerName || providerName === 'mock') {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('CARD_PROVIDER env var required in production — set to your gateway name (e.g. segpay, ccbill)');
+    }
+    return new MockCardProvider();
   }
+  throw new Error(`Unknown CARD_PROVIDER: ${providerName}`);
 }
 
 module.exports = createCardProvider;

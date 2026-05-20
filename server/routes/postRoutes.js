@@ -5,7 +5,7 @@ const { Post, Creator, Subscription, Transaction } = require('../models');
 const { requireAuth, requireCreator, requireVerifiedEmail } = require('../middleware/authMiddleware');
 const { getProvider, hasProvider } = require('../payments/registry');
 
-const PROD_PROVIDERS = ['nowpayments', 'card'];
+const PROD_PROVIDERS = ['nowpayments'];
 function resolveProvider(body) {
   const name = body?.provider;
   if (!name || (process.env.NODE_ENV === 'production' && !PROD_PROVIDERS.includes(name))) return null;
@@ -206,7 +206,7 @@ router.delete('/:id', requireAuth, requireCreator, async (req, res) => {
 });
 
 // POST /api/posts/:id/unlock — fan pays the post's price to unlock it
-router.post('/:id/unlock', requireAuth, async (req, res) => {
+router.post('/:id/unlock', requireAuth, requireVerifiedEmail, async (req, res) => {
   try {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
 

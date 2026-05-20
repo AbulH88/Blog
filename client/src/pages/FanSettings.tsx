@@ -9,7 +9,6 @@ import {
 } from '../api';
 import FanSidebar from '../components/FanSidebar';
 import MobileBottomNav from '../components/MobileBottomNav';
-import AddCardModal from '../components/AddCardModal';
 import PasswordInput from '../components/PasswordInput';
 
 type Section = 'account' | 'payments' | 'notifications' | 'privacy' | 'help';
@@ -44,7 +43,6 @@ const FanSettings = () => {
   // Payments
   const [methods, setMethods] = useState<SavedCard[]>([]);
   const [paymentsTab, setPaymentsTab] = useState<PaymentsTab>('cards');
-  const [addCardOpen, setAddCardOpen] = useState(false);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
 
