@@ -27,6 +27,22 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 });
+
+// Socket.IO Redis adapter — when Redis is enabled, real-time events propagate
+// across all PM2 workers. Without it, a fan connected to worker-2 wouldn't
+// receive a message that arrived via worker-1's HTTP route. No-op when Redis
+// stubbed (dev mode → single-process, in-memory is fine).
+const redis = require('./services/redis');
+if (redis.isEnabled()) {
+  try {
+    const { createAdapter } = require('@socket.io/redis-adapter');
+    io.adapter(createAdapter(redis.pubClient, redis.subClient));
+    console.log('[socket.io] using Redis adapter');
+  } catch (err) {
+    console.warn('[socket.io] failed to attach Redis adapter:', err.message);
+  }
+}
+
 setupSocket(io);
 app.set('io', io);
 const PORT = process.env.PORT || 5000;
@@ -74,11 +90,30 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 }));
 
 // Rate limits — protect against brute-force on auth + spam on tipping/wallet.
+// When Redis is available, state lives in Redis so:
+//   - Limits survive Node restarts (no "reboot to reset window" exploit)
+//   - Limits are shared across PM2 cluster workers
+// When Redis isn't available (dev), falls back to in-memory.
+let limiterStore;
+try {
+  if (redis.isEnabled()) {
+    const RedisStore = require('rate-limit-redis').default;
+    limiterStore = (prefix) => new RedisStore({
+      sendCommand: (...args) => redis.client.call(...args),
+      prefix: `rl:${prefix}:`,
+    });
+    console.log('[rate-limit] using Redis store');
+  }
+} catch (err) {
+  console.warn('[rate-limit] Redis store init failed, falling back to memory:', err.message);
+}
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
   max: 20, // 20 attempts per IP per window
   standardHeaders: true,
   legacyHeaders: false,
+  store: limiterStore ? limiterStore('auth') : undefined,
   message: { error: 'Too many auth attempts. Please try again in 15 minutes.' },
 });
 const writeLimiter = rateLimit({
@@ -86,6 +121,7 @@ const writeLimiter = rateLimit({
   max: 60, // 60 writes per IP per minute
   standardHeaders: true,
   legacyHeaders: false,
+  store: limiterStore ? limiterStore('write') : undefined,
   message: { error: 'Too many requests. Slow down a bit.' },
 });
 // Apply selectively — only on the endpoints that need it. Webhooks must NOT be limited.
