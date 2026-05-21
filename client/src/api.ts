@@ -583,12 +583,28 @@ export const getWallet = async (): Promise<WalletState> => {
   return res.json();
 };
 
-export const depositToWallet = async (amount: number, provider: string = 'nowpayments') => {
+export const depositToWallet = async (amount: number, provider: string = 'nowpayments', payCurrency?: string | null) => {
   const fanToken = localStorage.getItem('fanToken');
   const res = await fetch(`${API_URL}/wallet/deposit`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${fanToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, provider }),
+    body: JSON.stringify({ amount, provider, payCurrency: payCurrency || undefined }),
+  });
+  return res.json();
+};
+
+export type WalletCoin = {
+  code: string;       // NOWPayments pay_currency (e.g. 'btc', 'usdttrc20')
+  label: string;
+  icon: string;
+  min: number;        // USD-equivalent minimum
+  hint: string;
+};
+
+export const getWalletCoins = async (): Promise<{ coins: WalletCoin[] }> => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/wallet/coins`, {
+    headers: { Authorization: `Bearer ${fanToken}` },
   });
   return res.json();
 };

@@ -54,12 +54,11 @@ router.post('/deposit', requireAuth, requireVerifiedEmail, async (req, res) => {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
     const providerName = req.body?.provider || 'nowpayments';
     const amount = parseFloat(req.body?.amount);
-    // NOWPayments per-coin minimums vary (BTC ~$20 USD-equiv). Setting our
-    // floor at $20 means almost every coin works without hitting the upstream
-    // min-amount rejection at the hosted checkout. Cap at $1000 to discourage
-    // wallet ledgering huge balances.
-    if (!amount || amount < 20 || amount > 1000) {
-      return res.status(400).json({ error: 'Top-up amount must be between $20 and $1000. Small amounts (under $20) may be rejected by some cryptos like BTC — pick a higher amount or use USDT/Tron at checkout.' });
+    const payCurrency = req.body?.payCurrency || req.body?.pay_currency || null;
+    // Absolute floor — even the cheapest coin (Tron) won't accept under $1.
+    // The per-coin minimum is enforced client-side using /api/wallet/coins.
+    if (!amount || amount < 1 || amount > 1000) {
+      return res.status(400).json({ error: 'Top-up amount must be between $1 and $1000.' });
     }
     if (!hasProvider(providerName)) {
       return res.status(503).json({ error: `Provider ${providerName} not configured` });
@@ -73,6 +72,7 @@ router.post('/deposit', requireAuth, requireVerifiedEmail, async (req, res) => {
       creatorId: 0,
       productRef: { type: 'wallet_deposit' },
       statementDescriptor: null,
+      payCurrency, // null = NOWPayments shows its own picker; set = pre-selected
     });
 
     const tx = await Transaction.create({
@@ -97,6 +97,45 @@ router.post('/deposit', requireAuth, requireVerifiedEmail, async (req, res) => {
       });
     }
     res.json({ success: tx.status === 'completed', transactionId: tx.id, status: tx.status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Supported coins + their per-coin USD minimums ──────────────────────────
+// Drives the deposit modal's coin picker. Minimums come from NOWPayments live
+// (cached 1h). Falls back to hard-coded floors if the provider is unreachable.
+const COIN_CATALOG = [
+  { code: 'usdttrc20', label: 'USDT (Tron)',      icon: '💲', defaultMin: 2,   hint: 'Cheapest fees, ~$1 min' },
+  { code: 'trx',       label: 'TRON (TRX)',       icon: '🔴', defaultMin: 1,   hint: 'Cheapest crypto' },
+  { code: 'ltc',       label: 'Litecoin (LTC)',   icon: '🟡', defaultMin: 3,   hint: 'Fast + cheap' },
+  { code: 'usdterc20', label: 'USDT (Ethereum)',  icon: '💲', defaultMin: 15,  hint: 'Higher fees than Tron' },
+  { code: 'sol',       label: 'Solana (SOL)',     icon: '🟣', defaultMin: 5,   hint: 'Fast, low fees' },
+  { code: 'eth',       label: 'Ethereum (ETH)',   icon: '⚪', defaultMin: 10,  hint: 'Mid fees' },
+  { code: 'bnbbsc',    label: 'BNB (BSC)',        icon: '🟨', defaultMin: 5,   hint: 'Low fees on BSC' },
+  { code: 'btc',       label: 'Bitcoin (BTC)',    icon: '🟠', defaultMin: 20,  hint: 'Highest min (~$20+)' },
+];
+
+router.get('/coins', requireAuth, async (req, res) => {
+  try {
+    const providerName = 'nowpayments';
+    if (!hasProvider(providerName)) {
+      return res.json({ coins: COIN_CATALOG.map(c => ({ ...c, min: c.defaultMin })) });
+    }
+    const provider = getProvider(providerName);
+    // Best-effort live lookup; falls back to defaultMin if NOWPayments is slow.
+    const coins = await Promise.all(COIN_CATALOG.map(async (c) => {
+      try {
+        const live = typeof provider.getMinAmount === 'function'
+          ? await provider.getMinAmount(c.code, 'usd')
+          : null;
+        const min = live && live > 0 ? Math.ceil(live) : c.defaultMin;
+        return { ...c, min };
+      } catch {
+        return { ...c, min: c.defaultMin };
+      }
+    }));
+    res.json({ coins });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
