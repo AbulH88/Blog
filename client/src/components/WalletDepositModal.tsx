@@ -147,7 +147,7 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
         )}
 
         {/* Step 1 — coin */}
-        <label style={sectionLabel}>1. Preferred coin (shows you the min — you can switch on the next page if needed)</label>
+        <label style={sectionLabel}>1. Pick the coin you'll pay with</label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
           {coins.map(c => {
             const picked = pickedCoin.code === c.code;
@@ -250,7 +250,7 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
             ? 'Creating invoice…'
             : belowMin
               ? `Increase to $${pickedCoin.min} to continue`
-              : `Continue with $${finalAmount.toFixed(2)}`}
+              : `Continue with $${finalAmount.toFixed(2)} in ${pickedCoin.label.split(' ')[0]}`}
         </button>
 
         <div style={{
@@ -260,9 +260,9 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
         }}>
           <span style={{ fontSize: '1.1rem' }}>🔒</span>
           <span>
-            You'll confirm your coin on the secure NOWPayments checkout next
-            (if your first choice happens to be offline, pick any other listed coin).
-            Network fee is added on top. Funds credit within 5–15 min of confirmation.
+            Your coin is pre-selected on the next page. <strong>If you see "currency unavailable,"</strong>
+            tap the coin name at the top of the NOWPayments page to switch to another. Network fee is
+            added on top. Funds credit within 5–15 min of confirmation.
           </span>
         </div>
       </div>
