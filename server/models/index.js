@@ -225,6 +225,52 @@ const applyMigrations = async () => {
   } catch (err) {
     console.warn('email-lowercase migration warn:', err.message);
   }
+
+  // Add 'free' tier to Subscriptions.tier enum if it isn't already there.
+  // Postgres only — SQLite uses a STRING column, no enum to alter.
+  try {
+    const dialect = sequelize.getDialect();
+    if (dialect === 'postgres') {
+      await sequelize.query(
+        `DO $$ BEGIN
+           IF NOT EXISTS (
+             SELECT 1 FROM pg_enum
+             WHERE enumlabel = 'free'
+               AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'enum_Subscriptions_tier')
+           ) THEN
+             ALTER TYPE "enum_Subscriptions_tier" ADD VALUE 'free';
+           END IF;
+         END $$;`
+      );
+    }
+  } catch (err) {
+    console.warn('Subscriptions.tier free-enum migration warn:', err.message);
+  }
+
+  // Backfill: every active fan should have at least one Subscription so they
+  // appear in the creator's Messages inbox. Pre-fix signups missed this
+  // because tier='free' got rejected by the old enum and the error was
+  // swallowed by the auto-follow try/catch. One row per (fan, creator) pair.
+  try {
+    const creators = await Creator.findAll({ attributes: ['id'] });
+    const users = await User.findAll({ attributes: ['id'] });
+    for (const c of creators) {
+      for (const u of users) {
+        const exists = await Subscription.findOne({
+          where: { userId: u.id, creatorId: c.id },
+        });
+        if (!exists) {
+          await Subscription.create({
+            userId: u.id, creatorId: c.id,
+            tier: 'free', status: 'active', startDate: new Date(),
+          });
+          console.log(`+ backfilled free sub: user=${u.id} creator=${c.id}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Subscription backfill warn:', err.message);
+  }
 };
 
 const syncDatabase = async () => {

@@ -5,9 +5,13 @@ const Subscription = sequelize.define('Subscription', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   userId: { type: DataTypes.INTEGER, allowNull: false },
   creatorId: { type: DataTypes.INTEGER, allowNull: false },
+  // 'free' is the auto-follow tier created on signup so the fan instantly
+  // appears in the creator's inbox without paying. 'basic'/'premium' are
+  // paid tiers via NOWPayments. Order matters for the existing Postgres
+  // enum — additions happen via ALTER TYPE in applyMigrations.
   tier: {
-    type: DataTypes.ENUM('basic', 'premium'),
-    defaultValue: 'basic',
+    type: DataTypes.ENUM('free', 'basic', 'premium'),
+    defaultValue: 'free',
   },
   status: {
     type: DataTypes.ENUM('active', 'cancelled', 'expired', 'trial'),

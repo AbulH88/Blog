@@ -80,7 +80,10 @@ router.post('/register', async (req, res) => {
         }
       }
     } catch (subErr) {
-      console.warn('auto-follow on register failed:', subErr.message);
+      // Loud — a silent failure here means new fans never appear in the
+      // creator's inbox (lesson learned the hard way during launch).
+      console.error('[auth] AUTO-FOLLOW FAILED on register for user', user.id, ':', subErr.message);
+      console.error(subErr.stack);
     }
 
     const token = signToken({ userId: user.id, role: 'fan', email: user.email });
