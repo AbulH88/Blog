@@ -52,21 +52,35 @@ async function processOne(file) {
     const meta = await img.metadata();
     const needsResize = (meta.width || 0) > MAX_WIDTH;
 
-    // Re-encode to JPEG. We write to a temp file in the same dir, then
-    // rename over the original to keep the same URL/filename.
+    // Preserve transparency: PNG/WebP images with an alpha channel must stay
+    // in a format that supports alpha. JPEG flattens alpha to black — the
+    // classic "transparent logo on black" bug. Detect alpha and route to
+    // PNG output (smaller than JPEG for typical logos with few colors).
+    const keepAlpha = !!meta.hasAlpha;
+    const outExt = keepAlpha ? '.png' : '.jpg';
+    const outMime = keepAlpha ? 'image/png' : 'image/jpeg';
+
     const dir = path.dirname(file.path);
     const base = path.basename(file.path, path.extname(file.path));
-    const tmpPath = path.join(dir, `${base}.tmp.jpg`);
-    const finalPath = path.join(dir, `${base}.jpg`);
+    const tmpPath = path.join(dir, `${base}.tmp${outExt}`);
+    const finalPath = path.join(dir, `${base}${outExt}`);
 
     let pipeline = sharp(file.path, { failOn: 'none' }).rotate(); // auto-orient
     if (needsResize) pipeline = pipeline.resize({ width: MAX_WIDTH, withoutEnlargement: true });
-    pipeline = pipeline.jpeg({ quality: JPEG_QUALITY, progressive: true, mozjpeg: true });
+    if (keepAlpha) {
+      // PNG with palette + max compression — good for logos/UI graphics.
+      // palette:true quantizes to 256 colors which dramatically shrinks
+      // photographic PNGs but is fine for flat logos. The library falls
+      // back to non-palette PNG automatically if quantization fails.
+      pipeline = pipeline.png({ compressionLevel: 9, palette: true });
+    } else {
+      pipeline = pipeline.jpeg({ quality: JPEG_QUALITY, progressive: true, mozjpeg: true });
+    }
 
     await pipeline.toFile(tmpPath);
 
-    // If extension changed (e.g. .png → .jpg) the original is at a different
-    // path — remove it after we move the new file into place.
+    // If extension changed (e.g. .jpg → .png for an alpha PNG, or .png → .jpg
+    // for a flat one) the original is at a different path — remove it.
     if (file.path !== finalPath) {
       await fs.unlink(file.path).catch(() => {});
     }
@@ -76,7 +90,7 @@ async function processOne(file) {
     const newFilename = path.basename(finalPath);
     file.path = finalPath;
     file.filename = newFilename;
-    file.mimetype = 'image/jpeg';
+    file.mimetype = outMime;
     const stat = await fs.stat(finalPath);
     file.size = stat.size;
   } catch (err) {

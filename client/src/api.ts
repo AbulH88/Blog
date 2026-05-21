@@ -255,12 +255,14 @@ export const deleteMyAccount = async (currentPassword: string) => {
 
 // ─── Media ─────────────────────────────────────────────────────────────────────
 
-export const uploadImage = async (file: File) => {
+export const uploadImage = async (file: File, opts: { raw?: boolean } = {}) => {
   const formData = new FormData();
   formData.append('image', file);
-  // Don't set Content-Type — the browser sets multipart boundary automatically.
-  // But the auth header is required: /api/upload is gated by requireAuth+requireCreator.
-  const res = await fetch(`${API_URL}/upload`, {
+  // raw=true tells the server to skip the sharp resize/recompress step. Use
+  // this for logos / chat avatars where transparency + pixel-exact quality
+  // matter and the file is already small enough to not need optimization.
+  const url = opts.raw ? `${API_URL}/upload?raw=1` : `${API_URL}/upload`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${getToken()}` },
     body: formData,

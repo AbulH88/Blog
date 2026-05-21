@@ -273,7 +273,14 @@ app.use('/api/instagram', require('./routes/instagramRoutes'));
 app.use('/api/ai', require('./routes/aiChatRoutes'));
 
 // ─── Admin upload ──────────────────────────────────────────────────────────────
-app.post('/api/upload', requireAuth, requireCreator, writeLimiter, upload.single('image'), processImageUploads, (req, res) => {
+// Custom middleware wrapper so we can conditionally skip sharp processing
+// when the client passes ?raw=1 (used for logos / chat avatars where
+// transparency must be preserved and the file is already small).
+const maybeProcessImage = (req, res, next) => {
+  if (req.query?.raw === '1' || req.query?.raw === 'true') return next();
+  return processImageUploads(req, res, next);
+};
+app.post('/api/upload', requireAuth, requireCreator, writeLimiter, upload.single('image'), maybeProcessImage, (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   res.json({ url: `/uploads/${req.file.filename}` });
 });
