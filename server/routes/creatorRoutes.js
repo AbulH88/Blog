@@ -36,7 +36,7 @@ router.patch('/:slug', requireAuth, requireCreator, async (req, res) => {
 
     const ALLOWED_FIELDS = [
       'displayName', 'bio', 'shortBio', 'profileImage', 'heroImages',
-      'galleryImages', 'theme', 'fanvueUrl', 'billingDescriptor', 'logoUrl',
+      'galleryImages', 'heroImagesMobile', 'theme', 'fanvueUrl', 'billingDescriptor', 'logoUrl',
       'featuredLinks', 'instagramPosts', 'links', 'seo', 'blog', 'faq',
       'mustHaves', 'isLive', 'maintenanceMode', 'welcomeMessage',
       'welcomeEnabled', 'welcomePpvText', 'welcomeMediaUrl', 'welcomePpvPrice',

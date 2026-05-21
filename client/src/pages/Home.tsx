@@ -37,6 +37,9 @@ const Home = ({ config }: { config: any }) => {
   const heroImages: string[] = config?.images?.heroSlider?.length
     ? config.images.heroSlider
     : (config?.images?.hero ? [config.images.hero] : []);
+  // Per-index mobile overrides; empty array if creator hasn't uploaded any.
+  // HeroSlider falls back to the desktop image when mobileImages[i] is empty.
+  const heroImagesMobile: string[] = config?.images?.heroSliderMobile || [];
 
   const bio = config?.homeBio || config?.heroSubtitle || '';
 
@@ -58,7 +61,7 @@ const Home = ({ config }: { config: any }) => {
       {/* Hero */}
       <section className="v3-hero">
         <div className="v3-hero-frame">
-          <HeroSlider images={heroImages} alt={config?.siteTitle} />
+          <HeroSlider images={heroImages} mobileImages={heroImagesMobile} alt={config?.siteTitle} />
         </div>
       </section>
 

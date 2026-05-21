@@ -941,52 +941,197 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
 
   const renderGallery = () => {
     const slider: string[] = formData.images?.heroSlider || [];
+    const sliderMobile: string[] = formData.images?.heroSliderMobile || [];
     const gallery: string[] = formData.images?.gallery || [];
+
+    // Upload a mobile version for an existing slide index. We don't trim
+    // sliderMobile to slider length — keeping it sparse is fine; HeroSlider
+    // falls back to desktop when mobileImages[i] is empty.
+    const setSlideMobile = async (idx: number, file: File) => {
+      setStatus(`Uploading mobile slide ${idx + 1}…`);
+      const res = await uploadImage(file);
+      if (res?.url) {
+        setFormData((prev: any) => {
+          const next = [...(prev.images?.heroSliderMobile || [])];
+          while (next.length <= idx) next.push('');
+          next[idx] = res.url;
+          return { ...prev, images: { ...prev.images, heroSliderMobile: next } };
+        });
+        setStatus('Mobile slide saved — remember to Save Changes');
+        setTimeout(() => setStatus(''), 3000);
+      } else {
+        setStatus('Upload failed');
+      }
+    };
+
+    const clearSlideMobile = (idx: number) => {
+      setFormData((prev: any) => {
+        const next = [...(prev.images?.heroSliderMobile || [])];
+        if (idx < next.length) next[idx] = '';
+        return { ...prev, images: { ...prev.images, heroSliderMobile: next } };
+      });
+    };
 
     return (
       <div>
         <h1 className="title">GALLERY</h1>
         <p className="welcome">Your visual content — hero slider on the home page, and the gallery grid that also feeds the Instagram-style sidebar.</p>
 
-        {/* Hero Slider */}
+        {/* Hero Slider — paired desktop + mobile per slide */}
         <div className="av2-card">
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-            <p className="av2-section-label" style={{ marginBottom: 0 }}>Hero Slider Images ({slider.length})</p>
-            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>auto-cycles on home page · 16:9 landscape · 1920×1080 ideal</span>
+            <p className="av2-section-label" style={{ marginBottom: 0 }}>Hero Slider ({slider.length} slide{slider.length === 1 ? '' : 's'})</p>
+            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>auto-cycles on home page · cross-fade with dots</span>
           </div>
-          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
-            Add 2 or more to enable the cross-fading slider with dot navigation. Portrait photos get cropped — use landscape.
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 16px', lineHeight: 1.5 }}>
+            Each slide can have <strong>two versions</strong> — a 16:5 desktop landscape (2400×750 ideal) and a 4:5 mobile portrait (1080×1350 ideal).
+            Mobile is optional — if you skip it, the desktop image is used on phones too (and may get cropped).
           </p>
 
+          {/* Add new slide — uploads desktop image(s). Mobile gets added per slide below. */}
           <DragDropUpload
             accept="image/*"
             multiple
             onFiles={(files) => handleFilesUpload(files, 'slider')}
-            title="Drop hero images here"
-            hint="or click to browse — JPG, PNG, WebP"
+            title="+ Add slide (desktop image)"
+            hint="or click to browse — JPG, PNG, WebP · landscape 16:5"
             icon="🖼"
-            style={{ marginBottom: 14 }}
+            style={{ marginBottom: 18 }}
           />
 
+          {/* Per-slide list — desktop + mobile side by side */}
           {slider.length > 0 && (
-            <div className="av2-img-grid">
-              {slider.map((img: string, idx: number) => (
-                <div
-                  key={idx}
-                  style={{ position: 'relative', cursor: 'grab' }}
-                  draggable
-                  onDragStart={() => { sliderDragIdx.current = idx; }}
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={() => {
-                    if (sliderDragIdx.current === null || sliderDragIdx.current === idx) return;
-                    const next = reorderArray(slider, sliderDragIdx.current, idx);
-                    sliderDragIdx.current = null;
-                    setFormData((prev: any) => ({ ...prev, images: { ...prev.images, heroSlider: next } }));
-                  }}>
-                  <img src={img} alt="" loading="lazy" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
-                  <button onClick={() => removeImage('slider', idx)} className="av2-img-remove">✕</button>
-                </div>
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {slider.map((img: string, idx: number) => {
+                const mobileImg = sliderMobile[idx] || '';
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '24px 1fr 1fr',
+                      gap: 12,
+                      alignItems: 'stretch',
+                      padding: 12,
+                      border: '1px solid var(--v3-line)',
+                      borderRadius: 12,
+                      background: 'var(--v3-cream)',
+                    }}>
+                    {/* Slide number + reorder grip */}
+                    <div
+                      draggable
+                      onDragStart={() => { sliderDragIdx.current = idx; }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (sliderDragIdx.current === null || sliderDragIdx.current === idx) return;
+                        const fromIdx = sliderDragIdx.current;
+                        sliderDragIdx.current = null;
+                        setFormData((prev: any) => ({
+                          ...prev,
+                          images: {
+                            ...prev.images,
+                            heroSlider: reorderArray(prev.images?.heroSlider || [], fromIdx, idx),
+                            heroSliderMobile: reorderArray(prev.images?.heroSliderMobile || [], fromIdx, idx),
+                          },
+                        }));
+                      }}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        justifyContent: 'center', cursor: 'grab', fontSize: '0.78rem',
+                        color: 'var(--v3-muted)', fontWeight: 700,
+                      }}
+                      title="Drag to reorder"
+                    >
+                      <span>{idx + 1}</span>
+                      <span style={{ fontSize: '0.9rem', marginTop: 2 }}>⋮⋮</span>
+                    </div>
+
+                    {/* Desktop image (16:5) */}
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--v3-muted)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+                        Desktop · 16:5
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <img
+                          src={img}
+                          alt=""
+                          loading="lazy"
+                          style={{
+                            width: '100%', aspectRatio: '16/5', objectFit: 'cover',
+                            objectPosition: 'center top',
+                            borderRadius: 8, background: '#ddd',
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            if (!confirm('Remove this slide (desktop + mobile)?')) return;
+                            setFormData((prev: any) => ({
+                              ...prev,
+                              images: {
+                                ...prev.images,
+                                heroSlider: (prev.images?.heroSlider || []).filter((_: any, i: number) => i !== idx),
+                                heroSliderMobile: (prev.images?.heroSliderMobile || []).filter((_: any, i: number) => i !== idx),
+                              },
+                            }));
+                          }}
+                          className="av2-img-remove"
+                          title="Remove slide"
+                        >✕</button>
+                      </div>
+                    </div>
+
+                    {/* Mobile image (4:5) */}
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--v3-muted)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        Mobile · 4:5
+                        {!mobileImg && <span style={{ fontSize: '0.6rem', color: '#b07a00', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>(falls back to desktop)</span>}
+                      </div>
+                      {mobileImg ? (
+                        <div style={{ position: 'relative', width: '60%', maxWidth: 180 }}>
+                          <img
+                            src={mobileImg}
+                            alt=""
+                            loading="lazy"
+                            style={{
+                              width: '100%', aspectRatio: '4/5', objectFit: 'cover',
+                              borderRadius: 8, background: '#ddd',
+                            }}
+                          />
+                          <button
+                            onClick={() => clearSlideMobile(idx)}
+                            className="av2-img-remove"
+                            title="Remove mobile version"
+                          >✕</button>
+                        </div>
+                      ) : (
+                        <label
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '60%', maxWidth: 180,
+                            aspectRatio: '4/5', borderRadius: 8,
+                            border: '1px dashed var(--v3-line)',
+                            background: '#fff', cursor: 'pointer',
+                            color: 'var(--v3-muted)', fontSize: '0.78rem',
+                            textAlign: 'center', padding: 10,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          + Add<br/>mobile crop
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) setSlideMobile(idx, f);
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

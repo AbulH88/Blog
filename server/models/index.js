@@ -247,6 +247,21 @@ const applyMigrations = async () => {
     console.warn('Subscriptions.tier free-enum migration warn:', err.message);
   }
 
+  // Add heroImagesMobile column for per-slide mobile hero overrides. Idempotent.
+  try {
+    const dialect = sequelize.getDialect();
+    if (dialect === 'postgres') {
+      await sequelize.query('ALTER TABLE "Creators" ADD COLUMN IF NOT EXISTS "heroImagesMobile" JSON DEFAULT \'[]\'::json');
+    } else {
+      const [cols] = await sequelize.query("PRAGMA table_info(Creators)");
+      if (!cols.some(c => c.name === 'heroImagesMobile')) {
+        await sequelize.query("ALTER TABLE Creators ADD COLUMN heroImagesMobile TEXT DEFAULT '[]'");
+      }
+    }
+  } catch (err) {
+    console.warn('Creators.heroImagesMobile migration warn:', err.message);
+  }
+
   // Backfill: every active fan should have at least one Subscription so they
   // appear in the creator's Messages inbox. Pre-fix signups missed this
   // because tier='free' got rejected by the old enum and the error was

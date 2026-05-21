@@ -13,6 +13,10 @@ const Creator = sequelize.define('Creator', {
   shortBio: { type: DataTypes.TEXT, defaultValue: '' },
   profileImage: { type: DataTypes.STRING, defaultValue: '' },
   heroImages: { type: DataTypes.JSON, defaultValue: [] },
+  // Per-index mobile override for hero slider. heroImagesMobile[i] takes
+  // precedence on phones; empty/null falls back to heroImages[i]. Lets the
+  // creator publish a portrait crop for mobile alongside a 16:5 desktop.
+  heroImagesMobile: { type: DataTypes.JSON, defaultValue: [] },
   galleryImages: { type: DataTypes.JSON, defaultValue: [] },
 
   // Monetisation

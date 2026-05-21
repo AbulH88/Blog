@@ -21,6 +21,8 @@ const normalize = (creator: any) => ({
   images: {
     hero: creator.profileImage || '',
     heroSlider: creator.heroImages || [],
+    // Per-index mobile overrides — empty array if creator hasn't set any.
+    heroSliderMobile: creator.heroImagesMobile || [],
     gallery: creator.galleryImages || [],
   },
   links: creator.links || {},
@@ -61,6 +63,7 @@ const denormalize = (config: any) => {
     bio: config.bio,
     profileImage: config.images?.hero || '',
     heroImages: config.images?.heroSlider || [],
+    heroImagesMobile: config.images?.heroSliderMobile || [],
     galleryImages: config.images?.gallery || [],
     links: config.links || {},
     theme: config.theme || {},
