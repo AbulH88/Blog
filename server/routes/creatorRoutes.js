@@ -36,7 +36,7 @@ router.patch('/:slug', requireAuth, requireCreator, async (req, res) => {
 
     const ALLOWED_FIELDS = [
       'displayName', 'bio', 'shortBio', 'profileImage', 'heroImages',
-      'galleryImages', 'heroImagesMobile', 'theme', 'fanvueUrl', 'billingDescriptor', 'logoUrl',
+      'galleryImages', 'heroImagesMobile', 'heroAlbums', 'galleryAlbums', 'theme', 'fanvueUrl', 'billingDescriptor', 'logoUrl',
       'featuredLinks', 'instagramPosts', 'links', 'seo', 'blog', 'faq',
       'mustHaves', 'isLive', 'maintenanceMode', 'welcomeMessage',
       'welcomeEnabled', 'welcomePpvText', 'welcomeMediaUrl', 'welcomePpvPrice',
@@ -46,6 +46,20 @@ router.patch('/:slug', requireAuth, requireCreator, async (req, res) => {
     const allowed = Object.fromEntries(
       Object.entries(req.body).filter(([k]) => ALLOWED_FIELDS.includes(k))
     );
+    // Enforce "only one active album" — if the client sets active=true on
+    // any album, deactivate all the others server-side. Client UI does this
+    // too but we mirror server-side so curl users can't break the invariant.
+    const ensureSingleActive = (arr) => {
+      if (!Array.isArray(arr)) return arr;
+      const firstActive = arr.findIndex(a => a?.active === true);
+      if (firstActive < 0) {
+        if (arr.length > 0) arr[0].active = true; // never leave 0 active
+        return arr;
+      }
+      return arr.map((a, i) => ({ ...a, active: i === firstActive }));
+    };
+    if (allowed.heroAlbums) allowed.heroAlbums = ensureSingleActive(allowed.heroAlbums);
+    if (allowed.galleryAlbums) allowed.galleryAlbums = ensureSingleActive(allowed.galleryAlbums);
     if (req.body.newPassword) {
       allowed.passwordHash = await bcrypt.hash(req.body.newPassword, 12);
     }

@@ -11,6 +11,26 @@ const authHeaders = () => ({
 // ─── Shape adapters ────────────────────────────────────────────────────────────
 // Keeps all existing page components working without any changes.
 
+// Helpers that pick the active album's slides, falling back to legacy flat
+// arrays when no albums exist (covers fresh installs + creators who haven't
+// touched the admin UI yet).
+function deriveActiveSlides(albums: any, kind: 'desktop' | 'mobile', fallback: any): string[] {
+  if (Array.isArray(albums) && albums.length > 0) {
+    const active = albums.find((a: any) => a?.active) || albums[0];
+    if (Array.isArray(active?.slides)) {
+      return active.slides.map((s: any) => (kind === 'desktop' ? s?.desktop : s?.mobile) || '');
+    }
+  }
+  return Array.isArray(fallback) ? fallback : [];
+}
+function deriveActiveGallery(albums: any, fallback: any): string[] {
+  if (Array.isArray(albums) && albums.length > 0) {
+    const active = albums.find((a: any) => a?.active) || albums[0];
+    if (Array.isArray(active?.images)) return active.images;
+  }
+  return Array.isArray(fallback) ? fallback : [];
+}
+
 const normalize = (creator: any) => ({
   // V1-compatible fields
   siteTitle: creator.displayName,
@@ -20,10 +40,16 @@ const normalize = (creator: any) => ({
   bio: creator.bio,
   images: {
     hero: creator.profileImage || '',
-    heroSlider: creator.heroImages || [],
-    // Per-index mobile overrides — empty array if creator hasn't set any.
-    heroSliderMobile: creator.heroImagesMobile || [],
-    gallery: creator.galleryImages || [],
+    // Flat arrays are derived from the ACTIVE album when albums exist, else
+    // fall back to legacy heroImages / heroImagesMobile / galleryImages.
+    // Components that don't know about albums (Home, FanSidebar, etc.) keep
+    // working unchanged.
+    heroSlider: deriveActiveSlides(creator.heroAlbums, 'desktop', creator.heroImages),
+    heroSliderMobile: deriveActiveSlides(creator.heroAlbums, 'mobile', creator.heroImagesMobile),
+    gallery: deriveActiveGallery(creator.galleryAlbums, creator.galleryImages),
+    // Full album structure for admin UI.
+    heroAlbums: Array.isArray(creator.heroAlbums) ? creator.heroAlbums : [],
+    galleryAlbums: Array.isArray(creator.galleryAlbums) ? creator.galleryAlbums : [],
   },
   links: creator.links || {},
   cta: { primary: 'Unlock Exclusive Content 🔒', secondary: 'View Gallery' },
@@ -65,6 +91,9 @@ const denormalize = (config: any) => {
     heroImages: config.images?.heroSlider || [],
     heroImagesMobile: config.images?.heroSliderMobile || [],
     galleryImages: config.images?.gallery || [],
+    // Full album structure — admin UI writes this directly.
+    ...(config.images?.heroAlbums !== undefined ? { heroAlbums: config.images.heroAlbums } : {}),
+    ...(config.images?.galleryAlbums !== undefined ? { galleryAlbums: config.images.galleryAlbums } : {}),
     links: config.links || {},
     theme: config.theme || {},
     seo: config.seo || {},

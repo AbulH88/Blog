@@ -12,12 +12,21 @@ const Creator = sequelize.define('Creator', {
   bio: { type: DataTypes.TEXT, defaultValue: '' },
   shortBio: { type: DataTypes.TEXT, defaultValue: '' },
   profileImage: { type: DataTypes.STRING, defaultValue: '' },
+  // Legacy flat arrays — kept for back-compat. New code reads heroAlbums.
+  // Auto-migrated to the first album on boot if heroAlbums is empty.
   heroImages: { type: DataTypes.JSON, defaultValue: [] },
-  // Per-index mobile override for hero slider. heroImagesMobile[i] takes
-  // precedence on phones; empty/null falls back to heroImages[i]. Lets the
-  // creator publish a portrait crop for mobile alongside a 16:5 desktop.
   heroImagesMobile: { type: DataTypes.JSON, defaultValue: [] },
   galleryImages: { type: DataTypes.JSON, defaultValue: [] },
+
+  // ── Album system ────────────────────────────────────────────────────────
+  // Hero albums: each album is a named collection of paired slides. Only
+  // one album can be `active: true` at a time (enforced in the PATCH route).
+  // The active album's slides drive the public home-page slider.
+  //   Shape: [{ id, name, active, slides: [{ desktop?, mobile? }, ...] }]
+  heroAlbums: { type: DataTypes.JSON, defaultValue: [] },
+  // Gallery albums: similar but flat image arrays per album.
+  //   Shape: [{ id, name, active, images: [string, ...] }]
+  galleryAlbums: { type: DataTypes.JSON, defaultValue: [] },
 
   // Monetisation
   subscriptionPrice: { type: DataTypes.DECIMAL(10, 2), defaultValue: 9.99 },

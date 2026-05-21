@@ -13,6 +13,7 @@ import AdminAiChatbot from './AdminAiChatbot';
 import AdminBroadcast from './AdminBroadcast';
 import DragDropUpload from '../components/DragDropUpload';
 import FunnelCard from '../components/FunnelCard';
+import AddHeroSlideModal from '../components/AddHeroSlideModal';
 
 type Tab =
   | 'overview' | 'biobuilder' | 'analytics' | 'content' | 'gallery'
@@ -54,6 +55,9 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
   const [isDark, setIsDark] = useState(() => localStorage.getItem('adminTheme') !== 'light');
   // Mobile nav drawer — sidebar slides in from left on < 960px screens.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Toggle for the "Add Hero Slide" modal (lives in renderGallery's section
+  // but the state has to be at the component level for hook rules).
+  const [addSlideOpen, setAddSlideOpen] = useState(false);
   const C = mkColors(isDark);
   const toggleTheme = () => setIsDark(d => {
     const next = !d;
@@ -940,244 +944,410 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
   };
 
   const renderGallery = () => {
-    const slider: string[] = formData.images?.heroSlider || [];
-    const sliderMobile: string[] = formData.images?.heroSliderMobile || [];
+    const heroAlbums: any[] = formData.images?.heroAlbums || [];
+    const galleryAlbums: any[] = formData.images?.galleryAlbums || [];
     const gallery: string[] = formData.images?.gallery || [];
 
-    // Upload a mobile version for an existing slide index. We don't trim
-    // sliderMobile to slider length — keeping it sparse is fine; HeroSlider
-    // falls back to desktop when mobileImages[i] is empty.
-    const setSlideMobile = async (idx: number, file: File) => {
-      setStatus(`Uploading mobile slide ${idx + 1}…`);
-      const res = await uploadImage(file);
-      if (res?.url) {
-        setFormData((prev: any) => {
-          const next = [...(prev.images?.heroSliderMobile || [])];
-          while (next.length <= idx) next.push('');
-          next[idx] = res.url;
-          return { ...prev, images: { ...prev.images, heroSliderMobile: next } };
-        });
-        setStatus('Mobile slide saved — remember to Save Changes');
-        setTimeout(() => setStatus(''), 3000);
-      } else {
-        setStatus('Upload failed');
-      }
+    // ── Hero album helpers ───────────────────────────────────────────────
+    const setHeroAlbums = (next: any[]) => setFormData((prev: any) => ({
+      ...prev,
+      images: { ...prev.images, heroAlbums: next },
+    }));
+    const setGalleryAlbums = (next: any[]) => setFormData((prev: any) => ({
+      ...prev,
+      images: { ...prev.images, galleryAlbums: next },
+    }));
+
+    const activateHeroAlbum = (id: string) => {
+      setHeroAlbums(heroAlbums.map(a => ({ ...a, active: a.id === id })));
+    };
+    const activateGalleryAlbum = (id: string) => {
+      setGalleryAlbums(galleryAlbums.map(a => ({ ...a, active: a.id === id })));
     };
 
-    const clearSlideMobile = (idx: number) => {
-      setFormData((prev: any) => {
-        const next = [...(prev.images?.heroSliderMobile || [])];
-        if (idx < next.length) next[idx] = '';
-        return { ...prev, images: { ...prev.images, heroSliderMobile: next } };
-      });
+    const createHeroAlbum = () => {
+      const name = prompt('Name this hero collection (e.g. "Summer 2026")');
+      if (!name) return;
+      const next = [...heroAlbums.map(a => ({ ...a, active: false })), {
+        id: `hero-${Date.now()}`, name: name.trim(), active: true, slides: [],
+      }];
+      setHeroAlbums(next);
     };
+    const createGalleryAlbum = () => {
+      const name = prompt('Name this gallery album (e.g. "Vintage looks")');
+      if (!name) return;
+      const next = [...galleryAlbums.map(a => ({ ...a, active: false })), {
+        id: `gallery-${Date.now()}`, name: name.trim(), active: true, images: [],
+      }];
+      setGalleryAlbums(next);
+    };
+
+    const renameHeroAlbum = (id: string) => {
+      const album = heroAlbums.find(a => a.id === id);
+      if (!album) return;
+      const name = prompt('Rename album', album.name);
+      if (name === null) return;
+      setHeroAlbums(heroAlbums.map(a => a.id === id ? { ...a, name: name.trim() || a.name } : a));
+    };
+    const renameGalleryAlbum = (id: string) => {
+      const album = galleryAlbums.find(a => a.id === id);
+      if (!album) return;
+      const name = prompt('Rename album', album.name);
+      if (name === null) return;
+      setGalleryAlbums(galleryAlbums.map(a => a.id === id ? { ...a, name: name.trim() || a.name } : a));
+    };
+
+    const deleteHeroAlbum = (id: string) => {
+      if (heroAlbums.length === 1) { alert('You need at least one album. Create another first.'); return; }
+      if (!confirm('Delete this album and all its slides? (files in /uploads stay on disk)')) return;
+      const next = heroAlbums.filter(a => a.id !== id);
+      // If the deleted one was active, activate the first remaining
+      if (!next.some(a => a.active) && next.length > 0) next[0].active = true;
+      setHeroAlbums(next);
+    };
+    const deleteGalleryAlbum = (id: string) => {
+      if (galleryAlbums.length === 1) { alert('You need at least one album. Create another first.'); return; }
+      if (!confirm('Delete this album and all its images?')) return;
+      const next = galleryAlbums.filter(a => a.id !== id);
+      if (!next.some(a => a.active) && next.length > 0) next[0].active = true;
+      setGalleryAlbums(next);
+    };
+
+    const addSlideToActiveHero = (slide: { desktop?: string; mobile?: string }) => {
+      const activeIdx = heroAlbums.findIndex(a => a.active);
+      if (activeIdx < 0) return;
+      const next = heroAlbums.map((a, i) => i === activeIdx
+        ? { ...a, slides: [...(a.slides || []), slide] }
+        : a);
+      setHeroAlbums(next);
+      setStatus('Slide added — remember to Save Changes');
+      setTimeout(() => setStatus(''), 3000);
+    };
+
+    const removeSlideFromActiveHero = (slideIdx: number) => {
+      if (!confirm('Remove this slide?')) return;
+      const activeIdx = heroAlbums.findIndex(a => a.active);
+      if (activeIdx < 0) return;
+      const next = heroAlbums.map((a, i) => i === activeIdx
+        ? { ...a, slides: (a.slides || []).filter((_: any, j: number) => j !== slideIdx) }
+        : a);
+      setHeroAlbums(next);
+    };
+
+    const uploadGalleryImagesToActive = async (files: File[]) => {
+      if (!files.length) return;
+      const activeIdx = galleryAlbums.findIndex(a => a.active);
+      if (activeIdx < 0) { alert('Pick an active album first'); return; }
+      setStatus(`Uploading ${files.length} image${files.length === 1 ? '' : 's'}…`);
+      const urls: string[] = [];
+      for (const file of files) {
+        const r = await uploadImage(file);
+        if (r?.url) urls.push(r.url);
+      }
+      if (!urls.length) { setStatus('Upload failed'); return; }
+      const next = galleryAlbums.map((a, i) => i === activeIdx
+        ? { ...a, images: [...(a.images || []), ...urls] }
+        : a);
+      setGalleryAlbums(next);
+      setStatus(`${urls.length} uploaded — remember to Save Changes`);
+      setTimeout(() => setStatus(''), 3000);
+    };
+
+    const removeGalleryImageFromActive = (imgIdx: number) => {
+      const activeIdx = galleryAlbums.findIndex(a => a.active);
+      if (activeIdx < 0) return;
+      const next = galleryAlbums.map((a, i) => i === activeIdx
+        ? { ...a, images: (a.images || []).filter((_: any, j: number) => j !== imgIdx) }
+        : a);
+      setGalleryAlbums(next);
+    };
+
+    const activeHero = heroAlbums.find(a => a.active);
+    const activeGallery = galleryAlbums.find(a => a.active);
 
     return (
       <div>
         <h1 className="title">GALLERY</h1>
         <p className="welcome">Your visual content — hero slider on the home page, and the gallery grid that also feeds the Instagram-style sidebar.</p>
 
-        {/* Hero Slider — paired desktop + mobile per slide */}
+        {/* ── HERO COLLECTIONS ─────────────────────────────────────────── */}
         <div className="av2-card">
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-            <p className="av2-section-label" style={{ marginBottom: 0 }}>Hero Slider ({slider.length} slide{slider.length === 1 ? '' : 's'})</p>
-            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>auto-cycles on home page · cross-fade with dots</span>
+            <p className="av2-section-label" style={{ marginBottom: 0 }}>Hero Collections</p>
+            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>only the ACTIVE collection cycles on the home page</span>
           </div>
-          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 16px', lineHeight: 1.5 }}>
-            Each slide can have <strong>two versions</strong> — a 16:5 desktop landscape (2400×750 ideal) and a 4:5 mobile portrait (1080×1350 ideal).
-            Mobile is optional — if you skip it, the desktop image is used on phones too (and may get cropped).
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+            Group slides into collections (e.g. "Summer", "Holiday"). Activate one to publish — switch anytime without losing the others.
           </p>
 
-          {/* Add new slide — uploads desktop image(s). Mobile gets added per slide below. */}
-          <DragDropUpload
-            accept="image/*"
-            multiple
-            onFiles={(files) => handleFilesUpload(files, 'slider')}
-            title="+ Add slide (desktop image)"
-            hint="or click to browse — JPG, PNG, WebP · landscape 16:5"
-            icon="🖼"
-            style={{ marginBottom: 18 }}
-          />
+          {/* Collection cards — horizontal scroll */}
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, marginBottom: 14 }}>
+            {heroAlbums.map(album => {
+              const cover = album.slides?.[0]?.desktop || album.slides?.[0]?.mobile;
+              return (
+                <button
+                  key={album.id}
+                  type="button"
+                  onClick={() => activateHeroAlbum(album.id)}
+                  style={{
+                    flex: '0 0 160px',
+                    border: album.active ? '2px solid var(--v3-terracotta)' : '1px solid var(--v3-line)',
+                    borderRadius: 12, padding: 8, cursor: 'pointer',
+                    background: album.active ? 'var(--v3-rose-50)' : '#fff',
+                    fontFamily: 'inherit', textAlign: 'left',
+                    position: 'relative',
+                  }}>
+                  <div style={{
+                    width: '100%', aspectRatio: '4/3', borderRadius: 8,
+                    background: cover ? `url(${cover}) center/cover` : 'var(--v3-cream)',
+                    marginBottom: 6, position: 'relative',
+                  }}>
+                    {album.active && (
+                      <span style={{
+                        position: 'absolute', top: 6, right: 6,
+                        background: 'var(--v3-terracotta)', color: '#fff',
+                        fontSize: '0.62rem', fontWeight: 700,
+                        padding: '2px 6px', borderRadius: 99, letterSpacing: 0.4,
+                      }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--v3-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {album.name}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--v3-muted)' }}>
+                    {album.slides?.length || 0} slide{album.slides?.length === 1 ? '' : 's'}
+                  </div>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={createHeroAlbum}
+              style={{
+                flex: '0 0 160px', aspectRatio: '4/3',
+                border: '1px dashed var(--v3-line)', borderRadius: 12,
+                background: 'var(--v3-cream)', cursor: 'pointer',
+                color: 'var(--v3-muted)', fontWeight: 700, fontSize: '0.84rem',
+                fontFamily: 'inherit',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+              }}>
+              <span style={{ fontSize: '1.4rem' }}>+</span>
+              <span>New collection</span>
+            </button>
+          </div>
 
-          {/* Per-slide list — desktop + mobile side by side */}
-          {slider.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {slider.map((img: string, idx: number) => {
-                const mobileImg = sliderMobile[idx] || '';
-                return (
+          {/* Active album controls + slides */}
+          {activeHero ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div>
+                  <strong style={{ fontSize: '0.94rem', color: 'var(--v3-ink)' }}>{activeHero.name}</strong>
+                  <span style={{ marginLeft: 8, fontSize: '0.72rem', color: 'var(--v3-muted)' }}>
+                    {activeHero.slides?.length || 0} slide{activeHero.slides?.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button type="button" onClick={() => renameHeroAlbum(activeHero.id)}
+                    style={{ background: 'transparent', border: '1px solid var(--v3-line)', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: '0.74rem', color: 'var(--v3-ink)' }}>
+                    Rename
+                  </button>
+                  <button type="button" onClick={() => deleteHeroAlbum(activeHero.id)}
+                    style={{ background: 'transparent', border: '1px solid var(--v3-line)', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: '0.74rem', color: 'var(--v3-danger)' }}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAddSlideOpen(true)}
+                style={{
+                  width: '100%', border: '1px dashed var(--v3-terracotta)', borderRadius: 10,
+                  background: 'var(--v3-rose-50)', color: 'var(--v3-terracotta)',
+                  padding: '14px 0', fontWeight: 700, fontSize: '0.88rem',
+                  cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14,
+                }}>
+                + Add slide (choose desktop / mobile / both)
+              </button>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {(activeHero.slides || []).map((slide: any, idx: number) => (
                   <div
                     key={idx}
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: '24px 1fr 1fr',
-                      gap: 12,
-                      alignItems: 'stretch',
-                      padding: 12,
-                      border: '1px solid var(--v3-line)',
-                      borderRadius: 12,
-                      background: 'var(--v3-cream)',
+                      display: 'grid', gridTemplateColumns: '32px 1fr 1fr',
+                      gap: 12, alignItems: 'stretch', padding: 10,
+                      border: '1px solid var(--v3-line)', borderRadius: 10,
+                      background: '#fff',
                     }}>
-                    {/* Slide number + reorder grip */}
-                    <div
-                      draggable
-                      onDragStart={() => { sliderDragIdx.current = idx; }}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
-                        if (sliderDragIdx.current === null || sliderDragIdx.current === idx) return;
-                        const fromIdx = sliderDragIdx.current;
-                        sliderDragIdx.current = null;
-                        setFormData((prev: any) => ({
-                          ...prev,
-                          images: {
-                            ...prev.images,
-                            heroSlider: reorderArray(prev.images?.heroSlider || [], fromIdx, idx),
-                            heroSliderMobile: reorderArray(prev.images?.heroSliderMobile || [], fromIdx, idx),
-                          },
-                        }));
-                      }}
-                      style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center',
-                        justifyContent: 'center', cursor: 'grab', fontSize: '0.78rem',
-                        color: 'var(--v3-muted)', fontWeight: 700,
-                      }}
-                      title="Drag to reorder"
-                    >
-                      <span>{idx + 1}</span>
-                      <span style={{ fontSize: '0.9rem', marginTop: 2 }}>⋮⋮</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.78rem', color: 'var(--v3-muted)' }}>
+                      {idx + 1}
                     </div>
-
-                    {/* Desktop image (16:5) */}
                     <div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--v3-muted)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6 }}>
+                      <div style={{ fontSize: '0.66rem', color: 'var(--v3-muted)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>
                         Desktop · 16:5
                       </div>
-                      <div style={{ position: 'relative' }}>
-                        <img
-                          src={img}
-                          alt=""
-                          loading="lazy"
-                          style={{
-                            width: '100%', aspectRatio: '16/5', objectFit: 'cover',
-                            objectPosition: 'center top',
-                            borderRadius: 8, background: '#ddd',
-                          }}
-                        />
-                        <button
-                          onClick={() => {
-                            if (!confirm('Remove this slide (desktop + mobile)?')) return;
-                            setFormData((prev: any) => ({
-                              ...prev,
-                              images: {
-                                ...prev.images,
-                                heroSlider: (prev.images?.heroSlider || []).filter((_: any, i: number) => i !== idx),
-                                heroSliderMobile: (prev.images?.heroSliderMobile || []).filter((_: any, i: number) => i !== idx),
-                              },
-                            }));
-                          }}
-                          className="av2-img-remove"
-                          title="Remove slide"
-                        >✕</button>
-                      </div>
-                    </div>
-
-                    {/* Mobile image (4:5) */}
-                    <div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--v3-muted)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        Mobile · 4:5
-                        {!mobileImg && <span style={{ fontSize: '0.6rem', color: '#b07a00', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>(falls back to desktop)</span>}
-                      </div>
-                      {mobileImg ? (
-                        <div style={{ position: 'relative', width: '60%', maxWidth: 180 }}>
-                          <img
-                            src={mobileImg}
-                            alt=""
-                            loading="lazy"
-                            style={{
-                              width: '100%', aspectRatio: '4/5', objectFit: 'cover',
-                              borderRadius: 8, background: '#ddd',
-                            }}
-                          />
-                          <button
-                            onClick={() => clearSlideMobile(idx)}
-                            className="av2-img-remove"
-                            title="Remove mobile version"
-                          >✕</button>
-                        </div>
+                      {slide.desktop ? (
+                        <img src={slide.desktop} alt="" loading="lazy"
+                          style={{ width: '100%', aspectRatio: '16/5', objectFit: 'cover', objectPosition: 'center top', borderRadius: 6, background: '#eee' }} />
                       ) : (
-                        <label
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: '60%', maxWidth: 180,
-                            aspectRatio: '4/5', borderRadius: 8,
-                            border: '1px dashed var(--v3-line)',
-                            background: '#fff', cursor: 'pointer',
-                            color: 'var(--v3-muted)', fontSize: '0.78rem',
-                            textAlign: 'center', padding: 10,
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          + Add<br/>mobile crop
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) setSlideMobile(idx, f);
-                            }}
-                          />
-                        </label>
+                        <div style={{ aspectRatio: '16/5', borderRadius: 6, background: 'var(--v3-cream)', border: '1px dashed var(--v3-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v3-muted)', fontSize: '0.74rem' }}>
+                          No desktop
+                        </div>
                       )}
                     </div>
+                    <div>
+                      <div style={{ fontSize: '0.66rem', color: 'var(--v3-muted)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>
+                        Mobile · 4:5
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        {slide.mobile ? (
+                          <img src={slide.mobile} alt="" loading="lazy"
+                            style={{ width: 96, aspectRatio: '4/5', objectFit: 'cover', borderRadius: 6, background: '#eee' }} />
+                        ) : (
+                          <div style={{ width: 96, aspectRatio: '4/5', borderRadius: 6, background: 'var(--v3-cream)', border: '1px dashed var(--v3-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v3-muted)', fontSize: '0.66rem', textAlign: 'center' }}>
+                            No mobile
+                          </div>
+                        )}
+                        <button type="button" onClick={() => removeSlideFromActiveHero(idx)}
+                          style={{ marginLeft: 'auto', alignSelf: 'flex-start', background: 'transparent', border: 'none', color: 'var(--v3-danger)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: 4 }}
+                          title="Remove slide">×</button>
+                      </div>
+                    </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
+          ) : (
+            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem' }}>
+              Create your first collection above to start adding slides.
+            </p>
           )}
         </div>
 
-        {/* Gallery */}
+        {/* ── GALLERY ALBUMS ───────────────────────────────────────────── */}
         <div className="av2-card">
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-            <p className="av2-section-label" style={{ marginBottom: 0 }}>Gallery Images ({gallery.length})</p>
-            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>shown on /gallery + home page IG feed · 1:1 square · 1080×1080 ideal</span>
+            <p className="av2-section-label" style={{ marginBottom: 0 }}>Gallery Albums</p>
+            <span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>only the ACTIVE album shows on /gallery + home feed</span>
           </div>
-          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 12px' }}>
-            Square (1:1) photos look best. Add 6–9 to fill the home page feed grid.
+          <p style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+            Square (1:1) photos look best. Each album is its own collection — switch which one is published whenever you want.
           </p>
 
-          <DragDropUpload
-            accept="image/*"
-            multiple
-            onFiles={(files) => handleFilesUpload(files, 'gallery')}
-            title="Drop gallery photos here"
-            hint="or click to browse multiple"
-            icon="📷"
-            style={{ marginBottom: 14 }}
-          />
-
-          {gallery.length > 0 && (
-            <div className="av2-img-grid">
-              {gallery.map((img: string, idx: number) => (
-                <div
-                  key={idx}
-                  style={{ position: 'relative', cursor: 'grab' }}
-                  draggable
-                  onDragStart={() => { galleryDragIdx.current = idx; }}
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={() => {
-                    if (galleryDragIdx.current === null || galleryDragIdx.current === idx) return;
-                    const next = reorderArray(gallery, galleryDragIdx.current, idx);
-                    galleryDragIdx.current = null;
-                    setFormData((prev: any) => ({ ...prev, images: { ...prev.images, gallery: next } }));
+          {/* Album cards */}
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, marginBottom: 14 }}>
+            {galleryAlbums.map(album => {
+              const cover = album.images?.[0];
+              return (
+                <button
+                  key={album.id}
+                  type="button"
+                  onClick={() => activateGalleryAlbum(album.id)}
+                  style={{
+                    flex: '0 0 160px',
+                    border: album.active ? '2px solid var(--v3-terracotta)' : '1px solid var(--v3-line)',
+                    borderRadius: 12, padding: 8, cursor: 'pointer',
+                    background: album.active ? 'var(--v3-rose-50)' : '#fff',
+                    fontFamily: 'inherit', textAlign: 'left',
                   }}>
-                  <img src={img} alt="" loading="lazy" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
-                  <button onClick={() => removeImage('gallery', idx)} className="av2-img-remove">✕</button>
+                  <div style={{
+                    width: '100%', aspectRatio: '1/1', borderRadius: 8,
+                    background: cover ? `url(${cover}) center/cover` : 'var(--v3-cream)',
+                    marginBottom: 6, position: 'relative',
+                  }}>
+                    {album.active && (
+                      <span style={{
+                        position: 'absolute', top: 6, right: 6,
+                        background: 'var(--v3-terracotta)', color: '#fff',
+                        fontSize: '0.62rem', fontWeight: 700,
+                        padding: '2px 6px', borderRadius: 99, letterSpacing: 0.4,
+                      }}>ACTIVE</span>
+                    )}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--v3-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {album.name}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--v3-muted)' }}>
+                    {album.images?.length || 0} photo{album.images?.length === 1 ? '' : 's'}
+                  </div>
+                </button>
+              );
+            })}
+            <button type="button" onClick={createGalleryAlbum}
+              style={{
+                flex: '0 0 160px', aspectRatio: '1/1',
+                border: '1px dashed var(--v3-line)', borderRadius: 12,
+                background: 'var(--v3-cream)', cursor: 'pointer',
+                color: 'var(--v3-muted)', fontWeight: 700, fontSize: '0.84rem',
+                fontFamily: 'inherit',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+              }}>
+              <span style={{ fontSize: '1.4rem' }}>+</span>
+              <span>New album</span>
+            </button>
+          </div>
+
+          {/* Active gallery album + photos */}
+          {activeGallery ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div>
+                  <strong style={{ fontSize: '0.94rem', color: 'var(--v3-ink)' }}>{activeGallery.name}</strong>
+                  <span style={{ marginLeft: 8, fontSize: '0.72rem', color: 'var(--v3-muted)' }}>
+                    {activeGallery.images?.length || 0} photo{activeGallery.images?.length === 1 ? '' : 's'}
+                  </span>
                 </div>
-              ))}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button type="button" onClick={() => renameGalleryAlbum(activeGallery.id)}
+                    style={{ background: 'transparent', border: '1px solid var(--v3-line)', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: '0.74rem', color: 'var(--v3-ink)' }}>
+                    Rename
+                  </button>
+                  <button type="button" onClick={() => deleteGalleryAlbum(activeGallery.id)}
+                    style={{ background: 'transparent', border: '1px solid var(--v3-line)', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: '0.74rem', color: 'var(--v3-danger)' }}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              <DragDropUpload
+                accept="image/*"
+                multiple
+                onFiles={uploadGalleryImagesToActive}
+                title={`+ Add photos to ${activeGallery.name}`}
+                hint="or click to browse multiple"
+                icon="📷"
+                style={{ marginBottom: 14 }}
+              />
+
+              {activeGallery.images?.length > 0 && (
+                <div className="av2-img-grid">
+                  {activeGallery.images.map((img: string, idx: number) => (
+                    <div key={idx} style={{ position: 'relative' }}>
+                      <img src={img} alt="" loading="lazy" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: 10 }} />
+                      <button onClick={() => removeGalleryImageFromActive(idx)} className="av2-img-remove">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          ) : (
+            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem' }}>
+              Create your first album above to start adding photos.
+            </p>
           )}
         </div>
+
+        {/* Add Slide modal (rendered when user clicks "+ Add slide" inside an active hero album) */}
+        {addSlideOpen && (
+          <AddHeroSlideModal
+            onClose={() => setAddSlideOpen(false)}
+            onAdd={addSlideToActiveHero}
+          />
+        )}
+
+        {/* Reference vars to silence unused warnings — these are now derived per-album */}
+        {false && <span>{gallery.length}{handleFilesUpload.name}{galleryDragIdx.current}{sliderDragIdx.current}{removeImage.name}{reorderArray.name}</span>}
 
         <div className="av2-save-bar">
           {status && <span style={{ fontSize: '0.85rem', color: status.includes('Error') || status.includes('failed') ? 'var(--v3-danger)' : 'var(--v3-success)', fontWeight: 600 }}>{status}</span>}

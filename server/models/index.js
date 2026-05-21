@@ -262,6 +262,60 @@ const applyMigrations = async () => {
     console.warn('Creators.heroImagesMobile migration warn:', err.message);
   }
 
+  // Add album columns. Idempotent.
+  try {
+    const dialect = sequelize.getDialect();
+    if (dialect === 'postgres') {
+      await sequelize.query('ALTER TABLE "Creators" ADD COLUMN IF NOT EXISTS "heroAlbums" JSON DEFAULT \'[]\'::json');
+      await sequelize.query('ALTER TABLE "Creators" ADD COLUMN IF NOT EXISTS "galleryAlbums" JSON DEFAULT \'[]\'::json');
+    } else {
+      const [cols] = await sequelize.query("PRAGMA table_info(Creators)");
+      const names = new Set(cols.map(c => c.name));
+      if (!names.has('heroAlbums')) await sequelize.query("ALTER TABLE Creators ADD COLUMN heroAlbums TEXT DEFAULT '[]'");
+      if (!names.has('galleryAlbums')) await sequelize.query("ALTER TABLE Creators ADD COLUMN galleryAlbums TEXT DEFAULT '[]'");
+    }
+  } catch (err) {
+    console.warn('Creators.albums migration warn:', err.message);
+  }
+
+  // Backfill: lift legacy flat heroImages / heroImagesMobile / galleryImages
+  // into a single "Default" album per creator. Runs once — only when the
+  // album field is empty AND the flat array has data. Existing albums are
+  // left untouched.
+  try {
+    const creators = await Creator.findAll();
+    for (const c of creators) {
+      let touched = false;
+      const heroAlbums = Array.isArray(c.heroAlbums) ? c.heroAlbums : [];
+      if (heroAlbums.length === 0 && Array.isArray(c.heroImages) && c.heroImages.length > 0) {
+        const slides = c.heroImages.map((img, i) => ({
+          desktop: img || null,
+          mobile: (c.heroImagesMobile || [])[i] || null,
+        }));
+        heroAlbums.push({ id: `hero-default-${Date.now()}`, name: 'Default', active: true, slides });
+        c.heroAlbums = heroAlbums;
+        touched = true;
+      }
+      const galleryAlbums = Array.isArray(c.galleryAlbums) ? c.galleryAlbums : [];
+      if (galleryAlbums.length === 0 && Array.isArray(c.galleryImages) && c.galleryImages.length > 0) {
+        galleryAlbums.push({
+          id: `gallery-default-${Date.now()}`,
+          name: 'Default',
+          active: true,
+          images: [...c.galleryImages],
+        });
+        c.galleryAlbums = galleryAlbums;
+        touched = true;
+      }
+      if (touched) {
+        await c.save();
+        console.log(`+ backfilled albums for creator=${c.id} (${c.slug})`);
+      }
+    }
+  } catch (err) {
+    console.warn('Albums backfill warn:', err.message);
+  }
+
   // Backfill: every active fan should have at least one Subscription so they
   // appear in the creator's Messages inbox. Pre-fix signups missed this
   // because tier='free' got rejected by the old enum and the error was
