@@ -101,6 +101,7 @@ const FanDashboard = () => {
     }
     if (t.messageId) return 'PPV message';
     if (t.type === 'tip') return 'Tip sent';
+    if (t.type === 'wallet_deposit') return 'Wallet top-up';
     return 'Unlock';
   };
   const typeLabel = (t: any) => {
@@ -108,9 +109,13 @@ const FanDashboard = () => {
     if (t.collectionId) return 'Bundle';
     if (t.messageId) return 'PPV';
     if (t.postId) return 'Post';
+    if (t.type === 'wallet_deposit') return 'Deposit';
     return t.type || 'Purchase';
   };
+  // Hide abandoned/pending wallet top-ups from purchase history — they confuse fans
+  // who bailed out of the checkout. Completed deposits and all other tx types still show.
   const purchaseRows = [...transactions]
+    .filter((t: any) => !(t.type === 'wallet_deposit' && t.status !== 'completed'))
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .slice(0, 10)
     .map(t => ({
