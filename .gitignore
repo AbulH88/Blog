@@ -47,3 +47,11 @@ server/uploads/*
 
 # Claude/AI tooling
 .claude/
+
+# Local deploy scripts — contain VPS root password, NEVER commit
+.deploy/
+
+# Old review docs from prior agent sessions (work artifacts, not source)
+REVIEW-*.md
+CLEANUP-AUDIT.md
+HANDOFF.md
