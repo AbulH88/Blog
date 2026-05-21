@@ -227,12 +227,19 @@ const AdminAiChatbot = ({ isDark }: { isDark: boolean }) => {
         {/* Telegram setup */}
         <TelegramSection settings={settings} setSettings={setSettings} C={C} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Sticky save bar — pinned to bottom of the left column so the button
+            is always visible no matter how far down you scroll. */}
+        <div style={{
+          position: 'sticky', bottom: 0, marginTop: 'auto',
+          background: C.bg, borderTop: `1px solid ${C.border}`,
+          padding: '14px 0 4px', display: 'flex', alignItems: 'center', gap: 12, zIndex: 5,
+        }}>
           <button onClick={save} style={{
-            padding: '10px 22px', borderRadius: 8, border: 'none',
-            background: '#c45c3a', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem',
-          }}>Save settings</button>
-          <span style={{ color: C.muted, fontSize: '0.8rem' }}>{savingMsg}</span>
+            padding: '12px 28px', borderRadius: 8, border: 'none',
+            background: '#c45c3a', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem',
+            boxShadow: '0 4px 14px rgba(196,92,58,0.35)',
+          }}>💾 Save settings</button>
+          <span style={{ color: C.muted, fontSize: '0.85rem' }}>{savingMsg || 'Changes aren\'t saved until you click Save.'}</span>
         </div>
       </div>
 
