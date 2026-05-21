@@ -3745,9 +3745,50 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   .v3-hero-image { aspect-ratio: 16 / 5; height: auto; }
   .v3-welcome h1 { font-size: 2.2rem; }
   .v3-link-grid { gap: 10px; }
-  .v3-admin-side { display: none; }
+  /* Mobile admin: sidebar becomes a slide-in drawer toggled by the hamburger
+     button in the top bar. Default: off-screen left. .mobile-open slides it in. */
+  .v3-admin-side {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    z-index: 1001;
+    transform: translateX(-105%);
+    transition: transform 0.25s ease;
+    overflow-y: auto;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  }
+  .v3-admin-side.mobile-open {
+    transform: translateX(0);
+  }
+  .v3-admin-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.42);
+    z-index: 1000;
+    animation: v3-fade-in 0.18s ease;
+  }
+  .v3-admin-burger {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border: 1px solid var(--v3-line);
+    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    color: var(--v3-ink);
+  }
   .v3-admin-main { padding: 18px; }
+  /* Hide the search input on mobile so the top bar fits the burger + actions */
+  .v3-admin-search { display: none; }
 }
+@keyframes v3-fade-in { from { opacity: 0; } to { opacity: 1; } }
+/* Hamburger is hidden on desktop — only shows when the 960px-or-less rules
+   override .v3-admin-burger above. */
+.v3-admin-burger { display: none; }
 
 /* ───── Mobile overrides — must come AFTER the 960px block above ─── */
 @media (max-width: 700px) {

@@ -54,8 +54,12 @@ router.post('/deposit', requireAuth, requireVerifiedEmail, async (req, res) => {
     if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
     const providerName = req.body?.provider || 'nowpayments';
     const amount = parseFloat(req.body?.amount);
-    if (!amount || amount < 5 || amount > 1000) {
-      return res.status(400).json({ error: 'amount must be between $5 and $1000' });
+    // NOWPayments per-coin minimums vary (BTC ~$20 USD-equiv). Setting our
+    // floor at $20 means almost every coin works without hitting the upstream
+    // min-amount rejection at the hosted checkout. Cap at $1000 to discourage
+    // wallet ledgering huge balances.
+    if (!amount || amount < 20 || amount > 1000) {
+      return res.status(400).json({ error: 'Top-up amount must be between $20 and $1000. Small amounts (under $20) may be rejected by some cryptos like BTC — pick a higher amount or use USDT/Tron at checkout.' });
     }
     if (!hasProvider(providerName)) {
       return res.status(503).json({ error: `Provider ${providerName} not configured` });

@@ -10,7 +10,9 @@ interface Props {
   returnPath?: string;
 }
 
-const PRESETS = [10, 25, 50, 100, 250];
+// Lowest preset is $20 to clear NOWPayments' per-coin minimums (BTC ~$20-equiv).
+// Anything lower frequently hits "amount less than minimal" at the hosted checkout.
+const PRESETS = [20, 25, 50, 100, 250];
 
 const SUPPORTED = [
   { code: 'USDT', name: 'Tether', badge: 'TRX', color: '#26a17b' },
@@ -27,7 +29,7 @@ const SUPPORTED = [
  * checkout (350+ supported), pays, lands back on /payment/return.
  */
 export default function WalletDepositModal({ onClose, onSuccess, suggested, returnPath = '/dashboard' }: Props) {
-  const [amount, setAmount] = useState<number>(suggested || 25);
+  const [amount, setAmount] = useState<number>(Math.max(20, suggested || 25));
   const [custom, setCustom] = useState('');
   const [pickedCoin, setPickedCoin] = useState(SUPPORTED[0]);
   const [submitting, setSubmitting] = useState(false);
@@ -38,8 +40,8 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
 
   const submit = async () => {
     setError(null);
-    if (!finalAmount || finalAmount < 5 || finalAmount > 1000) {
-      setError('Amount must be between $5 and $1000');
+    if (!finalAmount || finalAmount < 20 || finalAmount > 1000) {
+      setError('Amount must be between $20 and $1000. (BTC and most large coins require ~$20 minimum at checkout — pick USDT/Tron for smaller amounts in the future.)');
       return;
     }
     setSubmitting(true);
@@ -208,7 +210,7 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
             }}>$</span>
             <input
               type="number"
-              min={5}
+              min={20}
               max={1000}
               step={1}
               placeholder="0"
@@ -221,7 +223,7 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
               }}
             />
             <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--v3-muted)', fontSize: '0.78rem' }}>
-              $5–$1,000
+              $20–$1,000
             </span>
           </div>
 

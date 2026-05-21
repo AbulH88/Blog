@@ -52,6 +52,8 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
   const [formData, setFormData]     = useState(config);
   const [activeTab, setActiveTab]   = useState<Tab>('overview');
   const [isDark, setIsDark] = useState(() => localStorage.getItem('adminTheme') !== 'light');
+  // Mobile nav drawer — sidebar slides in from left on < 960px screens.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const C = mkColors(isDark);
   const toggleTheme = () => setIsDark(d => {
     const next = !d;
@@ -2048,8 +2050,15 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
 
   return (
     <div className="v3-admin">
-      {/* Sidebar */}
-      <aside className="v3-admin-side">
+      {/* Mobile drawer backdrop — taps to close the sidebar */}
+      {mobileNavOpen && (
+        <div
+          className="v3-admin-mobile-backdrop"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+      {/* Sidebar — slides in as drawer on mobile */}
+      <aside className={`v3-admin-side ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="v3-admin-brand">
           {config?.logoUrl ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '4px 0' }}>
@@ -2069,7 +2078,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)}
+            <button key={t.id} onClick={() => { setActiveTab(t.id); setMobileNavOpen(false); }}
               className={`v3-admin-nav-btn ${activeTab === t.id ? 'active' : ''}`}>
               <span style={{ width: 20, textAlign: 'center' }}>{t.icon}</span>
               <span>{t.label}</span>
@@ -2094,6 +2103,18 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
       <main className="v3-admin-main">
         {/* Top bar */}
         <div className="v3-admin-top">
+          {/* Hamburger — mobile only (CSS hides on desktop) */}
+          <button
+            className="v3-admin-burger"
+            aria-label="Open menu"
+            onClick={() => setMobileNavOpen(o => !o)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
           <div className="v3-admin-search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <input placeholder="Search" />
