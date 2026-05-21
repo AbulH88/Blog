@@ -50,7 +50,7 @@ export default function FanvueCard({ fanvueUrl, creatorName = 'her' }: Props) {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 800, fontSize: '0.98rem', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          Watch {creatorName} on Fanvue
+          Follow {creatorName} on Fanvue too
           <span style={{
             fontSize: '0.62rem',
             background: 'rgba(255,255,255,0.2)',
@@ -60,11 +60,11 @@ export default function FanvueCard({ fanvueUrl, creatorName = 'her' }: Props) {
             fontWeight: 700,
             letterSpacing: 0.4,
           }}>
-            ✓ VERIFIED · CARD OK
+            ✓ VERIFIED · FREE
           </span>
         </div>
         <div style={{ fontSize: '0.78rem', opacity: 0.85, marginTop: 2 }}>
-          Pay with credit/debit card instead — same creator, alt checkout
+          Free to follow — cards accepted there if you ever want to tip with one
         </div>
       </div>
       <span style={{ fontSize: '1.4rem', opacity: 0.9 }}>→</span>

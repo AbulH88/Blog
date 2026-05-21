@@ -163,13 +163,13 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
               padding: '12px 14px', borderRadius: 10,
               marginBottom: 16,
             }}>
-            <span style={{ fontSize: '1.4rem' }}>💳</span>
+            <span style={{ fontSize: '1.4rem' }}>💎</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: '0.86rem' }}>
-                Prefer to pay with a card? Use Fanvue
+                Want to use a card instead? Tip her on Fanvue (free to join)
               </div>
               <div style={{ fontSize: '0.72rem', opacity: 0.85 }}>
-                Same creator, accepts credit/debit + Apple Pay
+                Same creator — Fanvue accepts cards for tips & PPV
               </div>
             </div>
             <span style={{ opacity: 0.9 }}>→</span>

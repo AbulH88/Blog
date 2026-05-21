@@ -78,10 +78,10 @@ export default function FanvueWelcomeModal({ fanvueUrl, creatorName = 'the creat
             }}>×</button>
           <div style={{ fontSize: '2rem', marginBottom: 6 }}>💎</div>
           <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, letterSpacing: -0.3 }}>
-            Want to pay with a card?
+            Follow {creatorName} on Fanvue too — it's free!
           </h2>
           <p style={{ margin: '6px 0 0', fontSize: '0.88rem', opacity: 0.9, lineHeight: 1.5 }}>
-            {creatorName} accepts card payments on her verified Fanvue. Same content, same girl — just an alternate checkout while we finish wiring cards directly here.
+            Same girl, same vibe — verified on both platforms. Free to follow, no card needed. If you ever want to tip or unlock with a card instead of crypto, that's where to do it.
           </p>
         </div>
 
@@ -93,19 +93,19 @@ export default function FanvueWelcomeModal({ fanvueUrl, creatorName = 'the creat
           }}>
             <li style={{ display: 'flex', alignItems: 'start', gap: 8 }}>
               <span style={{ color: 'var(--v3-terracotta)' }}>✓</span>
-              <span><strong>Verified creator</strong> on Fanvue (✓ blue tick)</span>
+              <span><strong>100% free to follow</strong> — no subscription, no card on file</span>
             </li>
             <li style={{ display: 'flex', alignItems: 'start', gap: 8 }}>
               <span style={{ color: 'var(--v3-terracotta)' }}>✓</span>
-              <span><strong>Credit / debit card</strong>, Apple Pay, Google Pay</span>
+              <span><strong>Verified creator</strong> on Fanvue (blue tick ✓)</span>
             </li>
             <li style={{ display: 'flex', alignItems: 'start', gap: 8 }}>
               <span style={{ color: 'var(--v3-terracotta)' }}>✓</span>
-              <span><strong>No crypto required</strong> — pay how you normally pay online</span>
+              <span><strong>Card payments accepted</strong> there if you ever want to tip or buy PPV without crypto</span>
             </li>
             <li style={{ display: 'flex', alignItems: 'start', gap: 8 }}>
               <span style={{ color: 'var(--v3-terracotta)' }}>✓</span>
-              <span>Or stick with this site & top up with crypto for one-tap unlocks</span>
+              <span>Stays signed in on both — pick whichever you prefer day to day</span>
             </li>
           </ul>
 
@@ -118,7 +118,7 @@ export default function FanvueWelcomeModal({ fanvueUrl, creatorName = 'the creat
                 fontWeight: 700, fontSize: '0.92rem', cursor: 'pointer',
                 fontFamily: 'inherit',
               }}>
-              Open Fanvue →
+              Follow Free on Fanvue →
             </button>
             <button
               onClick={dismiss}
