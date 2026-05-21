@@ -49,10 +49,15 @@ class NowPaymentsProvider extends PaymentProvider {
       cancel_url: successUrl,
       // If the fan picked a coin on our UI, lock NOWPayments to that coin so they
       // don't see the picker again. They land directly on the BTC/USDT/etc. pay page.
-      ...(payCurrency ? { pay_currency: String(payCurrency).toLowerCase() } : {}),
+      // NOTE: We intentionally do NOT pass pay_currency. Locking the invoice
+      // to a single coin causes "currency currently unavailable" dead-ends
+      // when that coin is briefly offline on NOWPayments' side (e.g. a maint
+      // window). Letting NOWPayments show its picker means the fan can pick
+      // a working coin even if their preferred one is down. Our app's smart
+      // picker still shows per-coin minimums up front to set expectations.
+      // (payCurrency is accepted for future use but currently ignored:
+      //  ${payCurrency ? 'preferred=' + payCurrency : 'no preference'})
       // Fan pays the on-chain network fee on top — protects merchant from shortfall.
-      // Without this, ETH/BTC fees come out of the deposit and the credited
-      // amount is less than what the fan saw on our UI.
       is_fee_paid_by_user: true,
       // Lock the exchange rate at invoice creation time. Prevents the "amount
       // changed at checkout" surprise that happens with floating-rate invoices.
