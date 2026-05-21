@@ -258,7 +258,13 @@ export const deleteMyAccount = async (currentPassword: string) => {
 export const uploadImage = async (file: File) => {
   const formData = new FormData();
   formData.append('image', file);
-  const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
+  // Don't set Content-Type — the browser sets multipart boundary automatically.
+  // But the auth header is required: /api/upload is gated by requireAuth+requireCreator.
+  const res = await fetch(`${API_URL}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+    body: formData,
+  });
   return res.json();
 };
 
