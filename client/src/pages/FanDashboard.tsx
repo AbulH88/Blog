@@ -35,6 +35,9 @@ const FanDashboard = () => {
   const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notifsOpen, setNotifsOpen] = useState(false);
+  // Tracks which pending wallet-deposit row is mid-action (Resume/Cancel button busy state).
+  // MUST live above the `if (loading)` early-return below — hooks can't be conditional.
+  const [pendingAction, setPendingAction] = useState<number | null>(null);
   const bellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -130,8 +133,8 @@ const FanDashboard = () => {
       txType: t.type,
     }));
 
-  // Handlers for pending wallet-deposit actions
-  const [pendingAction, setPendingAction] = useState<number | null>(null);
+  // Handlers for pending wallet-deposit actions (pendingAction state is declared
+  // up top with the other hooks so it stays above the loading early-return).
   const handleResume = async (txId: number) => {
     setPendingAction(txId);
     try {
