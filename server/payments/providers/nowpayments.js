@@ -73,17 +73,23 @@ class NowPaymentsProvider extends PaymentProvider {
   }
 
   // Look up the minimum USD-equivalent deposit for a given coin. Cached for
-  // 1h in-memory since NOWPayments doesn't change these often and we don't
-  // want to hit their API on every wallet-modal open.
+  // 1h in-memory since NOWPayments doesn't change these often.
+  //
+  // IMPORTANT: NOWPayments min-amount endpoint expects currency_from=<COIN>
+  // and currency_to=<FIAT>. The response's `fiat_equivalent` field is the
+  // USD value of the minimum. `min_amount` is the same value but in the
+  // FROM (crypto) units, which is useless to us here.
   async getMinAmount(payCurrency, priceCurrency = 'usd') {
     if (!this._minCache) this._minCache = new Map();
-    const key = `${priceCurrency}->${payCurrency}`;
+    const key = `${payCurrency}->${priceCurrency}`;
     const hit = this._minCache.get(key);
     if (hit && Date.now() - hit.at < 60 * 60 * 1000) return hit.value;
 
-    const resp = await this._get(`/min-amount?currency_from=${priceCurrency}&currency_to=${payCurrency}&fiat_equivalent=usd`);
-    // Response shape: { currency_from, currency_to, min_amount, fiat_equivalent }
-    const min = Number(resp.fiat_equivalent ?? resp.min_amount ?? 0);
+    const resp = await this._get(
+      `/min-amount?currency_from=${payCurrency}&currency_to=${priceCurrency}&fiat_equivalent=usd`
+    );
+    // Use fiat_equivalent (USD value) — min_amount is in crypto units.
+    const min = Number(resp.fiat_equivalent ?? 0);
     if (Number.isFinite(min) && min > 0) {
       this._minCache.set(key, { at: Date.now(), value: min });
       return min;

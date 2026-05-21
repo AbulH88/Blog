@@ -105,15 +105,18 @@ router.post('/deposit', requireAuth, requireVerifiedEmail, async (req, res) => {
 // ─── Supported coins + their per-coin USD minimums ──────────────────────────
 // Drives the deposit modal's coin picker. Minimums come from NOWPayments live
 // (cached 1h). Falls back to hard-coded floors if the provider is unreachable.
+// Defaults are conservative — used only if the live NOWPayments lookup fails.
+// Real per-coin minimums fluctuate with network fees and are fetched live on
+// every /api/wallet/coins call (1h cache).
 const COIN_CATALOG = [
-  { code: 'usdttrc20', label: 'USDT (Tron)',      icon: '💲', defaultMin: 2,   hint: 'Cheapest fees, ~$1 min' },
-  { code: 'trx',       label: 'TRON (TRX)',       icon: '🔴', defaultMin: 1,   hint: 'Cheapest crypto' },
-  { code: 'ltc',       label: 'Litecoin (LTC)',   icon: '🟡', defaultMin: 3,   hint: 'Fast + cheap' },
-  { code: 'usdterc20', label: 'USDT (Ethereum)',  icon: '💲', defaultMin: 15,  hint: 'Higher fees than Tron' },
-  { code: 'sol',       label: 'Solana (SOL)',     icon: '🟣', defaultMin: 5,   hint: 'Fast, low fees' },
-  { code: 'eth',       label: 'Ethereum (ETH)',   icon: '⚪', defaultMin: 10,  hint: 'Mid fees' },
-  { code: 'bnbbsc',    label: 'BNB (BSC)',        icon: '🟨', defaultMin: 5,   hint: 'Low fees on BSC' },
-  { code: 'btc',       label: 'Bitcoin (BTC)',    icon: '🟠', defaultMin: 20,  hint: 'Highest min (~$20+)' },
+  { code: 'usdttrc20', label: 'USDT (Tron)',      icon: '💲', defaultMin: 13, hint: 'Lowest fees, fast' },
+  { code: 'trx',       label: 'TRON (TRX)',       icon: '🔴', defaultMin: 13, hint: 'Cheapest network' },
+  { code: 'ltc',       label: 'Litecoin (LTC)',   icon: '🟡', defaultMin: 13, hint: 'Fast + cheap' },
+  { code: 'sol',       label: 'Solana (SOL)',     icon: '🟣', defaultMin: 13, hint: 'Fast, low fees' },
+  { code: 'usdterc20', label: 'USDT (Ethereum)',  icon: '💲', defaultMin: 15, hint: 'Higher Ethereum fees' },
+  { code: 'eth',       label: 'Ethereum (ETH)',   icon: '⚪', defaultMin: 15, hint: 'Mid fees' },
+  { code: 'bnbbsc',    label: 'BNB (BSC)',        icon: '🟨', defaultMin: 13, hint: 'Low fees on BSC' },
+  { code: 'btc',       label: 'Bitcoin (BTC)',    icon: '🟠', defaultMin: 15, hint: 'Slower confirmations' },
 ];
 
 router.get('/coins', requireAuth, async (req, res) => {
