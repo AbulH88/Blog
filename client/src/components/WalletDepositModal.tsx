@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { depositToWallet, getWalletCoins, type WalletCoin } from '../api';
+import { depositToWallet, getWalletCoins, getCreator, type WalletCoin } from '../api';
 
 interface Props {
   onClose: () => void;
@@ -40,12 +40,16 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
   const [amount, setAmount] = useState<number>(suggested || 20);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fanvueUrl, setFanvueUrl] = useState<string | null>(null);
 
-  // Fetch live per-coin minimums on mount.
+  // Fetch live per-coin minimums + creator's fanvue link on mount.
   useEffect(() => {
     getWalletCoins().then(r => {
       if (Array.isArray(r?.coins) && r.coins.length) setCoins(r.coins);
     }).catch(() => { /* keep fallback */ });
+    getCreator().then(c => {
+      if (c?.fanvueUrl) setFanvueUrl(c.fanvueUrl);
+    }).catch(() => { /* fanvue option just won't show */ });
   }, []);
 
   const pickedCoin = useMemo(
@@ -144,6 +148,32 @@ export default function WalletDepositModal({ onClose, onSuccess, suggested, retu
             padding: '10px 14px', background: 'rgba(220,38,38,0.10)', color: 'var(--v3-danger)',
             borderRadius: 8, fontSize: '0.84rem', marginBottom: 14,
           }}>⚠️ {error}</div>
+        )}
+
+        {/* Pay-with-card alternative via Fanvue — only shown if creator set the link */}
+        {fanvueUrl && (
+          <a
+            href={fanvueUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              background: 'linear-gradient(135deg, #2C3E5C 0%, #4A6FA5 100%)',
+              color: '#fff', textDecoration: 'none',
+              padding: '12px 14px', borderRadius: 10,
+              marginBottom: 16,
+            }}>
+            <span style={{ fontSize: '1.4rem' }}>💳</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.86rem' }}>
+                Prefer to pay with a card? Use Fanvue
+              </div>
+              <div style={{ fontSize: '0.72rem', opacity: 0.85 }}>
+                Same creator, accepts credit/debit + Apple Pay
+              </div>
+            </div>
+            <span style={{ opacity: 0.9 }}>→</span>
+          </a>
         )}
 
         {/* Step 1 — coin */}

@@ -10,6 +10,8 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import FanSidebar from '../components/FanSidebar';
 import WalletCard from '../components/WalletCard';
 import VerifyEmailBanner from '../components/VerifyEmailBanner';
+import FanvueCard from '../components/FanvueCard';
+import FanvueWelcomeModal from '../components/FanvueWelcomeModal';
 
 const fullUrl = (p?: string | null) => {
   if (!p) return '';
@@ -278,6 +280,9 @@ const FanDashboard = () => {
           }}
         />
 
+        {/* Fanvue alt-checkout (only shows if creator has set fanvueUrl) */}
+        <FanvueCard fanvueUrl={creator?.fanvueUrl} creatorName={creatorName} />
+
         {/* Message creator CTA */}
         <Link to="/chat" className="v3-fan-cta">
           <div className="left">
@@ -543,6 +548,9 @@ const FanDashboard = () => {
         }}
       />
 
+      {/* Fanvue alt-checkout (only shows if creator has set fanvueUrl) */}
+      <FanvueCard fanvueUrl={creator?.fanvueUrl} creatorName={creatorName} />
+
       <Link to="/chat" className="v3-dash-cta">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
@@ -624,6 +632,14 @@ const FanDashboard = () => {
     <>
       <div className="v3-fan-mobile">{MobileLayout}</div>
       {DesktopShell}
+      {/* First-login modal nudging fans toward Fanvue for card payments.
+          Only renders if creator.fanvueUrl is set; localStorage flag means
+          a given fan only sees this once. */}
+      <FanvueWelcomeModal
+        fanvueUrl={creator?.fanvueUrl}
+        creatorName={creatorName}
+        fanKey={String(fanUser?.id || 'anon')}
+      />
     </>
   );
 };
