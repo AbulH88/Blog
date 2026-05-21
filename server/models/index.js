@@ -192,6 +192,22 @@ const applyMigrations = async () => {
   } catch (err) {
     console.warn('Transactions schema relax failed:', err.message);
   }
+
+  // Add checkoutUrl column for Resume-pending-deposit feature. Idempotent.
+  try {
+    const dialect = sequelize.getDialect();
+    if (dialect === 'postgres') {
+      await sequelize.query('ALTER TABLE "Transactions" ADD COLUMN IF NOT EXISTS "checkoutUrl" VARCHAR(1024)');
+    } else {
+      // SQLite — check before adding to keep this idempotent
+      const [cols] = await sequelize.query("PRAGMA table_info(Transactions)");
+      if (!cols.some(c => c.name === 'checkoutUrl')) {
+        await sequelize.query('ALTER TABLE Transactions ADD COLUMN checkoutUrl VARCHAR(1024)');
+      }
+    }
+  } catch (err) {
+    console.warn('Transactions.checkoutUrl migration warn:', err.message);
+  }
 };
 
 const syncDatabase = async () => {

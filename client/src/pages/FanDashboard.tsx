@@ -4,6 +4,7 @@ import {
   CREATOR_SLUG, SERVER_URL,
   getPosts, getPublicCollections, getChatHistory, getCreator,
   getMyTransactions, getWallet,
+  resumeWalletDeposit, cancelWalletDeposit,
 } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
 import FanSidebar from '../components/FanSidebar';
@@ -112,10 +113,11 @@ const FanDashboard = () => {
     if (t.type === 'wallet_deposit') return 'Deposit';
     return t.type || 'Purchase';
   };
-  // Hide abandoned/pending wallet top-ups from purchase history — they confuse fans
-  // who bailed out of the checkout. Completed deposits and all other tx types still show.
+  // Show all transactions including pending wallet deposits so the fan can
+  // Resume (re-open NOWPayments checkout) or Cancel (mark failed). Hidden:
+  // 'failed' deposits — once cancelled they shouldn't clutter the list either.
   const purchaseRows = [...transactions]
-    .filter((t: any) => !(t.type === 'wallet_deposit' && t.status !== 'completed'))
+    .filter((t: any) => !(t.type === 'wallet_deposit' && t.status === 'failed'))
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .slice(0, 10)
     .map(t => ({
@@ -124,7 +126,42 @@ const FanDashboard = () => {
       type: typeLabel(t),
       title: titleForTxn(t),
       amount: parseFloat(t.amount || 0),
+      status: t.status,
+      txType: t.type,
     }));
+
+  // Handlers for pending wallet-deposit actions
+  const [pendingAction, setPendingAction] = useState<number | null>(null);
+  const handleResume = async (txId: number) => {
+    setPendingAction(txId);
+    try {
+      const r = await resumeWalletDeposit(txId);
+      if (r?.redirectUrl) {
+        window.location.href = r.redirectUrl;
+      } else {
+        alert(r?.error || 'Could not resume — please cancel and start a new top-up.');
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
+  const handleCancelDeposit = async (txId: number) => {
+    if (!confirm('Cancel this pending top-up?')) return;
+    setPendingAction(txId);
+    try {
+      const r = await cancelWalletDeposit(txId);
+      if (r?.success) {
+        // Optimistic — drop from local list immediately
+        setTransactions(prev => prev.map((t: any) =>
+          t.id === txId ? { ...t, status: 'failed' } : t
+        ));
+      } else {
+        alert(r?.error || 'Could not cancel.');
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
 
   // ── Unread + notification count (proper, no `|| 1`) ──
   const unreadFromCreator = messages.filter(m => m.senderType === 'creator' && !m.isRead).length;
@@ -302,20 +339,49 @@ const FanDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {purchaseRows.map(r => (
-                    <tr key={r.id} style={{ borderTop: '1px solid var(--v3-rose-100)' }}>
-                      <td style={{ padding: '10px 6px', color: 'var(--v3-ink-soft)' }}>
-                        {r.date ? new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                      </td>
-                      <td style={{ padding: '10px 6px' }}>
-                        <span style={{ background: 'var(--v3-rose-100)', color: 'var(--v3-terracotta)', padding: '2px 8px', borderRadius: 12, fontSize: '0.74rem', fontWeight: 700 }}>
-                          {r.type}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 6px', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 280, whiteSpace: 'nowrap' }}>{r.title}</td>
-                      <td style={{ padding: '10px 6px', textAlign: 'right', fontWeight: 700 }}>${r.amount.toFixed(2)}</td>
-                    </tr>
-                  ))}
+                  {purchaseRows.map(r => {
+                    const isPendingDeposit = r.txType === 'wallet_deposit' && r.status === 'pending';
+                    const busy = pendingAction === r.id;
+                    return (
+                      <tr key={r.id} style={{ borderTop: '1px solid var(--v3-rose-100)' }}>
+                        <td style={{ padding: '10px 6px', color: 'var(--v3-ink-soft)' }}>
+                          {r.date ? new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        </td>
+                        <td style={{ padding: '10px 6px' }}>
+                          <span style={{ background: 'var(--v3-rose-100)', color: 'var(--v3-terracotta)', padding: '2px 8px', borderRadius: 12, fontSize: '0.74rem', fontWeight: 700 }}>
+                            {r.type}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 6px', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 280, whiteSpace: 'nowrap' }}>
+                          {r.title}
+                          {isPendingDeposit && (
+                            <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#b07a00', fontWeight: 600 }}>
+                              · Pending
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 6px', textAlign: 'right', fontWeight: 700 }}>
+                          ${r.amount.toFixed(2)}
+                          {isPendingDeposit && (
+                            <div style={{ marginTop: 6, display: 'flex', gap: 6, justifyContent: 'flex-end', fontWeight: 500 }}>
+                              <button
+                                disabled={busy}
+                                onClick={() => handleResume(r.id)}
+                                style={{ background: 'var(--v3-terracotta)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.74rem', fontWeight: 700 }}>
+                                {busy ? '…' : 'Resume'}
+                              </button>
+                              <button
+                                disabled={busy}
+                                onClick={() => handleCancelDeposit(r.id)}
+                                style={{ background: 'transparent', color: 'var(--v3-muted)', border: '1px solid var(--v3-rose-100)', borderRadius: 6, padding: '4px 10px', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.74rem' }}>
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

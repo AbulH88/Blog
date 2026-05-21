@@ -587,6 +587,23 @@ export const depositToWallet = async (amount: number, provider: string = 'nowpay
   return res.json();
 };
 
+export const resumeWalletDeposit = async (transactionId: number) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/wallet/deposit/${transactionId}/resume`, {
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
+export const cancelWalletDeposit = async (transactionId: number) => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/wallet/deposit/${transactionId}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
 export const spendFromWallet = async (
   productType: 'post_unlock' | 'collection_unlock' | 'ppv_message',
   productId: number,

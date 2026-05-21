@@ -30,6 +30,9 @@ const Transaction = sequelize.define('Transaction', {
   stripePaymentId:    { type: DataTypes.STRING,  allowNull: true }, // deprecated, kept for back-compat
   description:        { type: DataTypes.STRING,  defaultValue: '' },
   referenceId:        { type: DataTypes.INTEGER, allowNull: true }, // collectionId for collection_unlock
+  // Saved hosted-checkout URL so a fan can "Resume" a pending wallet deposit they
+  // bailed out of. NULL once the transaction completes (URL is single-use anyway).
+  checkoutUrl:        { type: DataTypes.STRING(1024), allowNull: true },
 });
 
 module.exports = Transaction;

@@ -80,6 +80,8 @@ router.post('/deposit', requireAuth, requireVerifiedEmail, async (req, res) => {
       provider: providerName,
       providerInvoiceId: checkout.providerInvoiceId,
       status: checkout.status || 'pending',
+      // Save the hosted-checkout URL so the fan can Resume if they bail out
+      checkoutUrl: checkout.redirectUrl || null,
     });
 
     if (checkout.redirectUrl) {
@@ -91,6 +93,48 @@ router.post('/deposit', requireAuth, requireVerifiedEmail, async (req, res) => {
       });
     }
     res.json({ success: tx.status === 'completed', transactionId: tx.id, status: tx.status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Resume a pending wallet deposit — returns the saved checkout URL ──────
+// Used when a fan bailed out of NOWPayments and wants to finish the same top-up
+// without creating a new pending row.
+router.get('/deposit/:id/resume', requireAuth, async (req, res) => {
+  try {
+    const tx = await Transaction.findByPk(req.params.id);
+    if (!tx || tx.userId !== req.user.userId || tx.type !== 'wallet_deposit') {
+      return res.status(404).json({ error: 'Deposit not found' });
+    }
+    if (tx.status !== 'pending') {
+      return res.status(400).json({ error: `Deposit already ${tx.status}` });
+    }
+    if (!tx.checkoutUrl) {
+      return res.status(410).json({ error: 'Checkout link no longer available — please cancel and start a new top-up' });
+    }
+    res.json({ redirectUrl: tx.checkoutUrl, transactionId: tx.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Cancel a pending wallet deposit ────────────────────────────────────────
+// Marks the row 'failed' so it stops cluttering the fan's pending list. We use
+// 'failed' instead of 'cancelled' because the status enum doesn't include the
+// latter (validate.isIn would reject it) and adding a new enum value would
+// require a DB migration we don't need yet.
+router.post('/deposit/:id/cancel', requireAuth, async (req, res) => {
+  try {
+    const tx = await Transaction.findByPk(req.params.id);
+    if (!tx || tx.userId !== req.user.userId || tx.type !== 'wallet_deposit') {
+      return res.status(404).json({ error: 'Deposit not found' });
+    }
+    if (tx.status !== 'pending') {
+      return res.status(400).json({ error: `Deposit already ${tx.status}` });
+    }
+    await tx.update({ status: 'failed', checkoutUrl: null });
+    res.json({ success: true, transactionId: tx.id, status: tx.status });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
