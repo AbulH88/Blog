@@ -208,6 +208,23 @@ const applyMigrations = async () => {
   } catch (err) {
     console.warn('Transactions.checkoutUrl migration warn:', err.message);
   }
+
+  // Lowercase any historical email addresses on Users + Creators so the case-
+  // sensitive unique index can't be bypassed by retroactive duplicates. The
+  // app now normalizes on every write path; this catches pre-existing rows.
+  // Idempotent — rows already lowercase are unaffected.
+  try {
+    const dialect = sequelize.getDialect();
+    if (dialect === 'postgres') {
+      await sequelize.query('UPDATE "Users" SET "email" = LOWER("email") WHERE "email" <> LOWER("email")');
+      await sequelize.query('UPDATE "Creators" SET "email" = LOWER("email") WHERE "email" <> LOWER("email")');
+    } else {
+      await sequelize.query("UPDATE Users SET email = LOWER(email) WHERE email <> LOWER(email)");
+      await sequelize.query("UPDATE Creators SET email = LOWER(email) WHERE email <> LOWER(email)");
+    }
+  } catch (err) {
+    console.warn('email-lowercase migration warn:', err.message);
+  }
 };
 
 const syncDatabase = async () => {

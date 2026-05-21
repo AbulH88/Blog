@@ -14,10 +14,15 @@ const router = express.Router();
 const signToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
 
+// Normalize an email so case + whitespace can't be used to register duplicate accounts.
+// Empty/missing inputs return '' (callers should still 400 on empty).
+const normalizeEmail = (s) => String(s || '').trim().toLowerCase();
+
 // Fan registration
 router.post('/register', async (req, res) => {
   try {
-    const { email, username, password } = req.body;
+    const email = normalizeEmail(req.body?.email);
+    const { username, password } = req.body || {};
     if (!email || !username || !password) {
       return res.status(400).json({ error: 'email, username and password are required' });
     }
@@ -89,7 +94,8 @@ router.post('/register', async (req, res) => {
 // Fan login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body?.email);
+    const { password } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
 
     const user = await User.findOne({ where: { email } });
@@ -110,7 +116,8 @@ router.post('/login', async (req, res) => {
 // Creator login
 router.post('/creator/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body?.email);
+    const { password } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
 
     const creator = await Creator.findOne({ where: { email } });
