@@ -112,6 +112,10 @@ const applyMigrations = async () => {
   await addIfMissing('Users', 'emailVerified', { type: DataTypes.BOOLEAN, defaultValue: false });
   await addIfMissing('Users', 'emailVerifyToken', { type: DataTypes.STRING, allowNull: true });
 
+  // Token versioning — bump to invalidate all existing JWTs for a user
+  // (admin force-logout, fan logout-everywhere, password reset).
+  await addIfMissing('Users', 'tokenVersion', { type: DataTypes.INTEGER, defaultValue: 0, allowNull: false });
+
   // Grandfather pre-existing users (any account that's ever logged in) as
   // verified — they signed up before this gate was added, so locking them
   // out would be retroactive. New signups are still unverified by default.

@@ -362,4 +362,200 @@ router.get('/:slug/transactions', requireAuth, requireCreator, async (req, res) 
   }
 });
 
+// ─── Admin — Manage Fans (block, force-logout, delete, detail, notifications) ─
+
+const bcryptLib = require('bcryptjs');
+const crypto = require('crypto');
+
+// Verify caller owns the creator slug + return creator on success. Encapsulates
+// the auth check repeated by every admin-fans endpoint.
+async function getOwnedCreator(req, res) {
+  const creator = await Creator.findOne({ where: { slug: req.params.slug } });
+  if (!creator || creator.id !== req.user.creatorId) {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+  return creator;
+}
+
+// Full per-fan detail — used by the admin drawer.
+router.get('/:slug/fans/:fanId', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await getOwnedCreator(req, res);
+    if (!creator) return;
+
+    const { User, Message } = require('../models');
+    const fan = await User.findByPk(req.params.fanId, {
+      attributes: { exclude: ['passwordHash', 'passwordResetToken', 'emailVerifyToken'] },
+    });
+    if (!fan) return res.status(404).json({ error: 'Fan not found' });
+
+    const [transactions, messageCount, sub] = await Promise.all([
+      Transaction.findAll({
+        where: { userId: fan.id, creatorId: creator.id },
+        order: [['createdAt', 'DESC']],
+        limit: 200,
+      }),
+      Message.count({ where: { fanId: fan.id, creatorId: creator.id } }),
+      Subscription.findOne({ where: { userId: fan.id, creatorId: creator.id } }),
+    ]);
+
+    // Derive computed totals + status label
+    const totalSpent = transactions
+      .filter(t => t.status === 'completed' && t.type !== 'wallet_deposit')
+      .reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const totalDeposited = transactions
+      .filter(t => t.status === 'completed' && t.type === 'wallet_deposit')
+      .reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const unlocks = transactions.filter(t =>
+      ['post_unlock', 'collection_unlock', 'ppv_message'].includes(t.type)
+      && t.status === 'completed'
+    ).length;
+
+    const status = fan.email?.endsWith('@deleted.local') ? 'deleted'
+                 : fan.isBlocked                          ? 'blocked'
+                 :                                          'active';
+
+    res.json({
+      fan: fan.toJSON(),
+      status,
+      stats: {
+        totalSpent: Number(totalSpent.toFixed(2)),
+        totalDeposited: Number(totalDeposited.toFixed(2)),
+        walletBalance: parseFloat(fan.walletBalance || 0),
+        unlocks,
+        messageCount,
+        joinedAt: fan.createdAt,
+        lastLoginAt: fan.lastLoginAt,
+      },
+      transactions,
+      subscription: sub,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Fan detail fetch failed', detail: err.message });
+  }
+});
+
+// Toggle a fan's `isBlocked` flag.
+router.patch('/:slug/fans/:fanId/block', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await getOwnedCreator(req, res);
+    if (!creator) return;
+    const { User } = require('../models');
+    const fan = await User.findByPk(req.params.fanId);
+    if (!fan) return res.status(404).json({ error: 'Fan not found' });
+
+    const blocked = req.body?.blocked !== false;
+    fan.isBlocked = blocked;
+    // Blocking also bumps tokenVersion so any open session immediately fails
+    if (blocked) fan.tokenVersion = (fan.tokenVersion || 0) + 1;
+    await fan.save();
+    res.json({ ok: true, isBlocked: fan.isBlocked });
+  } catch (err) {
+    res.status(500).json({ error: 'Block toggle failed', detail: err.message });
+  }
+});
+
+// Force-logout — bump tokenVersion only. Fan can still log in afterwards.
+router.post('/:slug/fans/:fanId/force-logout', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await getOwnedCreator(req, res);
+    if (!creator) return;
+    const { User } = require('../models');
+    const fan = await User.findByPk(req.params.fanId);
+    if (!fan) return res.status(404).json({ error: 'Fan not found' });
+    fan.tokenVersion = (fan.tokenVersion || 0) + 1;
+    await fan.save();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Force-logout failed', detail: err.message });
+  }
+});
+
+// Admin-initiated GDPR delete — mirrors the fan-side anonymize logic in
+// authRoutes.js DELETE /me. Keeps Transaction rows for accounting.
+router.delete('/:slug/fans/:fanId', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await getOwnedCreator(req, res);
+    if (!creator) return;
+    const { User } = require('../models');
+    const fan = await User.findByPk(req.params.fanId);
+    if (!fan) return res.status(404).json({ error: 'Fan not found' });
+    if (fan.email?.endsWith('@deleted.local')) {
+      return res.status(409).json({ error: 'Fan already deleted' });
+    }
+
+    const anonId = `deleted-${fan.id}-${Date.now()}`;
+    await fan.update({
+      email: `${anonId}@deleted.local`,
+      username: 'deleted user',
+      passwordHash: await bcryptLib.hash(crypto.randomBytes(32).toString('hex'), 12),
+      isBlocked: true,
+      avatarUrl: '',
+      walletBalance: 0,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+      emailVerifyToken: null,
+      tokenVersion: (fan.tokenVersion || 0) + 1,
+    });
+
+    try {
+      require('../services/events').log('account_deleted', {
+        userId: fan.id, props: { by: 'admin', adminCreatorId: creator.id },
+      });
+    } catch { /* analytics is best-effort */ }
+
+    res.json({
+      ok: true,
+      message: 'Fan anonymized. Transaction records retained per tax/payment-processor requirements.',
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Fan delete failed', detail: err.message });
+  }
+});
+
+// Notification feed for the admin top-bar bell.
+// Returns the most recent Events across all fan activity. Augments each row
+// with the fan's display name so the dropdown can render "👋 alice signed up"
+// without an extra round-trip.
+router.get('/:slug/notifications', requireAuth, requireCreator, async (req, res) => {
+  try {
+    const creator = await getOwnedCreator(req, res);
+    if (!creator) return;
+    const { Event, User } = require('../models');
+    const limit = Math.min(50, Math.max(5, parseInt(req.query.limit, 10) || 20));
+
+    const events = await Event.findAll({
+      where: {
+        [Op.or]: [
+          { creatorId: creator.id },          // events with the creator scoped
+          { creatorId: null },                // platform-wide events (signup, verify, delete)
+        ],
+      },
+      order: [['createdAt', 'DESC']],
+      limit,
+    });
+
+    // Batch-fetch fan names so we don't N+1
+    const userIds = [...new Set(events.map(e => e.userId).filter(Boolean))];
+    const users = userIds.length
+      ? await User.findAll({ where: { id: userIds }, attributes: ['id', 'username'] })
+      : [];
+    const userById = Object.fromEntries(users.map(u => [u.id, u.username]));
+
+    res.json({
+      events: events.map(e => ({
+        id: e.id,
+        name: e.name,
+        userId: e.userId,
+        username: e.userId ? (userById[e.userId] || 'someone') : null,
+        props: e.props,
+        createdAt: e.createdAt,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Notifications fetch failed', detail: err.message });
+  }
+});
+
 module.exports = router;
