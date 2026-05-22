@@ -96,8 +96,7 @@ const Navbar = ({
 
         <div className="v3-nav-links">
           <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-          {/* Shop — coming soon, hidden for now */}
+          {/* /about merged into Home (scroll-anchored), no nav link needed */}
           <Link to="/gallery">Gallery</Link>
           <Link to="/blog">Blog</Link>
         </div>
@@ -184,7 +183,6 @@ const Navbar = ({
           />
           <div className="v3-mobile-menu" role="menu">
             <Link to="/"        role="menuitem">Home</Link>
-            <Link to="/about"   role="menuitem">About</Link>
             <Link to="/gallery" role="menuitem">Gallery</Link>
             <Link to="/blog"    role="menuitem">Blog</Link>
             {fanUser && (

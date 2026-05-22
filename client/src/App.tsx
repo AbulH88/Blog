@@ -25,7 +25,6 @@ import { isMembersDomain } from './lib/hostname';
 const Gallery        = lazy(() => import('./pages/Gallery'));
 const Vault          = lazy(() => import('./pages/Vault'));
 const Blog           = lazy(() => import('./pages/Blog'));
-const About          = lazy(() => import('./pages/About'));
 const Admin          = lazy(() => import('./pages/Admin'));
 const FanDashboard   = lazy(() => import('./pages/FanDashboard'));
 const Chat           = lazy(() => import('./pages/Chat'));
@@ -197,8 +196,8 @@ function App() {
                     <Route path="/privacy" element={<Privacy config={config} />} />
                     <Route path="/2257" element={<Compliance2257 config={config} />} />
                     <Route path="/dmca" element={<DMCA />} />
-                    {/* Public pages also available on members.* for completeness */}
-                    <Route path="/about" element={<About config={config} />} />
+                    {/* Public pages also available on members.* for completeness
+                        (/about merged into Home page, no longer a standalone route) */}
                     <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
                     <Route path="/blog" element={<Blog blog={config.blog} />} />
                     <Route path="*" element={<NotFound />} />
@@ -207,7 +206,7 @@ function App() {
                   // ── marketing root domain — public-safe, scrubbed of monetization language ──
                   <Routes>
                     <Route path="/" element={<Home config={config} />} />
-                    <Route path="/about" element={<About config={config} />} />
+                    {/* /about merged into Home — no standalone route */}
                     <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
                     <Route path="/blog" element={<Blog blog={config.blog} />} />
                     {/* Legal pages — kept on root for compliance + SEO */}
