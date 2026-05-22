@@ -18,6 +18,7 @@ const Navbar = ({
 }) => {
   const [fanUser, setFanUser] = useState<any>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -25,6 +26,18 @@ const Navbar = ({
     const u = localStorage.getItem('fanUser');
     if (u) setFanUser(JSON.parse(u));
   }, []);
+
+  // Close mobile menu when route changes (e.g. user taps a nav link)
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+
+  // Lock body scroll while the menu is open
+  useEffect(() => {
+    if (menuOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [menuOpen]);
 
   const handleLogout = () => {
     localStorage.removeItem('fanToken');
@@ -82,6 +95,28 @@ const Navbar = ({
         </div>
 
         <div className="v3-nav-right">
+          {/* Hamburger — only visible on mobile via CSS */}
+          <button
+            className="v3-nav-burger"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
+            type="button"
+          >
+            {menuOpen ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="7" x2="21" y2="7" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="17" x2="21" y2="17" />
+              </svg>
+            )}
+          </button>
+
           <button className="v3-nav-search" aria-label="Search">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
@@ -109,6 +144,28 @@ const Navbar = ({
           )}
         </div>
       </nav>
+
+      {/* Mobile menu drawer — slides down under the navbar */}
+      {menuOpen && (
+        <>
+          <div
+            className="v3-mobile-menu-backdrop"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="v3-mobile-menu" role="menu">
+            <Link to="/"        role="menuitem">Home</Link>
+            <Link to="/about"   role="menuitem">About</Link>
+            <Link to="/gallery" role="menuitem">Gallery</Link>
+            <Link to="/blog"    role="menuitem">Blog</Link>
+            {fanUser && (
+              <Link to="/dashboard" role="menuitem" className="v3-mobile-menu-cta">
+                My Dashboard →
+              </Link>
+            )}
+          </div>
+        </>
+      )}
 
       <JoinPremiumModal
         open={joinOpen}
