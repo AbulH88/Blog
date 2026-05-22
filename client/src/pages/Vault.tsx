@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getPosts, CREATOR_SLUG, SERVER_URL,
   getPublicCollections,
 } from '../api';
 import MobileBottomNav from '../components/MobileBottomNav';
-import JoinPremiumModal from '../components/JoinPremiumModal';
 import VaultTile from '../components/VaultTile';
 import FanSidebar from '../components/FanSidebar';
 import PayMethodPicker from '../components/PayMethodPicker';
+
+// Lazy-load JoinPremiumModal so its signup pitch text + avatar never
+// land in any chunk that loads on the marketing root domain. Same defense-
+// in-depth pattern as Navbar — see the comment there.
+const JoinPremiumModal = lazy(() => import('../components/JoinPremiumModal'));
 
 const fullUrl = (p: string) => (p?.startsWith('http') ? p : `${SERVER_URL}${p}`);
 
@@ -189,13 +193,15 @@ const Vault = ({ config }: { config: any }) => {
     <>
       {MobileLayout}
       {DesktopShell}
-      <JoinPremiumModal
-        open={joinOpen}
-        onClose={() => setJoinOpen(false)}
-        fanvueUrl={config?.fanvueUrl}
-        creatorName={creatorName}
-        avatarUrl={config?.chatAvatarUrl || config?.images?.hero || config?.images?.heroSlider?.[0] || config?.logoUrl}
-      />
+      <Suspense fallback={null}>
+        <JoinPremiumModal
+          open={joinOpen}
+          onClose={() => setJoinOpen(false)}
+          fanvueUrl={config?.fanvueUrl}
+          creatorName={creatorName}
+          avatarUrl={config?.chatAvatarUrl || config?.images?.hero || config?.images?.heroSlider?.[0] || config?.logoUrl}
+        />
+      </Suspense>
       {payTarget && (
         <PayMethodPicker
           productType={payTarget.type}

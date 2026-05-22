@@ -1,8 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import JoinPremiumModal from './JoinPremiumModal';
 import { SERVER_URL } from '../api';
 import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
+
+// Code-split: the JoinPremiumModal contains the signup pitch text and the
+// creator's avatar. We lazy-load it so its strings never appear in the main
+// JS bundle that ships to every page on the root marketing domain. Combined
+// with the conditional mount in JSX, root-domain visitors never even fetch
+// this chunk — IG/TikTok crawlers can't fingerprint signup-flow text from
+// the JS bundle.
+const JoinPremiumModal = lazy(() => import('./JoinPremiumModal'));
 
 const Navbar = ({
   siteTitle,
@@ -192,17 +199,20 @@ const Navbar = ({
       )}
 
       {/* JoinPremiumModal renders ONLY on the members subdomain. On the
-          root marketing domain we never mount it — keeps the avatar/seal
-          image and signup pitch text out of the public DOM so IG/TikTok
-          bots can't fingerprint it. */}
+          root marketing domain we never mount it — and because it's lazy-
+          imported, the bundle containing its text/images is never fetched.
+          Suspense fallback is null because the modal is invisible until the
+          user clicks Step Inside anyway. */}
       {isMembersDomain() && (
-        <JoinPremiumModal
-          open={joinOpen}
-          onClose={() => setJoinOpen(false)}
-          fanvueUrl={fanvueUrl}
-          creatorName={siteTitle}
-          avatarUrl={avatarUrl}
-        />
+        <Suspense fallback={null}>
+          <JoinPremiumModal
+            open={joinOpen}
+            onClose={() => setJoinOpen(false)}
+            fanvueUrl={fanvueUrl}
+            creatorName={siteTitle}
+            avatarUrl={avatarUrl}
+          />
+        </Suspense>
       )}
     </div>
   );
