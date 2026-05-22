@@ -14,6 +14,7 @@ import AdminBroadcast from './AdminBroadcast';
 import DragDropUpload from '../components/DragDropUpload';
 import FunnelCard from '../components/FunnelCard';
 import AddHeroSlideModal from '../components/AddHeroSlideModal';
+import FanDetailDrawer from '../components/FanDetailDrawer';
 
 type Tab =
   | 'overview' | 'biobuilder' | 'analytics' | 'content' | 'gallery'
@@ -99,6 +100,11 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
   const [creatorTxns, setCreatorTxns] = useState<any[]>([]);
   const [audienceFilter, setAudienceFilter] = useState('');
   const [audienceSort, setAudienceSort] = useState<'spend' | 'recent' | 'joined'>('spend');
+  // New filters from manage-users feature (Phase 2)
+  const [audienceTier, setAudienceTier] = useState<'all' | 'free' | 'paying' | 'vip'>('all');
+  const [audienceStatus, setAudienceStatus] = useState<'all' | 'active' | 'blocked' | 'deleted'>('all');
+  // Drawer state — fanId !== null means drawer is open for that fan
+  const [drawerFanId, setDrawerFanId] = useState<number | null>(null);
 
   const navigate = useNavigate();
 
@@ -1360,11 +1366,32 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
   };
 
   const renderAudience = () => {
+    // Derive a normalized status per fan row (active / blocked / deleted).
+    // Audience endpoint returns f.fan with the User row, plus a `status` string
+    // when the route surfaces it. Fall back to inferring from fan.email/isBlocked.
+    const deriveStatus = (f: any): 'active' | 'blocked' | 'deleted' => {
+      if (f.status) return f.status;
+      if (f.fan?.email?.endsWith('@deleted.local')) return 'deleted';
+      if (f.fan?.isBlocked) return 'blocked';
+      return 'active';
+    };
+
+    // Spend tier: free = $0, paying = $1+, vip = $100+
+    const tierOf = (f: any) => {
+      const s = f.totalSpent || 0;
+      if (s >= 100) return 'vip';
+      if (s > 0)    return 'paying';
+      return 'free';
+    };
+
     // Sort + filter
     const q = audienceFilter.trim().toLowerCase();
-    const filtered = fans.filter(f =>
-      !q || f.fan?.username?.toLowerCase().includes(q) || f.fan?.email?.toLowerCase().includes(q)
-    );
+    const filtered = fans.filter(f => {
+      if (q && !(f.fan?.username?.toLowerCase().includes(q) || f.fan?.email?.toLowerCase().includes(q))) return false;
+      if (audienceTier !== 'all' && tierOf(f) !== audienceTier) return false;
+      if (audienceStatus !== 'all' && deriveStatus(f) !== audienceStatus) return false;
+      return true;
+    });
     const sorted = [...filtered].sort((a, b) => {
       if (audienceSort === 'spend') return b.totalSpent - a.totalSpent;
       if (audienceSort === 'recent') return new Date(b.lastPurchaseAt || b.lastMessageAt || b.joinedAt).getTime() - new Date(a.lastPurchaseAt || a.lastMessageAt || a.joinedAt).getTime();
@@ -1465,6 +1492,34 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                 <option value="recent">Most recent activity</option>
                 <option value="joined">Most recently joined</option>
               </select>
+              <select
+                value={audienceTier}
+                onChange={(e) => setAudienceTier(e.target.value as any)}
+                title="Filter by spend tier"
+                style={{
+                  background: '#FFFAF4', border: '1px solid var(--v3-line)',
+                  borderRadius: 8, padding: '7px 12px',
+                  fontFamily: 'inherit', fontSize: '0.82rem', cursor: 'pointer',
+                }}>
+                <option value="all">All spenders</option>
+                <option value="free">Free ($0)</option>
+                <option value="paying">Paying ($1+)</option>
+                <option value="vip">VIP ($100+)</option>
+              </select>
+              <select
+                value={audienceStatus}
+                onChange={(e) => setAudienceStatus(e.target.value as any)}
+                title="Filter by status"
+                style={{
+                  background: '#FFFAF4', border: '1px solid var(--v3-line)',
+                  borderRadius: 8, padding: '7px 12px',
+                  fontFamily: 'inherit', fontSize: '0.82rem', cursor: 'pointer',
+                }}>
+                <option value="all">All status</option>
+                <option value="active">Active</option>
+                <option value="blocked">Blocked</option>
+                <option value="deleted">Deleted</option>
+              </select>
             </div>
           </div>
 
@@ -1478,45 +1533,67 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                 <tr>
                   <th style={{ width: 50 }}></th>
                   <th>Fan</th>
-                  <th style={{ width: 110 }}>Spent</th>
-                  <th style={{ width: 90 }}>Purchases</th>
-                  <th style={{ width: 100 }}>Messages</th>
+                  <th style={{ width: 90 }}>Status</th>
+                  <th style={{ width: 100 }}>Spent</th>
+                  <th style={{ width: 80 }}>Purchases</th>
+                  <th style={{ width: 90 }}>Messages</th>
                   <th style={{ width: 100 }}>Last active</th>
                   <th style={{ width: 90 }}>Joined</th>
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((f) => (
-                  <tr key={f.subscriptionId}>
-                    <td>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: '50%',
-                        background: 'var(--v3-terracotta)', color: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.78rem', fontWeight: 700,
-                      }}>{initials(f.fan?.username)}</div>
-                    </td>
-                    <td>
-                      <p style={{ margin: 0, fontWeight: 600, color: 'var(--v3-ink)' }}>
-                        {f.fan?.username || '—'}
-                      </p>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--v3-muted)' }}>
-                        {f.fan?.email}
-                      </p>
-                    </td>
-                    <td style={{ fontWeight: 800, color: f.totalSpent > 0 ? 'var(--v3-success)' : 'var(--v3-muted)' }}>
-                      ${f.totalSpent.toFixed(2)}
-                    </td>
-                    <td>{f.purchaseCount}</td>
-                    <td>{f.messageCount}</td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--v3-ink-soft)' }}>
-                      {fmtDate(f.lastPurchaseAt || f.lastMessageAt || f.fan?.lastLoginAt)}
-                    </td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--v3-ink-soft)' }}>
-                      {fmtDate(f.joinedAt)}
-                    </td>
-                  </tr>
-                ))}
+                {sorted.map((f) => {
+                  const st = deriveStatus(f);
+                  const statusPill = (
+                    st === 'active'  ? { bg: '#e8f5e9', fg: '#1f4a25' } :
+                    st === 'blocked' ? { bg: '#fdeceb', fg: '#742020' } :
+                                       { bg: '#f0eef2', fg: '#555055' }
+                  );
+                  return (
+                    <tr
+                      key={f.subscriptionId}
+                      onClick={() => f.fan?.id && setDrawerFanId(f.fan.id)}
+                      style={{ cursor: f.fan?.id ? 'pointer' : 'default' }}
+                      title="Click to open fan detail"
+                    >
+                      <td>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: '50%',
+                          background: 'var(--v3-terracotta)', color: '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.78rem', fontWeight: 700,
+                        }}>{initials(f.fan?.username)}</div>
+                      </td>
+                      <td>
+                        <p style={{ margin: 0, fontWeight: 600, color: 'var(--v3-ink)' }}>
+                          {f.fan?.username || '—'}
+                        </p>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--v3-muted)' }}>
+                          {f.fan?.email}
+                        </p>
+                      </td>
+                      <td>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 8px', borderRadius: 99,
+                          fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0.5,
+                          textTransform: 'uppercase',
+                          background: statusPill.bg, color: statusPill.fg,
+                        }}>{st}</span>
+                      </td>
+                      <td style={{ fontWeight: 800, color: f.totalSpent > 0 ? 'var(--v3-success)' : 'var(--v3-muted)' }}>
+                        ${f.totalSpent.toFixed(2)}
+                      </td>
+                      <td>{f.purchaseCount}</td>
+                      <td>{f.messageCount}</td>
+                      <td style={{ fontSize: '0.78rem', color: 'var(--v3-ink-soft)' }}>
+                        {fmtDate(f.lastPurchaseAt || f.lastMessageAt || f.fan?.lastLoginAt)}
+                      </td>
+                      <td style={{ fontSize: '0.78rem', color: 'var(--v3-ink-soft)' }}>
+                        {fmtDate(f.joinedAt)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -2464,6 +2541,13 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         {activeTab === 'settings'   && renderSettings()}
         {activeTab === 'support'    && renderPlaceholder('Support', 'Docs, FAQs, and a direct line to the team.')}
       </main>
+
+      {/* Per-fan detail drawer — opened from Audience tab row click */}
+      <FanDetailDrawer
+        fanId={drawerFanId}
+        onClose={() => setDrawerFanId(null)}
+        onMutated={() => { fetchAudience(); }}
+      />
     </div>
   );
 };

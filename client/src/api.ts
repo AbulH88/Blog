@@ -168,6 +168,60 @@ export const getCreatorTransactions = async (opts: { type?: string; userId?: num
   return res.json();
 };
 
+// ─── Admin — Manage Fans (drawer + actions) ─────────────────────────────────
+// Backed by the routes added in server/routes/creatorRoutes.js. All return
+// the raw JSON response; callers branch on `ok` / `error`.
+
+export const getFanDetail = async (fanId: number) => {
+  const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/fans/${fanId}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const blockFan = async (fanId: number, blocked: boolean) => {
+  const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/fans/${fanId}/block`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blocked }),
+  });
+  return res.json();
+};
+
+export const forceLogoutFan = async (fanId: number) => {
+  const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/fans/${fanId}/force-logout`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const adminDeleteFan = async (fanId: number) => {
+  const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/fans/${fanId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+export const getAdminNotifications = async (limit = 20) => {
+  const res = await fetch(`${API_URL}/creator/${CREATOR_SLUG}/notifications?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return res.json();
+};
+
+// Fan-side: sign out of every device. Bumps own tokenVersion server-side.
+// Caller should clear localStorage + redirect to /login on a 200 response.
+export const logoutEverywhere = async () => {
+  const fanToken = localStorage.getItem('fanToken');
+  const res = await fetch(`${API_URL}/auth/me/logout-everywhere`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${fanToken}` },
+  });
+  return res.json();
+};
+
 // V1 compat aliases — used by existing components
 export const getConfig = getCreator;
 export const updateConfig = updateCreator;
