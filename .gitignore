@@ -55,3 +55,6 @@ server/uploads/*
 REVIEW-*.md
 CLEANUP-AUDIT.md
 HANDOFF.md
+
+# Graphify (knowledge graph) outputs — local AI analysis, not source
+graphify-out/
