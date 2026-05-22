@@ -140,7 +140,8 @@ const Navbar = ({
                 Sign out
               </button>
             </>
-          ) : (
+          ) : isMembersDomain() ? (
+            // Members domain — full invitation modal (age-gated context)
             <button
               onClick={() => setJoinOpen(true)}
               className="v3-btn v3-btn-primary"
@@ -148,6 +149,22 @@ const Navbar = ({
             >
               Step Inside ✨
             </button>
+          ) : (
+            // Marketing root — subtle text-only "Sign in" link.
+            // No modal, no avatar, no signup pitch in the DOM — keeps the
+            // root domain looking like a clean linktree to IG/TikTok bots.
+            <a
+              href={crossDomainUrl('/login', 'members')}
+              style={{
+                fontSize: '0.78rem',
+                color: 'var(--v3-ink-soft)',
+                textDecoration: 'none',
+                fontWeight: 500,
+                padding: '8px 6px',
+              }}
+            >
+              Sign in
+            </a>
           )}
         </div>
       </nav>
@@ -174,13 +191,19 @@ const Navbar = ({
         </>
       )}
 
-      <JoinPremiumModal
-        open={joinOpen}
-        onClose={() => setJoinOpen(false)}
-        fanvueUrl={fanvueUrl}
-        creatorName={siteTitle}
-        avatarUrl={avatarUrl}
-      />
+      {/* JoinPremiumModal renders ONLY on the members subdomain. On the
+          root marketing domain we never mount it — keeps the avatar/seal
+          image and signup pitch text out of the public DOM so IG/TikTok
+          bots can't fingerprint it. */}
+      {isMembersDomain() && (
+        <JoinPremiumModal
+          open={joinOpen}
+          onClose={() => setJoinOpen(false)}
+          fanvueUrl={fanvueUrl}
+          creatorName={siteTitle}
+          avatarUrl={avatarUrl}
+        />
+      )}
     </div>
   );
 };

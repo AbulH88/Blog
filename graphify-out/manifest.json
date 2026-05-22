@@ -1,0 +1,627 @@
+{
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\eslint.config.js": {
+    "mtime": 1778606870.8301728,
+    "ast_hash": "e8730c7d3b97d3d6d5ba24582cd6444f",
+    "semantic_hash": "e8730c7d3b97d3d6d5ba24582cd6444f"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\package.json": {
+    "mtime": 1778612847.0075676,
+    "ast_hash": "018b16fc595f7ecad891dad6fa7e8230",
+    "semantic_hash": "018b16fc595f7ecad891dad6fa7e8230"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\tsconfig.app.json": {
+    "mtime": 1777753817.6145935,
+    "ast_hash": "136630b5accce1ca50663df229534a26",
+    "semantic_hash": "136630b5accce1ca50663df229534a26"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\tsconfig.json": {
+    "mtime": 1777753817.6260698,
+    "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
+    "semantic_hash": "a3d39fa780ebff65444de257f291ce6c"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\tsconfig.node.json": {
+    "mtime": 1777753817.6353252,
+    "ast_hash": "70bdd0a673bcfc0e828080b306e7c680",
+    "semantic_hash": "70bdd0a673bcfc0e828080b306e7c680"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\vite.config.ts": {
+    "mtime": 1777753817.8636787,
+    "ast_hash": "88439104b3c207f17d33ef3160e3b080",
+    "semantic_hash": "88439104b3c207f17d33ef3160e3b080"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\api.ts": {
+    "mtime": 1779389701.7949798,
+    "ast_hash": "5feb5677dbdebbe8ba619f3e43bcd6a7",
+    "semantic_hash": "5feb5677dbdebbe8ba619f3e43bcd6a7"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\App.tsx": {
+    "mtime": 1779256357.858811,
+    "ast_hash": "b3c66255317eb67f711a6283d220a461",
+    "semantic_hash": "b3c66255317eb67f711a6283d220a461"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\main.tsx": {
+    "mtime": 1779256989.4597373,
+    "ast_hash": "8664c7bc4004fea354678d52d75f631e",
+    "semantic_hash": "8664c7bc4004fea354678d52d75f631e"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\AddCardModal.tsx": {
+    "mtime": 1779104679.9513564,
+    "ast_hash": "2bac3fd41754670e8d442c5854270e7b",
+    "semantic_hash": "2bac3fd41754670e8d442c5854270e7b"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\AddHeroSlideModal.tsx": {
+    "mtime": 1779389738.0176888,
+    "ast_hash": "9de9b78a34ae337d780582020f05c8b4",
+    "semantic_hash": "9de9b78a34ae337d780582020f05c8b4"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\AgeGate.tsx": {
+    "mtime": 1779168777.3976076,
+    "ast_hash": "100c010c8ed67e95cd1d0c2bd6005662",
+    "semantic_hash": "100c010c8ed67e95cd1d0c2bd6005662"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\DragDropUpload.tsx": {
+    "mtime": 1779140485.5656743,
+    "ast_hash": "9f904360dce8853692176492225ce856",
+    "semantic_hash": "9f904360dce8853692176492225ce856"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\FanSidebar.tsx": {
+    "mtime": 1779199328.4594603,
+    "ast_hash": "6dd7594f87454de57f0d1f5ba109c2ff",
+    "semantic_hash": "6dd7594f87454de57f0d1f5ba109c2ff"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\FanvueCard.tsx": {
+    "mtime": 1779381680.1463077,
+    "ast_hash": "fdfc2f77f67e6ef95bc1d36f8c83d426",
+    "semantic_hash": "fdfc2f77f67e6ef95bc1d36f8c83d426"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\FanvueWelcomeModal.tsx": {
+    "mtime": 1779381673.5054739,
+    "ast_hash": "9573e56692f24a1d8eea82615d9d4f2b",
+    "semantic_hash": "9573e56692f24a1d8eea82615d9d4f2b"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\Footer.tsx": {
+    "mtime": 1779224919.661563,
+    "ast_hash": "d19f7fccb5101d8144720ef55f8c3f23",
+    "semantic_hash": "d19f7fccb5101d8144720ef55f8c3f23"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\FunnelCard.tsx": {
+    "mtime": 1779224268.1669645,
+    "ast_hash": "f505bfde5d643dfd61302f7f2809538f",
+    "semantic_hash": "f505bfde5d643dfd61302f7f2809538f"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\HeroSlider.tsx": {
+    "mtime": 1779389045.9099462,
+    "ast_hash": "989faf6ca289cf681510ef70b6857d6d",
+    "semantic_hash": "989faf6ca289cf681510ef70b6857d6d"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\InstagramFeed.tsx": {
+    "mtime": 1779022657.6673472,
+    "ast_hash": "a82da495531b7865f67afadceea72cef",
+    "semantic_hash": "a82da495531b7865f67afadceea72cef"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\JoinPremiumModal.tsx": {
+    "mtime": 1779199536.8538895,
+    "ast_hash": "fd3e48a0e045cf43f6ae0d1ca317847c",
+    "semantic_hash": "fd3e48a0e045cf43f6ae0d1ca317847c"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\MobileBottomNav.tsx": {
+    "mtime": 1779022657.6722653,
+    "ast_hash": "02d83dfeb08cb650bba6e15513b82909",
+    "semantic_hash": "02d83dfeb08cb650bba6e15513b82909"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\Navbar.tsx": {
+    "mtime": 1779221491.2134185,
+    "ast_hash": "e268240dafc1bfd337f59ea7d1091053",
+    "semantic_hash": "e268240dafc1bfd337f59ea7d1091053"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\PasswordInput.tsx": {
+    "mtime": 1779224765.4414988,
+    "ast_hash": "39b7bcc7873dfa1cad379334b07063e7",
+    "semantic_hash": "39b7bcc7873dfa1cad379334b07063e7"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\PayMethodPicker.tsx": {
+    "mtime": 1779222973.5835345,
+    "ast_hash": "5a220e0447e8439a67fe3188831afa03",
+    "semantic_hash": "5a220e0447e8439a67fe3188831afa03"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\SocialIcons.tsx": {
+    "mtime": 1779022657.6752489,
+    "ast_hash": "f920c8d3d6aa0779fb3def547519f2da",
+    "semantic_hash": "f920c8d3d6aa0779fb3def547519f2da"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\TipModal.tsx": {
+    "mtime": 1779099028.6844585,
+    "ast_hash": "b5ea2042fc764dfbb4cbfc3f8591d31d",
+    "semantic_hash": "b5ea2042fc764dfbb4cbfc3f8591d31d"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\Toast.tsx": {
+    "mtime": 1779256980.3764708,
+    "ast_hash": "e2f02c3d83a1128f72e1ac0a3d057eb1",
+    "semantic_hash": "e2f02c3d83a1128f72e1ac0a3d057eb1"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\VaultTile.tsx": {
+    "mtime": 1779022657.6782458,
+    "ast_hash": "91e94342917097296ccf114c79e6459e",
+    "semantic_hash": "91e94342917097296ccf114c79e6459e"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\VerifyEmailBanner.tsx": {
+    "mtime": 1779257018.1559277,
+    "ast_hash": "b44254d1ad0fcd2a7c44fd63c214c31b",
+    "semantic_hash": "b44254d1ad0fcd2a7c44fd63c214c31b"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\WalletCard.tsx": {
+    "mtime": 1779133346.256995,
+    "ast_hash": "66bad5baefbadc6dd3b37b22f83a69b1",
+    "semantic_hash": "66bad5baefbadc6dd3b37b22f83a69b1"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\components\\WalletDepositModal.tsx": {
+    "mtime": 1779381685.1153836,
+    "ast_hash": "4195daf76946cf43c092e332c0cfc43c",
+    "semantic_hash": "4195daf76946cf43c092e332c0cfc43c"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\About.tsx": {
+    "mtime": 1779022657.6802444,
+    "ast_hash": "4109df530f40f6420155d4cd6abcb9a0",
+    "semantic_hash": "4109df530f40f6420155d4cd6abcb9a0"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Admin.tsx": {
+    "mtime": 1779389905.0278313,
+    "ast_hash": "72c4a11605b6f95fe6e9405195789f9b",
+    "semantic_hash": "72c4a11605b6f95fe6e9405195789f9b"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\AdminAiChatbot.tsx": {
+    "mtime": 1779356137.5195282,
+    "ast_hash": "51d7fe374e6edb915499bce3319ed282",
+    "semantic_hash": "51d7fe374e6edb915499bce3319ed282"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\AdminBroadcast.tsx": {
+    "mtime": 1779310857.847294,
+    "ast_hash": "1786e84c815bc14df6e20be413bbf135",
+    "semantic_hash": "1786e84c815bc14df6e20be413bbf135"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\AdminMessages.tsx": {
+    "mtime": 1779256817.4015455,
+    "ast_hash": "b4193b2b59c165d90de50ced737f4cc2",
+    "semantic_hash": "b4193b2b59c165d90de50ced737f4cc2"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Blog.tsx": {
+    "mtime": 1779022657.6912923,
+    "ast_hash": "9b4430da86784e4008a07b35e2ac9d2a",
+    "semantic_hash": "9b4430da86784e4008a07b35e2ac9d2a"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Chat.tsx": {
+    "mtime": 1779256782.2033958,
+    "ast_hash": "0ee5900720a7d223b53602edad8184e5",
+    "semantic_hash": "0ee5900720a7d223b53602edad8184e5"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Compliance2257.tsx": {
+    "mtime": 1779184882.307547,
+    "ast_hash": "46313b2ff49b387949c44e4363ff4092",
+    "semantic_hash": "46313b2ff49b387949c44e4363ff4092"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\DMCA.tsx": {
+    "mtime": 1779224892.83832,
+    "ast_hash": "bdb58077d405941420d197778335629f",
+    "semantic_hash": "bdb58077d405941420d197778335629f"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\FanDashboard.tsx": {
+    "mtime": 1779381385.2629206,
+    "ast_hash": "ce8e4128981743d9131e48fd5794fb87",
+    "semantic_hash": "ce8e4128981743d9131e48fd5794fb87"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\FanSettings.tsx": {
+    "mtime": 1779308794.9693124,
+    "ast_hash": "614fe0e6e7014aeff020f5808701fa51",
+    "semantic_hash": "614fe0e6e7014aeff020f5808701fa51"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\ForgotPassword.tsx": {
+    "mtime": 1779166519.149457,
+    "ast_hash": "de9d79698adbea17af2067ef7649d8f7",
+    "semantic_hash": "de9d79698adbea17af2067ef7649d8f7"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Gallery.tsx": {
+    "mtime": 1779224670.991706,
+    "ast_hash": "eaeb7334741eb0930904255053b1afc2",
+    "semantic_hash": "eaeb7334741eb0930904255053b1afc2"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Home.tsx": {
+    "mtime": 1779389087.022728,
+    "ast_hash": "d49898742b4731045beb737d2b76ee9b",
+    "semantic_hash": "d49898742b4731045beb737d2b76ee9b"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Login.tsx": {
+    "mtime": 1779224795.259548,
+    "ast_hash": "6bc025bfdfd3b85471a0be43d716d9fd",
+    "semantic_hash": "6bc025bfdfd3b85471a0be43d716d9fd"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\NotFound.tsx": {
+    "mtime": 1779224613.0935137,
+    "ast_hash": "8de32e2c76842b5fe01e69838d2811c7",
+    "semantic_hash": "8de32e2c76842b5fe01e69838d2811c7"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\PaymentReturn.tsx": {
+    "mtime": 1779022657.706298,
+    "ast_hash": "08814f7d3772fd94dbc0945ccdcbef21",
+    "semantic_hash": "08814f7d3772fd94dbc0945ccdcbef21"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Privacy.tsx": {
+    "mtime": 1779257244.3987353,
+    "ast_hash": "5a47ac650e05c93da822151074c14f62",
+    "semantic_hash": "5a47ac650e05c93da822151074c14f62"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Register.tsx": {
+    "mtime": 1779224778.2840474,
+    "ast_hash": "4139e57459002b5e4d70a9dbee46528a",
+    "semantic_hash": "4139e57459002b5e4d70a9dbee46528a"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\ResetPassword.tsx": {
+    "mtime": 1779256385.6862252,
+    "ast_hash": "d8cd937b57402c2ef19da4ba9964d055",
+    "semantic_hash": "d8cd937b57402c2ef19da4ba9964d055"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Terms.tsx": {
+    "mtime": 1779257234.0494359,
+    "ast_hash": "0d12af74f9cfaa80d5df1eddd83d6c46",
+    "semantic_hash": "0d12af74f9cfaa80d5df1eddd83d6c46"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\Vault.tsx": {
+    "mtime": 1779224679.7503295,
+    "ast_hash": "486bbf9ece67eb1a727efb34f6da3014",
+    "semantic_hash": "486bbf9ece67eb1a727efb34f6da3014"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\pages\\VerifyEmail.tsx": {
+    "mtime": 1779221946.8767357,
+    "ast_hash": "927a50ea9bb07bd9f23c4d7ebcc5c570",
+    "semantic_hash": "927a50ea9bb07bd9f23c4d7ebcc5c570"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\scripts\\generate-instagram-pdf.py": {
+    "mtime": 1779022657.731824,
+    "ast_hash": "62e4d4040e6e37b197871a08ae9fe743",
+    "semantic_hash": "62e4d4040e6e37b197871a08ae9fe743"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\database.js": {
+    "mtime": 1779255200.5440564,
+    "ast_hash": "d1f0fcf56f38fe42e60521edebd62625",
+    "semantic_hash": "d1f0fcf56f38fe42e60521edebd62625"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\ecosystem.config.js": {
+    "mtime": 1779299874.1347883,
+    "ast_hash": "8b0660e6586b22a6ea4b41c5523d8fd2",
+    "semantic_hash": "8b0660e6586b22a6ea4b41c5523d8fd2"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\index.js": {
+    "mtime": 1779382099.7451735,
+    "ast_hash": "8c9cc113409b13414dedac1b215166e0",
+    "semantic_hash": "8c9cc113409b13414dedac1b215166e0"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\package.json": {
+    "mtime": 1779256060.383364,
+    "ast_hash": "869fab00428f243e5d166986769f47e2",
+    "semantic_hash": "869fab00428f243e5d166986769f47e2"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\socket.js": {
+    "mtime": 1779300237.9644003,
+    "ast_hash": "c29d472eb85769118ad1d5da2b85eb3e",
+    "semantic_hash": "c29d472eb85769118ad1d5da2b85eb3e"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\middleware\\authMiddleware.js": {
+    "mtime": 1779221720.646294,
+    "ast_hash": "9484ec8efe0a0393f051527e831e8e78",
+    "semantic_hash": "9484ec8efe0a0393f051527e831e8e78"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\middleware\\imageProcess.js": {
+    "mtime": 1779382014.0160284,
+    "ast_hash": "858140df8a782388e6b5dd0e064f75b4",
+    "semantic_hash": "858140df8a782388e6b5dd0e064f75b4"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\Collection.js": {
+    "mtime": 1779022657.738263,
+    "ast_hash": "c97ebf8af722d23ffa9d096629b3f7bb",
+    "semantic_hash": "c97ebf8af722d23ffa9d096629b3f7bb"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\Creator.js": {
+    "mtime": 1779389634.8483675,
+    "ast_hash": "ae939378505d0d9caef9e154d8341ecc",
+    "semantic_hash": "ae939378505d0d9caef9e154d8341ecc"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\Event.js": {
+    "mtime": 1779224057.70162,
+    "ast_hash": "fa29d91f033cc0e7fe196c615919ea25",
+    "semantic_hash": "fa29d91f033cc0e7fe196c615919ea25"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\index.js": {
+    "mtime": 1779389651.081614,
+    "ast_hash": "19a1e4bb9a9e2a02c8d7c6ead0294238",
+    "semantic_hash": "19a1e4bb9a9e2a02c8d7c6ead0294238"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\Message.js": {
+    "mtime": 1779022657.7412531,
+    "ast_hash": "23870dfdeaabda4261d74a861a69ef92",
+    "semantic_hash": "23870dfdeaabda4261d74a861a69ef92"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\PaymentMethod.js": {
+    "mtime": 1779022657.7422562,
+    "ast_hash": "42d3da8e4d7da8ed5e5a4bef2edcf6b5",
+    "semantic_hash": "42d3da8e4d7da8ed5e5a4bef2edcf6b5"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\PendingPpv.js": {
+    "mtime": 1779042746.2065327,
+    "ast_hash": "7a2fdc2d9bfecc410f1811f2132465c8",
+    "semantic_hash": "7a2fdc2d9bfecc410f1811f2132465c8"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\Post.js": {
+    "mtime": 1779022657.7442603,
+    "ast_hash": "1dee0dff9ec78c11d02b9bb45061e65a",
+    "semantic_hash": "1dee0dff9ec78c11d02b9bb45061e65a"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\Subscription.js": {
+    "mtime": 1779356643.8998199,
+    "ast_hash": "b422724d8954540d36bca73a457761ab",
+    "semantic_hash": "b422724d8954540d36bca73a457761ab"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\Transaction.js": {
+    "mtime": 1779354947.3279414,
+    "ast_hash": "e2f9cc9e267198e66783722bc6235314",
+    "semantic_hash": "e2f9cc9e267198e66783722bc6235314"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\models\\User.js": {
+    "mtime": 1779166436.6985233,
+    "ast_hash": "93546c4ef7951165a4acb5b416b0a207",
+    "semantic_hash": "93546c4ef7951165a4acb5b416b0a207"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\payments\\config.js": {
+    "mtime": 1779022657.755253,
+    "ast_hash": "b96c0ec788c3173a101d551e5f67167f",
+    "semantic_hash": "b96c0ec788c3173a101d551e5f67167f"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\payments\\index.js": {
+    "mtime": 1779022657.756332,
+    "ast_hash": "fd1088f2bfd1c3688e4d2ccc73ad3cbc",
+    "semantic_hash": "fd1088f2bfd1c3688e4d2ccc73ad3cbc"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\payments\\PaymentProvider.js": {
+    "mtime": 1779022657.7522626,
+    "ast_hash": "1bffcca862df83b9e9a477732d6ff5e8",
+    "semantic_hash": "1bffcca862df83b9e9a477732d6ff5e8"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\payments\\registry.js": {
+    "mtime": 1779022657.7627676,
+    "ast_hash": "87b77beefdc1634e28e2f434c29ae9d3",
+    "semantic_hash": "87b77beefdc1634e28e2f434c29ae9d3"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\payments\\providers\\card.js": {
+    "mtime": 1779308743.0540082,
+    "ast_hash": "573aa8e2027bc700b1a89215ec3c9c7d",
+    "semantic_hash": "573aa8e2027bc700b1a89215ec3c9c7d"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\payments\\providers\\mock.js": {
+    "mtime": 1779022657.7592592,
+    "ast_hash": "290a332f27286cf64d6d8bc1a82e0f3a",
+    "semantic_hash": "290a332f27286cf64d6d8bc1a82e0f3a"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\payments\\providers\\nowpayments.js": {
+    "mtime": 1779372583.1939023,
+    "ast_hash": "e473d5ea6bd1a3b3a56e6d10caaf2bf2",
+    "semantic_hash": "e473d5ea6bd1a3b3a56e6d10caaf2bf2"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\aiChatRoutes.js": {
+    "mtime": 1779042978.054674,
+    "ast_hash": "7294b12287cebfadc0bde56352d93d09",
+    "semantic_hash": "7294b12287cebfadc0bde56352d93d09"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\authRoutes.js": {
+    "mtime": 1779356677.46548,
+    "ast_hash": "017171760eb6592a3a10f78130f91113",
+    "semantic_hash": "017171760eb6592a3a10f78130f91113"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\chatRoutes.js": {
+    "mtime": 1779310857.850293,
+    "ast_hash": "aad08671e0b09de84befe34ab7bc9cae",
+    "semantic_hash": "aad08671e0b09de84befe34ab7bc9cae"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\collectionRoutes.js": {
+    "mtime": 1779308758.40979,
+    "ast_hash": "cda042769680f4dc351d52453915e92d",
+    "semantic_hash": "cda042769680f4dc351d52453915e92d"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\creatorRoutes.js": {
+    "mtime": 1779389673.530334,
+    "ast_hash": "4109d62f9921a330e24737e890426583",
+    "semantic_hash": "4109d62f9921a330e24737e890426583"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\instagramRoutes.js": {
+    "mtime": 1779022657.7757802,
+    "ast_hash": "2d53e34d2d1632ac780e0b2eda7fc611",
+    "semantic_hash": "2d53e34d2d1632ac780e0b2eda7fc611"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\paymentRoutes.js": {
+    "mtime": 1779299790.0086398,
+    "ast_hash": "a64de149ca02051765744c5930c50abb",
+    "semantic_hash": "a64de149ca02051765744c5930c50abb"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\postRoutes.js": {
+    "mtime": 1779308757.3696191,
+    "ast_hash": "c1f3400e3f7e2309bc599b8398f23f78",
+    "semantic_hash": "c1f3400e3f7e2309bc599b8398f23f78"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\subscriptionRoutes.js": {
+    "mtime": 1779022657.7817855,
+    "ast_hash": "4aa4f596f5ec502a377969aecc43f757",
+    "semantic_hash": "4aa4f596f5ec502a377969aecc43f757"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\routes\\walletRoutes.js": {
+    "mtime": 1779372004.9129968,
+    "ast_hash": "cdfeac60e606a9b891710cd9b9bdc3fd",
+    "semantic_hash": "cdfeac60e606a9b891710cd9b9bdc3fd"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\scripts\\backup.sh": {
+    "mtime": 1779299859.4721863,
+    "ast_hash": "5f5faf500c214ca96f1eaa1747ab5ce8",
+    "semantic_hash": "5f5faf500c214ca96f1eaa1747ab5ce8"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\scripts\\restore.sh": {
+    "mtime": 1779221604.377578,
+    "ast_hash": "ca5a216d2515aac772cdb63548cc5cb5",
+    "semantic_hash": "ca5a216d2515aac772cdb63548cc5cb5"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\scripts\\seed.js": {
+    "mtime": 1779300557.0770974,
+    "ast_hash": "c48be9599bd3a087887fbdaecec80bb0",
+    "semantic_hash": "c48be9599bd3a087887fbdaecec80bb0"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\aiChat.js": {
+    "mtime": 1779096314.2482,
+    "ast_hash": "3e61ec10b3b459a42d7f610b108e4e7b",
+    "semantic_hash": "3e61ec10b3b459a42d7f610b108e4e7b"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\audienceSegments.js": {
+    "mtime": 1779309235.7171712,
+    "ast_hash": "87031f6d26bb8ad1b0daa7fa5385059e",
+    "semantic_hash": "87031f6d26bb8ad1b0daa7fa5385059e"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\cache.js": {
+    "mtime": 1779255985.3389933,
+    "ast_hash": "7d0e2befed1d161d7b756066b054fcf5",
+    "semantic_hash": "7d0e2befed1d161d7b756066b054fcf5"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\email.js": {
+    "mtime": 1779166409.5516956,
+    "ast_hash": "8c6861476f066348b4bf672247a2a7b8",
+    "semantic_hash": "8c6861476f066348b4bf672247a2a7b8"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\events.js": {
+    "mtime": 1779224086.2499652,
+    "ast_hash": "4f5eb5cef4243ca5f6a3189c3f2dea0f",
+    "semantic_hash": "4f5eb5cef4243ca5f6a3189c3f2dea0f"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\intentClassifier.js": {
+    "mtime": 1779096298.3660586,
+    "ast_hash": "e4e7890996048aeac1496b0cb03e39c0",
+    "semantic_hash": "e4e7890996048aeac1496b0cb03e39c0"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\ppvApproval.js": {
+    "mtime": 1779042886.8829348,
+    "ast_hash": "b5a65731e2ee5d170267759384415016",
+    "semantic_hash": "b5a65731e2ee5d170267759384415016"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\redis.js": {
+    "mtime": 1779255791.4984376,
+    "ast_hash": "8deb6c13e4412a9b0e4bab056f217663",
+    "semantic_hash": "8deb6c13e4412a9b0e4bab056f217663"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\sentry.js": {
+    "mtime": 1779166655.349746,
+    "ast_hash": "dc32147505fc5a63f16f146e6cebf4b8",
+    "semantic_hash": "dc32147505fc5a63f16f146e6cebf4b8"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\services\\telegram.js": {
+    "mtime": 1779042835.5672984,
+    "ast_hash": "b8a162feb219e1aea63a666be3e702d0",
+    "semantic_hash": "b8a162feb219e1aea63a666be3e702d0"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\tests\\audienceSegments.test.js": {
+    "mtime": 1779309207.2133875,
+    "ast_hash": "2b4494922b69d3d29ee784c57cf55de6",
+    "semantic_hash": "2b4494922b69d3d29ee784c57cf55de6"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\creator_blog_funnel_requirements.md": {
+    "mtime": 1779022657.5432832,
+    "ast_hash": "3b8ce4f96e693b2bbc9cc0494abf5707",
+    "semantic_hash": "3b8ce4f96e693b2bbc9cc0494abf5707"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\FUNNEL_MARKETING_PLAN.md": {
+    "mtime": 1779022657.5334127,
+    "ast_hash": "04b3e5eda9b59febb204fc368954676c",
+    "semantic_hash": "04b3e5eda9b59febb204fc368954676c"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\README.md": {
+    "mtime": 1779022657.6463099,
+    "ast_hash": "329c691aa02c10fe80a9b4eaaf2f1718",
+    "semantic_hash": "329c691aa02c10fe80a9b4eaaf2f1718"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\SRS_FRS_DOCUMENT.md": {
+    "mtime": 1779022657.651309,
+    "ast_hash": "ce809fc07a2c52b0270563f5df466e65",
+    "semantic_hash": "ce809fc07a2c52b0270563f5df466e65"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\TECHNICAL_GUIDE.md": {
+    "mtime": 1779022657.5362384,
+    "ast_hash": "518d02f42dd290e85cab74d643394def",
+    "semantic_hash": "518d02f42dd290e85cab74d643394def"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\index.html": {
+    "mtime": 1779224941.816578,
+    "ast_hash": "4e60fdf1f48819b69a1cc60d5cf82015",
+    "semantic_hash": "4e60fdf1f48819b69a1cc60d5cf82015"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\README.md": {
+    "mtime": 1777753817.6625028,
+    "ast_hash": "f6e3faf55d738cf2affe1b44195f27cf",
+    "semantic_hash": "f6e3faf55d738cf2affe1b44195f27cf"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\docs\\superpowers\\plans\\2026-05-14-admin-design-consistency.md": {
+    "mtime": 1779022657.723313,
+    "ast_hash": "ac1744a438f876b37788a2150253c8cf",
+    "semantic_hash": "ac1744a438f876b37788a2150253c8cf"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\docs\\superpowers\\plans\\2026-05-14-homepage-feature-polish.md": {
+    "mtime": 1779022657.7273207,
+    "ast_hash": "110cc3cec79c216ba95ee937e87fde41",
+    "semantic_hash": "110cc3cec79c216ba95ee937e87fde41"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\scripts\\BACKUPS.md": {
+    "mtime": 1779221627.3431237,
+    "ast_hash": "fd744806fdb05cdd53351375a5fefcf6",
+    "semantic_hash": "fd744806fdb05cdd53351375a5fefcf6"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\scripts\\CLOUDFLARE.md": {
+    "mtime": 1779223811.2264445,
+    "ast_hash": "9621d77dd45cb89485a40b730c3d9680",
+    "semantic_hash": "9621d77dd45cb89485a40b730c3d9680"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\scripts\\DEPLOY.md": {
+    "mtime": 1779257148.3598156,
+    "ast_hash": "b47f1ddf2b200cc823df3b9c29b28077",
+    "semantic_hash": "b47f1ddf2b200cc823df3b9c29b28077"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\scripts\\POSTGRES.md": {
+    "mtime": 1779255341.8439643,
+    "ast_hash": "4195eb61f22d0fdbacbe4efbf4eaf560",
+    "semantic_hash": "4195eb61f22d0fdbacbe4efbf4eaf560"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\server\\scripts\\UPTIME.md": {
+    "mtime": 1779223940.126689,
+    "ast_hash": "288c1953208451b5a15587337f1c75a1",
+    "semantic_hash": "288c1953208451b5a15587337f1c75a1"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\docs\\instagram-option-a-setup.pdf": {
+    "mtime": 1779022657.7208066,
+    "ast_hash": "2e5eb3be6042e52de55b092a9dfdc3ec",
+    "semantic_hash": "2e5eb3be6042e52de55b092a9dfdc3ec"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\public\\favicon.svg": {
+    "mtime": 1777753817.7323866,
+    "ast_hash": "7e840862161341271697daa99a40d76b",
+    "semantic_hash": "7e840862161341271697daa99a40d76b"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\public\\icons.svg": {
+    "mtime": 1777753817.7704535,
+    "ast_hash": "3b4fcfcf393eca4d264dca4a4663bc37",
+    "semantic_hash": "3b4fcfcf393eca4d264dca4a4663bc37"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\assets\\hero.png": {
+    "mtime": 1777753817.6904418,
+    "ast_hash": "aead493361b27e7510691c5d7072dfc1",
+    "semantic_hash": "aead493361b27e7510691c5d7072dfc1"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\assets\\react.svg": {
+    "mtime": 1777753817.7988496,
+    "ast_hash": "f0402b67b6ce880f65666bb49e841696",
+    "semantic_hash": "f0402b67b6ce880f65666bb49e841696"
+  },
+  "C:\\Users\\jimi\\Documents\\APP\\Blog\\client\\src\\assets\\vite.svg": {
+    "mtime": 1777753817.825096,
+    "ast_hash": "9960a24288958394ac50e57ff638b036",
+    "semantic_hash": "9960a24288958394ac50e57ff638b036"
+  }
+}
