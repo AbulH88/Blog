@@ -231,12 +231,37 @@ app.get('/api/health', async (_req, res) => {
 
 app.get('/robots.txt', async (req, res) => {
   try {
+    res.type('text/plain');
+
+    // members.* subdomain — ALWAYS hard-block all crawlers, regardless of
+    // the searchIndexable toggle. The paywall side of the platform must
+    // never be exposed to search engines or social-preview bots.
+    const host = (req.hostname || '').toLowerCase();
+    if (host.startsWith('members.')) {
+      res.send([
+        '# members subdomain — age-gated paywall, hard-block all crawlers',
+        'User-agent: *',
+        'Disallow: /',
+        '',
+        'User-agent: facebookexternalhit',
+        'Disallow: /',
+        'User-agent: Twitterbot',
+        'Disallow: /',
+        'User-agent: Instagram',
+        'Disallow: /',
+        'User-agent: meta-externalagent',
+        'Disallow: /',
+        'User-agent: TikTokBot',
+        'Disallow: /',
+      ].join('\n'));
+      return;
+    }
+
     const { Creator } = require('./models');
     const creator = await Creator.findOne({ attributes: ['searchIndexable'] });
     const indexable = creator?.searchIndexable === true;
-    res.type('text/plain');
     if (indexable) {
-      res.send(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n`);
+      res.send(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /r/\n`);
     } else {
       // Block everything — including IG/Facebook/Twitter preview bots.
       res.send([
@@ -271,6 +296,14 @@ app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/instagram', require('./routes/instagramRoutes'));
 app.use('/api/ai', require('./routes/aiChatRoutes'));
+// Bio shortlinks for the marketing/members domain split. Two mounts:
+//   - GET  /r/:character     — primary, hit by IG bio clicks on the root domain
+//   - POST /api/r/:character — fire-and-forget tracker from SPA fallback
+// Only the GET should ever land on the marketing root (members.* would mean
+// the user already crossed the boundary, so we don't gate by host here —
+// the redirect helper will detect and avoid double-prefixing).
+app.use('/r', require('./routes/shortlinkRoutes'));
+app.use('/api/r', require('./routes/shortlinkRoutes'));
 
 // ─── Admin upload ──────────────────────────────────────────────────────────────
 // Custom middleware wrapper so we can conditionally skip sharp processing

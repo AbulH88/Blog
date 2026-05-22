@@ -16,6 +16,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import NotFound from './pages/NotFound';
+import ShortlinkRedirect from './components/ShortlinkRedirect';
+import { isMembersDomain } from './lib/hostname';
 
 // Lazy — heavy or behind-login pages. Saves ~150KB from the initial bundle.
 // Fans browsing Home → Vault don't download Admin's 1800-line component
@@ -70,13 +72,19 @@ function App() {
 
       if (data.seo) {
         document.title = data.seo.metaTitle || data.siteTitle;
+        // Same safety: on the marketing root, force a lifestyle description
+        // even if admin has set something racier in seo.metaDescription.
+        const onRootDomain = !window.location.hostname.startsWith('members.');
+        const safeRootDesc =
+          `${data.siteTitle || 'Cristina'} — NYC lifestyle, travel, fashion, creative work.`;
+        const descContent = onRootDomain ? safeRootDesc : (data.seo.metaDescription || '');
         const metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc) {
-          metaDesc.setAttribute('content', data.seo.metaDescription || '');
+          metaDesc.setAttribute('content', descContent);
         } else {
           const meta = document.createElement('meta');
           meta.name = 'description';
-          meta.content = data.seo.metaDescription || '';
+          meta.content = descContent;
           document.head.appendChild(meta);
         }
         if (data.seo.favicon) {
@@ -99,8 +107,20 @@ function App() {
         if (!el) { el = document.createElement('meta'); el.setAttribute('property', prop); document.head.appendChild(el); }
         el.setAttribute('content', value);
       };
+      // Hostname-aware OG tags. On the marketing root, we hard-code a
+      // lifestyle-neutral description regardless of what admin has set in seo.* —
+      // social-preview bots that scan the bio link must never see monetization
+      // language. On members.* (paywall side) we use the admin-supplied copy.
+      const onMembers = window.location.hostname.startsWith('members.');
+      const safeRootDescription =
+        `${data.siteTitle || 'Cristina'} — NYC lifestyle, travel, fashion, creative work.`;
       setOg('og:title', data.seo?.metaTitle || data.siteTitle);
-      setOg('og:description', data.seo?.metaDescription || data.homeBio?.slice(0, 200));
+      setOg(
+        'og:description',
+        onMembers
+          ? (data.seo?.metaDescription || data.homeBio?.slice(0, 200))
+          : safeRootDescription,
+      );
       setOg('og:url', window.location.origin);
       // Fall back to logoUrl → hero image → favicon
       const ogImg = data.seo?.ogImage || data.logoUrl || data.images?.hero || data.images?.heroSlider?.[0];
@@ -155,30 +175,53 @@ function App() {
             />
             <main className="container">
               <Suspense fallback={<RouteLoader />}>
-                <Routes>
-                  <Route path="/" element={<Home config={config} />} />
-                  <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
-                  <Route path="/vault" element={<Vault config={config} />} />
-                  <Route path="/blog" element={<Blog blog={config.blog} />} />
-                  <Route path="/about" element={<About config={config} />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register config={config} />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/verify-email" element={<VerifyEmail />} />
-                  <Route path="/dashboard" element={<FanDashboard />} />
-                  <Route path="/chat" element={<Chat config={config} />} />
-                  <Route path="/terms" element={<Terms config={config} />} />
-                  <Route path="/privacy" element={<Privacy config={config} />} />
-                  <Route path="/2257" element={<Compliance2257 config={config} />} />
-                  <Route path="/dmca" element={<DMCA />} />
-                  <Route path="/payment/return" element={<PaymentReturn />} />
-                  <Route path="/dashboard/payment-methods" element={<Navigate to="/dashboard/settings/payments" replace />} />
-                  <Route path="/dashboard/settings" element={<FanSettings />} />
-                  <Route path="/dashboard/settings/:section" element={<FanSettings />} />
-                  <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                {isMembersDomain() ? (
+                  // ── members.* subdomain — age-gated paywall + dashboard ──
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/register" element={<Register config={config} />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/verify-email" element={<VerifyEmail />} />
+                    <Route path="/dashboard" element={<FanDashboard />} />
+                    <Route path="/dashboard/payment-methods" element={<Navigate to="/dashboard/settings/payments" replace />} />
+                    <Route path="/dashboard/settings" element={<FanSettings />} />
+                    <Route path="/dashboard/settings/:section" element={<FanSettings />} />
+                    <Route path="/vault" element={<Vault config={config} />} />
+                    <Route path="/chat" element={<Chat config={config} />} />
+                    <Route path="/payment/return" element={<PaymentReturn />} />
+                    <Route path="/admin" element={<Admin config={config} refreshConfig={refreshConfig} />} />
+                    {/* Legal pages mirrored — card processor wants to see them from members.* */}
+                    <Route path="/terms" element={<Terms config={config} />} />
+                    <Route path="/privacy" element={<Privacy config={config} />} />
+                    <Route path="/2257" element={<Compliance2257 config={config} />} />
+                    <Route path="/dmca" element={<DMCA />} />
+                    {/* Public pages also available on members.* for completeness */}
+                    <Route path="/about" element={<About config={config} />} />
+                    <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
+                    <Route path="/blog" element={<Blog blog={config.blog} />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                ) : (
+                  // ── marketing root domain — public-safe, scrubbed of monetization language ──
+                  <Routes>
+                    <Route path="/" element={<Home config={config} />} />
+                    <Route path="/about" element={<About config={config} />} />
+                    <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
+                    <Route path="/blog" element={<Blog blog={config.blog} />} />
+                    {/* Legal pages — kept on root for compliance + SEO */}
+                    <Route path="/terms" element={<Terms config={config} />} />
+                    <Route path="/privacy" element={<Privacy config={config} />} />
+                    <Route path="/2257" element={<Compliance2257 config={config} />} />
+                    <Route path="/dmca" element={<DMCA />} />
+                    {/* Tracked bio-link shortlink → 302 to members subdomain /register?via=:character */}
+                    <Route path="/r/:character" element={<ShortlinkRedirect />} />
+                    {/* All fan-facing routes (register/login/dashboard/vault/chat/admin/...)
+                        are intentionally NOT mounted on root — they live on members.* */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                )}
               </Suspense>
             </main>
             <Footer config={config} />

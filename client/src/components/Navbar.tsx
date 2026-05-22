@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import JoinPremiumModal from './JoinPremiumModal';
 import { SERVER_URL } from '../api';
+import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
 
 const Navbar = ({
   siteTitle,
@@ -126,9 +127,15 @@ const Navbar = ({
 
           {fanUser ? (
             <>
-              <Link to="/dashboard" className="v3-btn v3-btn-outline" style={{ fontSize: '0.72rem', padding: '10px 18px' }}>
-                Dashboard
-              </Link>
+              {isMembersDomain() ? (
+                <Link to="/dashboard" className="v3-btn v3-btn-outline" style={{ fontSize: '0.72rem', padding: '10px 18px' }}>
+                  Dashboard
+                </Link>
+              ) : (
+                <a href={crossDomainUrl('/dashboard', 'members')} className="v3-btn v3-btn-outline" style={{ fontSize: '0.72rem', padding: '10px 18px' }}>
+                  Dashboard
+                </a>
+              )}
               <button onClick={handleLogout} className="v3-btn v3-btn-primary" style={{ fontSize: '0.72rem' }}>
                 Sign out
               </button>
@@ -139,7 +146,7 @@ const Navbar = ({
               className="v3-btn v3-btn-primary"
               type="button"
             >
-              Get Premium Access
+              Step Inside ✨
             </button>
           )}
         </div>

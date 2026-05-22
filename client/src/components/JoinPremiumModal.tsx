@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { SERVER_URL } from '../api';
+import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
 
 interface Props {
   open: boolean;
@@ -44,7 +45,14 @@ const JoinPremiumModal = ({ open, onClose, creatorName, avatarUrl }: Props) => {
 
   const handleJoinDirect = () => {
     onClose();
-    navigate(isLoggedIn ? '/dashboard' : '/register');
+    const dest = isLoggedIn ? '/dashboard' : '/register';
+    // On the marketing root domain, cross-domain navigate to members.*.
+    // On members.* itself (or local SPA), use the router as before.
+    if (isMembersDomain()) {
+      navigate(dest);
+    } else {
+      window.location.href = crossDomainUrl(dest, 'members');
+    }
   };
 
   const name = creatorName || 'the creator';
@@ -67,27 +75,32 @@ const JoinPremiumModal = ({ open, onClose, creatorName, avatarUrl }: Props) => {
         <p className="v3-invite-eyebrow">YOU'RE INVITED</p>
 
         <h2 className="v3-invite-title">
-          Step inside <span className="ital">{name}'s</span> private world
+          Step inside <span className="ital">{name}'s</span> creative space
         </h2>
 
         <p className="v3-invite-lede">
-          Real conversations, unfiltered content, the side of me reserved for the people who actually show up.
+          A closer look at my daily life — fashion, travel, the little moments I share with people who actually show up.
         </p>
 
         <ul className="v3-invite-perks">
-          <li><span className="check">✓</span> Direct messages — no bots, no filters</li>
-          <li><span className="check">✓</span> Exclusive photos &amp; videos in the Vault</li>
-          <li><span className="check">✓</span> Tip jar, PPV, requests — your call</li>
+          <li><span className="check">✓</span> Daily updates straight from me</li>
+          <li><span className="check">✓</span> A real-time look behind the lens</li>
+          <li><span className="check">✓</span> Say hi — I read every message</li>
         </ul>
 
         <button className="v3-invite-cta" onClick={handleJoinDirect}>
-          {isLoggedIn ? 'Continue to your Dashboard' : 'Join free — takes 30 seconds'}
+          {isLoggedIn ? 'Continue to your Dashboard' : 'Follow free — takes 30 seconds'}
           <span className="arrow">→</span>
         </button>
 
         {!isLoggedIn && (
           <p className="v3-invite-signin">
-            Already inside? <Link to="/login" onClick={onClose}>Sign in</Link>
+            Already inside?{' '}
+            {isMembersDomain() ? (
+              <Link to="/login" onClick={onClose}>Sign in</Link>
+            ) : (
+              <a href={crossDomainUrl('/login', 'members')} onClick={onClose}>Sign in</a>
+            )}
           </p>
         )}
 
@@ -96,7 +109,7 @@ const JoinPremiumModal = ({ open, onClose, creatorName, avatarUrl }: Props) => {
             <rect x="3" y="11" width="18" height="11" rx="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-          18+ only · Secure &amp; private · Cancel anytime
+          No card required · Unfollow anytime
         </p>
       </div>
     </div>
