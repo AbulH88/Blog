@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom';
+import { isMembersDomain } from '../lib/hostname';
 
 const Footer = ({ config }: { config: any }) => {
   const location = useLocation();
@@ -11,6 +12,12 @@ const Footer = ({ config }: { config: any }) => {
   ) return null;
 
   const isImmersiveMobile = false;
+  // Legal links (Privacy/Terms/DMCA/Disclosure) only render on the members
+  // subdomain. The marketing root stays minimal — social icons + © line only
+  // — so IG/TikTok crawlers don't have legal-page paths to follow. Legal
+  // routes still exist on members.* (required for compliance + card
+  // processor verification).
+  const showLegal = isMembersDomain();
 
   const year = new Date().getFullYear();
 
@@ -41,12 +48,14 @@ const Footer = ({ config }: { config: any }) => {
 
       <p className="copy">© {year} {config.siteTitle?.toUpperCase()}. ALL RIGHTS RESERVED.</p>
 
-      <div className="v3-footer-links">
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/terms">Terms</a>
-        <a href="/dmca">DMCA</a>
-        {config?.disclosureVisible !== false && <a href="/2257">Disclosure</a>}
-      </div>
+      {showLegal && (
+        <div className="v3-footer-links">
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/terms">Terms</a>
+          <a href="/dmca">DMCA</a>
+          {config?.disclosureVisible !== false && <a href="/2257">Disclosure</a>}
+        </div>
+      )}
     </footer>
   );
 };

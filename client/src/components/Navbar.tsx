@@ -157,20 +157,18 @@ const Navbar = ({
               Step Inside ✨
             </button>
           ) : (
-            // Marketing root — subtle text-only "Sign in" link.
-            // No modal, no avatar, no signup pitch in the DOM — keeps the
-            // root domain looking like a clean linktree to IG/TikTok bots.
+            // Marketing root — styled CTA button. Text is intentionally
+            // neutral ("Members") to stay below IG/TikTok bot adult-flag
+            // classifiers. Universal phrase (gyms, golf clubs, news sites
+            // all use "Members"). Same colored button styling as the rest
+            // of the v3 design system — drives conversion without leaking
+            // signup-pitch language. Cross-domain navigates to members.*/login.
             <a
               href={crossDomainUrl('/login', 'members')}
-              style={{
-                fontSize: '0.78rem',
-                color: 'var(--v3-ink-soft)',
-                textDecoration: 'none',
-                fontWeight: 500,
-                padding: '8px 6px',
-              }}
+              className="v3-btn v3-btn-primary"
+              style={{ textDecoration: 'none' }}
             >
-              Sign in
+              Members
             </a>
           )}
         </div>
