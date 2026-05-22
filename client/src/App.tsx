@@ -31,6 +31,9 @@ const Chat           = lazy(() => import('./pages/Chat'));
 const Terms          = lazy(() => import('./pages/Terms'));
 const Privacy        = lazy(() => import('./pages/Privacy'));
 const Compliance2257 = lazy(() => import('./pages/Compliance2257'));
+// Members conversion CTA — lazy-loaded so its strings never ship in the
+// main bundle. Only mounted on the marketing root domain (see below).
+const MembersScrollCta = lazy(() => import('./components/MembersScrollCta'));
 const PaymentReturn  = lazy(() => import('./pages/PaymentReturn'));
 const FanSettings    = lazy(() => import('./pages/FanSettings'));
 const DMCA           = lazy(() => import('./pages/DMCA'));
@@ -221,6 +224,10 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 )}
+                {/* Scroll-triggered members CTA — root domain only. Lazy
+                    chunk + scroll detection means bots that download the
+                    HTML and leave never trigger it. */}
+                {!isMembersDomain() && <MembersScrollCta />}
               </Suspense>
             </main>
             <Footer config={config} />

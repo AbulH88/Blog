@@ -15,7 +15,13 @@ export default defineConfig({
         // automated `find */JoinPremium*` style probe gets nothing.
         chunkFileNames: (chunkInfo) => {
           const name = chunkInfo.name || '';
-          if (/Join|Premium|Invit|Welcome/i.test(name)) {
+          // Any chunk that's "members-flavoured" (signup modal, scroll CTA,
+          // future invitation widgets) gets a generic `m-*` name so a bot
+          // grepping the main bundle's dynamic-import URLs can't pattern-
+          // match by filename. Strings inside the chunk are obviously still
+          // there, but the chunk is only fetched on user interaction, never
+          // by a passive HTML crawl.
+          if (/Join|Premium|Invit|Welcome|Members|Cta/i.test(name)) {
             return 'assets/m-[hash].js';
           }
           return 'assets/[name]-[hash].js';
