@@ -86,7 +86,7 @@ router.post('/register', async (req, res) => {
       console.error(subErr.stack);
     }
 
-    const token = signToken({ userId: user.id, role: 'fan', email: user.email });
+    const token = signToken({ userId: user.id, role: 'fan', email: user.email, tv: user.tokenVersion ?? 0 });
     events.log('fan_signed_up', { userId: user.id, props: { username: user.username } });
     res.status(201).json({ token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (err) {
@@ -109,7 +109,7 @@ router.post('/login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
     await user.update({ lastLoginAt: new Date() });
-    const token = signToken({ userId: user.id, role: 'fan', email: user.email });
+    const token = signToken({ userId: user.id, role: 'fan', email: user.email, tv: user.tokenVersion ?? 0 });
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (err) {
     res.status(500).json({ error: 'Login failed', detail: err.message });
@@ -187,7 +187,7 @@ router.patch('/me', requireAuth, async (req, res) => {
 
     const payload = { id: user.id, username: user.username, email: user.email };
     if (emailChanged) {
-      const token = signToken({ userId: user.id, role: 'fan', email: user.email });
+      const token = signToken({ userId: user.id, role: 'fan', email: user.email, tv: user.tokenVersion ?? 0 });
       return res.json({ ok: true, user: payload, token });
     }
     res.json({ ok: true, user: payload });
@@ -214,8 +214,12 @@ router.patch('/me/password', requireAuth, async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
 
     user.passwordHash = await bcrypt.hash(newPassword, 12);
+    // Invalidate all other sessions — fan who just changed their password
+    // gets a fresh token below; everyone else gets kicked.
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
-    res.json({ ok: true });
+    const token = signToken({ userId: user.id, role: 'fan', email: user.email, tv: user.tokenVersion });
+    res.json({ ok: true, token });
   } catch (err) {
     res.status(500).json({ error: 'Password change failed', detail: err.message });
   }
@@ -340,6 +344,9 @@ router.post('/reset-password', async (req, res) => {
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.passwordResetToken = null;
     user.passwordResetExpires = null;
+    // Reset = "I forgot my password" → invalidate every session that wasn't
+    // started by the reset flow (because a leaked token could still be active).
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
     res.json({ ok: true });
@@ -382,6 +389,23 @@ router.delete('/me', requireAuth, async (req, res) => {
     res.json({ ok: true, message: 'Account deleted. Transaction records retained per tax/payment-processor requirements.' });
   } catch (err) {
     res.status(500).json({ error: 'Account deletion failed', detail: err.message });
+  }
+});
+
+// ─── Logout from every device ───────────────────────────────────────────────
+// Bumps the user's tokenVersion. The caller's current JWT becomes invalid
+// immediately. Frontend should clear local storage + redirect to login after
+// a 200 here.
+router.post('/me/logout-everywhere', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'fan') return res.status(403).json({ error: 'Fan account required' });
+    const user = await User.findByPk(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Logout failed', detail: err.message });
   }
 });
 

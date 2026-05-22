@@ -22,6 +22,12 @@ const User = sequelize.define('User', {
   // For now soft-enforced (allow login but show banner) — promote to hard gate later.
   emailVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
   emailVerifyToken: { type: DataTypes.STRING, allowNull: true },
+
+  // Session/token versioning — bump this to invalidate every existing JWT for
+  // this user (admin force-logout, fan "log me out everywhere", password reset).
+  // The version is embedded in each JWT as `tv` and re-checked on every
+  // authenticated request. Stale `tv` ⇒ 401 with requiresLogin: true.
+  tokenVersion: { type: DataTypes.INTEGER, defaultValue: 0, allowNull: false },
 });
 
 module.exports = User;

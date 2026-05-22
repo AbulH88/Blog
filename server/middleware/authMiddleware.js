@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const requireAuth = (req, res, next) => {
+const requireAuth = async (req, res, next) => {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'No token provided' });
@@ -9,10 +9,32 @@ const requireAuth = (req, res, next) => {
   const token = header.split(' ')[1];
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
   } catch {
-    res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
+
+  // For fan tokens, verify the user isn't blocked and the token version still
+  // matches. Admin force-logout / fan logout-everywhere / password reset all
+  // bump the version, which causes every old JWT to start rejecting here.
+  // Returns 401 with requiresLogin:true so the frontend can redirect to login.
+  if (req.user?.role === 'fan') {
+    try {
+      const { User } = require('../models');
+      const user = await User.findByPk(req.user.userId, {
+        attributes: ['isBlocked', 'tokenVersion'],
+      });
+      if (!user) return res.status(401).json({ error: 'User not found', requiresLogin: true });
+      if (user.isBlocked) return res.status(403).json({ error: 'Account suspended', accountBlocked: true });
+      const currentTv = user.tokenVersion ?? 0;
+      const jwtTv = req.user.tv ?? 0;
+      if (currentTv !== jwtTv) {
+        return res.status(401).json({ error: 'Session expired', requiresLogin: true });
+      }
+    } catch (err) {
+      return res.status(500).json({ error: 'Auth check failed', detail: err.message });
+    }
+  }
+  next();
 };
 
 const requireCreator = (req, res, next) => {
