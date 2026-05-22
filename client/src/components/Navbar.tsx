@@ -1,31 +1,29 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { SERVER_URL } from '../api';
 import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
 
-// Code-split: the JoinPremiumModal contains the signup pitch text and the
-// creator's avatar. We lazy-load it so its strings never appear in the main
-// JS bundle that ships to every page on the root marketing domain. Combined
-// with the conditional mount in JSX, root-domain visitors never even fetch
-// this chunk — IG/TikTok crawlers can't fingerprint signup-flow text from
-// the JS bundle.
-const JoinPremiumModal = lazy(() => import('./JoinPremiumModal'));
+// NOTE: JoinPremiumModal used to be mounted from the Navbar (via a "Step
+// Inside ✨" button) but has been removed — see below. The component still
+// exists and can be wired into a scroll-triggered welcome popup on the root
+// domain later. Keeping it OUT of the Navbar bundle means the marketing root
+// never even fetches the chunk, so IG/TikTok crawlers can't fingerprint any
+// signup-flow text from JS.
 
 const Navbar = ({
   siteTitle,
   instagramHandle,
-  fanvueUrl,
   logoUrl,
-  avatarUrl,
 }: {
   siteTitle: string;
   instagramHandle?: string;
+  /** Reserved for future use — Fanvue alt-checkout used to wire here */
   fanvueUrl?: string;
   logoUrl?: string;
+  /** Reserved for future use */
   avatarUrl?: string;
 }) => {
   const [fanUser, setFanUser] = useState<any>(null);
-  const [joinOpen, setJoinOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -147,14 +145,17 @@ const Navbar = ({
               </button>
             </>
           ) : isMembersDomain() ? (
-            // Members domain — full invitation modal (age-gated context)
-            <button
-              onClick={() => setJoinOpen(true)}
-              className="v3-btn v3-btn-primary"
-              type="button"
+            // Members domain — user is ALREADY past the marketing surface.
+            // No need for a "Step Inside" pitch / invitation modal here.
+            // Show a small "Sign in" link instead (they may be on /register
+            // and want to switch to /login, or on /gallery and need auth).
+            <Link
+              to="/login"
+              className="v3-btn v3-btn-outline"
+              style={{ fontSize: '0.72rem', padding: '10px 18px', textDecoration: 'none' }}
             >
-              Step Inside ✨
-            </button>
+              Sign in
+            </Link>
           ) : (
             // Marketing root — styled CTA button. Text is intentionally
             // neutral ("Members") to stay below IG/TikTok bot adult-flag
@@ -194,22 +195,11 @@ const Navbar = ({
         </>
       )}
 
-      {/* JoinPremiumModal renders ONLY on the members subdomain. On the
-          root marketing domain we never mount it — and because it's lazy-
-          imported, the bundle containing its text/images is never fetched.
-          Suspense fallback is null because the modal is invisible until the
-          user clicks Step Inside anyway. */}
-      {isMembersDomain() && (
-        <Suspense fallback={null}>
-          <JoinPremiumModal
-            open={joinOpen}
-            onClose={() => setJoinOpen(false)}
-            fanvueUrl={fanvueUrl}
-            creatorName={siteTitle}
-            avatarUrl={avatarUrl}
-          />
-        </Suspense>
-      )}
+      {/* JoinPremiumModal is no longer mounted from the Navbar. The Step
+          Inside pitch was an unnecessary surface on members.* (users there
+          are already past the marketing surface). The component still
+          exists for future use (e.g. scroll-trigger welcome on root) but
+          isn't wired anywhere right now. */}
     </div>
   );
 };

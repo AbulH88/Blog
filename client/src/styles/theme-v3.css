@@ -2247,17 +2247,68 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.25);
   text-align: center;
   animation: v3-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
   /* Soft cream texture */
   background-image:
     radial-gradient(circle at 15% 0%, rgba(231, 158, 130, 0.10), transparent 45%),
     radial-gradient(circle at 85% 100%, rgba(245, 197, 197, 0.18), transparent 50%);
 }
+/* When the modal has a hero photo, kill the top padding so the image
+   meets the modal edge. The hero element supplies its own visual
+   breathing room. */
+.v3-invite-card.has-hero { padding-top: 0; }
+
 @media (min-width: 600px) {
   .v3-invite-card {
     border-radius: 22px;
     padding: 52px 32px 30px;
     animation: v3-zoom-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   }
+  .v3-invite-card.has-hero { padding-top: 0; }
+}
+
+/* ─── Hero image variant ────────────────────────────────────────────────
+   Big creator photo at the top of the modal — IG-style profile header
+   feel. Small circular avatar floats over the bottom edge. Used when the
+   modal is triggered as a "welcome" surface (e.g. scroll-trigger on
+   marketing root). Falls back to the bare seal layout when no hero URL
+   is passed (preserves the old in-app modal usage). */
+.v3-invite-hero {
+  position: relative;
+  margin: 0 -26px;             /* breaks out of card padding */
+  aspect-ratio: 5 / 4;
+  background: linear-gradient(135deg, #E6927A 0%, #C75A3E 100%);
+  overflow: hidden;
+}
+.v3-invite-hero img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Subtle bottom fade so the photo blends into the modal background */
+.v3-invite-hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 38%;
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 250, 244, 0.95) 100%);
+  pointer-events: none;
+}
+/* Close button sits on top of the hero with a soft white pill bg */
+.v3-invite-card.has-hero .v3-invite-close {
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+}
+/* Small avatar floats over the bottom-center of the hero, half-overlapping
+   the photo and half on the cream background — classic IG profile look. */
+.v3-invite-card.has-hero .v3-invite-seal {
+  position: relative;
+  margin: -42px auto 16px;
+  z-index: 2;
+}
+@media (min-width: 600px) {
+  .v3-invite-hero { margin: 0 -32px; }
 }
 
 .v3-invite-close {

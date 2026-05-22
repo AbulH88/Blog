@@ -1,32 +1,57 @@
 /**
- * Scroll-triggered conversion CTA — slides up from the bottom of the screen
- * once the fan has scrolled past 60% of the page. Bot-safe because:
- *   - Bots don't scroll (they download HTML once and leave) → CTA never renders
+ * Scroll-triggered conversion popup — fires the full JoinPremiumModal once
+ * the visitor scrolls past 60% of the page. Bot-safe because:
+ *   - Bots don't scroll (they download HTML once and leave) → never renders
  *   - No auto-popup behaviour on landing
- *   - Lazy-loaded chunk so its strings aren't in the main bundle
+ *   - Lazy-loaded chunk so the modal strings + photo asset aren't in the
+ *     main bundle that ships to root-domain HTML scrapers
  *
- * The pill is dismissable; we remember the dismissal in localStorage so the
- * fan isn't pestered on every page reload. Re-shows after 7 days.
+ * Behaviour:
+ *   - Shows once per session (sessionStorage) so it doesn't re-pop after
+ *     dismiss-and-scroll-up-and-scroll-back-down
+ *   - After explicit dismiss via the modal's × button, remembers for 7 days
+ *     in localStorage so returning fans aren't pestered
  *
  * Mounted on the marketing root domain only (App.tsx wraps the mount in an
- * isMembersDomain() check). Cross-domain navigates to the members subdomain
- * /login page.
+ * isMembersDomain() check). Cross-domain navigates to members.* when the
+ * "Follow free" CTA is tapped — handled inside JoinPremiumModal.
  */
-import { useEffect, useState } from 'react';
-import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
+import { useEffect, useState, lazy, Suspense } from 'react';
+import { isMembersDomain } from '../lib/hostname';
+
+const JoinPremiumModal = lazy(() => import('./JoinPremiumModal'));
 
 const STORAGE_KEY = 'members_scroll_cta_dismissed_at';
+const SESSION_KEY = 'members_scroll_cta_shown_this_session';
 const REMIND_AFTER_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const SCROLL_THRESHOLD = 0.6; // 60% of the page
+const SCROLL_THRESHOLD = 0.6;                    // 60% of the page
 
-export default function MembersScrollCta() {
-  const [visible, setVisible] = useState(false);
+interface Props {
+  /** Creator config passed from App. Used to source the hero photo +
+   *  avatar + display name for the modal. */
+  config?: {
+    siteTitle?: string;
+    logoUrl?: string;
+    chatAvatarUrl?: string;
+    fanvueUrl?: string;
+    images?: {
+      hero?: string;
+      heroSlider?: string[];
+    };
+  };
+}
+
+export default function MembersScrollCta({ config }: Props) {
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    // Don't run on the members subdomain — only the marketing root needs this.
+    // Don't run on members.* — only the marketing root needs this.
     if (isMembersDomain()) return;
 
-    // Don't show if recently dismissed.
+    // Don't pop more than once per session.
+    if (sessionStorage.getItem(SESSION_KEY)) return;
+
+    // Don't show if recently dismissed via the modal close.
     const dismissedAtRaw = localStorage.getItem(STORAGE_KEY);
     if (dismissedAtRaw) {
       const dismissedAt = parseInt(dismissedAtRaw, 10);
@@ -48,95 +73,53 @@ export default function MembersScrollCta() {
         if (max <= 0) return;
         const pct = scrolled / max;
         if (pct >= SCROLL_THRESHOLD) {
-          setVisible(true);
+          sessionStorage.setItem(SESSION_KEY, '1');
+          setOpen(true);
           window.removeEventListener('scroll', onScroll);
         }
       });
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
-    // Also check once on mount in case the user is already scrolled (returning
-    // visit, refresh mid-page).
+    // Also check once on mount in case the user landed mid-page (refresh).
     onScroll();
 
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const dismiss = () => {
+  const handleClose = () => {
+    // Explicit close = 7-day cooldown so they don't get re-pestered every visit
     localStorage.setItem(STORAGE_KEY, String(Date.now()));
-    setVisible(false);
+    setOpen(false);
   };
 
-  if (!visible) return null;
+  // Source the hero photo: prefer the first hero-slider slide (creator's best
+  // shot, intentionally chosen for the home page), fall back to the legacy
+  // single hero image, then logo as last resort.
+  const heroImageUrl =
+    (config?.images?.heroSlider && config.images.heroSlider[0]) ||
+    config?.images?.hero ||
+    config?.logoUrl ||
+    '';
 
-  const href = crossDomainUrl('/login', 'members');
+  const avatarUrl =
+    config?.chatAvatarUrl ||
+    config?.images?.hero ||
+    config?.logoUrl ||
+    '';
+
+  if (!open) return null;
 
   return (
-    <div
-      role="region"
-      aria-label="Want more?"
-      style={{
-        position: 'fixed',
-        bottom: 20,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 1000,
-        background: 'var(--v3-ink, #1f1d1a)',
-        color: '#fff',
-        borderRadius: 999,
-        padding: '10px 14px 10px 20px',
-        boxShadow: '0 12px 30px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.15)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        maxWidth: 'calc(100vw - 32px)',
-        animation: 'membersScrollCtaSlideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
-        fontFamily: 'inherit',
-      }}
-    >
-      <span style={{ fontSize: '0.88rem', fontWeight: 500, letterSpacing: 0.2, whiteSpace: 'nowrap' }}>
-        Want the rest?
-      </span>
-      <a
-        href={href}
-        style={{
-          background: 'var(--v3-terracotta, #C75A3E)',
-          color: '#fff',
-          textDecoration: 'none',
-          padding: '7px 16px',
-          borderRadius: 999,
-          fontWeight: 700,
-          fontSize: '0.84rem',
-          letterSpacing: 0.4,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        Come in →
-      </a>
-      <button
-        onClick={dismiss}
-        aria-label="Dismiss"
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'rgba(255,255,255,0.7)',
-          cursor: 'pointer',
-          fontSize: '1.1rem',
-          lineHeight: 1,
-          padding: '0 4px 2px',
-          fontFamily: 'inherit',
-        }}
-      >
-        ×
-      </button>
-      {/* Inline keyframes — keeps the animation self-contained so we don't
-          touch the shared CSS file for a single component's micro-motion. */}
-      <style>{`
-        @keyframes membersScrollCtaSlideUp {
-          from { transform: translate(-50%, 120%); opacity: 0; }
-          to   { transform: translate(-50%, 0);    opacity: 1; }
-        }
-      `}</style>
-    </div>
+    <Suspense fallback={null}>
+      <JoinPremiumModal
+        open={open}
+        onClose={handleClose}
+        creatorName={config?.siteTitle}
+        fanvueUrl={config?.fanvueUrl}
+        avatarUrl={avatarUrl}
+        heroImageUrl={heroImageUrl}
+      />
+    </Suspense>
   );
 }

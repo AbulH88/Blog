@@ -227,7 +227,7 @@ function App() {
                 {/* Scroll-triggered members CTA — root domain only. Lazy
                     chunk + scroll detection means bots that download the
                     HTML and leave never trigger it. */}
-                {!isMembersDomain() && <MembersScrollCta />}
+                {!isMembersDomain() && <MembersScrollCta config={config} />}
               </Suspense>
             </main>
             <Footer config={config} />

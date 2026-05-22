@@ -11,8 +11,13 @@ interface Props {
    *  so it stays hidden from IG / Meta / Twitter crawlers. */
   fanvueUrl?: string;
   creatorName?: string;
-  /** Optional avatar/logo to put inside the invitation seal. */
+  /** Small circular avatar in the invitation seal (always rendered). */
   avatarUrl?: string;
+  /** Optional big hero photo at the top of the modal — IG-profile-header feel.
+   *  When present the modal switches to the photo-led layout; otherwise the
+   *  bare seal layout from earlier versions is used. Source typically the
+   *  creator's heroSlider[0] or hero image. */
+  heroImageUrl?: string;
 }
 
 const fullUrl = (p?: string) => {
@@ -26,7 +31,7 @@ const fullUrl = (p?: string) => {
  * Replaces the older "chooser" design now that Fanvue is gated behind login.
  * Desktop: centered card. Mobile: bottom sheet.
  */
-const JoinPremiumModal = ({ open, onClose, creatorName, avatarUrl }: Props) => {
+const JoinPremiumModal = ({ open, onClose, creatorName, avatarUrl, heroImageUrl }: Props) => {
   const navigate = useNavigate();
   const isLoggedIn = typeof window !== 'undefined' && !!localStorage.getItem('fanToken');
 
@@ -57,13 +62,28 @@ const JoinPremiumModal = ({ open, onClose, creatorName, avatarUrl }: Props) => {
 
   const name = creatorName || 'the creator';
   const avatarSrc = fullUrl(avatarUrl);
+  const heroSrc = fullUrl(heroImageUrl);
+  const hasHero = !!heroSrc;
 
   return (
     <div className="v3-invite-backdrop" onClick={onClose}>
-      <div className="v3-invite-card" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div
+        className={`v3-invite-card${hasHero ? ' has-hero' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
         <button className="v3-invite-close" onClick={onClose} aria-label="Close">×</button>
 
-        {/* Seal — avatar inside a circular border */}
+        {hasHero && (
+          <div className="v3-invite-hero">
+            <img src={heroSrc} alt="" loading="eager" />
+          </div>
+        )}
+
+        {/* Seal — small circular avatar. With a hero photo it floats over
+            the bottom edge (IG profile-header look). Without one it sits
+            centered at the top (original layout). */}
         <div className="v3-invite-seal">
           {avatarSrc ? (
             <img src={avatarSrc} alt={name} />
