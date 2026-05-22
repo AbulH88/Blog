@@ -15,6 +15,7 @@ import DragDropUpload from '../components/DragDropUpload';
 import FunnelCard from '../components/FunnelCard';
 import AddHeroSlideModal from '../components/AddHeroSlideModal';
 import FanDetailDrawer from '../components/FanDetailDrawer';
+import AdminNotificationBell from '../components/AdminNotificationBell';
 
 type Tab =
   | 'overview' | 'biobuilder' | 'analytics' | 'content' | 'gallery'
@@ -2516,7 +2517,12 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
             <input placeholder="Search" />
           </div>
           <div className="right">
-            <div className="v3-admin-bell">🔔<span className="dot">3</span></div>
+            <AdminNotificationBell
+              onSelectFan={(fanId) => {
+                setActiveTab('audience');
+                setDrawerFanId(fanId);
+              }}
+            />
             <div className="v3-admin-bell" title="Help">?</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
               <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: '#ddd' }}>
