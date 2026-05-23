@@ -49,22 +49,32 @@ const Home = ({ config }: { config: any }) => {
   const name = (config?.siteTitle || 'Cristina').toUpperCase();
   const firstName = name.split(' ')[0];
 
-  // Portrait for the About section — falls back through hero → gallery
+  // Portrait for the About section — prefers a dedicated upload, falls
+  // back through hero → gallery so existing installs keep working.
   const portrait =
+    config?.images?.aboutPortrait ||
     config?.images?.hero ||
     config?.images?.heroSlider?.[0] ||
     config?.images?.gallery?.[0] ||
     '';
 
-  // Journey: 4 milestones from the gallery photos. Creator can customise the
-  // labels in admin later; defaults are generic enough for any creator brand.
+  // Journey: 4 milestones, each fully editable in admin (year + label + img).
+  // Falls back to gallery-derived defaults when the creator hasn't set them
+  // yet so the section is never empty on a new install.
   const gallery = config?.images?.gallery || [];
-  const journey = [
+  const journeyFromConfig: Array<{ year?: string; label?: string; img?: string }> =
+    Array.isArray(config?.journey) ? config.journey : [];
+  const journeyDefaults = [
     { year: '2019', label: 'Started the blog', img: gallery[0] },
     { year: '2021', label: 'First brand collab', img: gallery[1] },
     { year: '2023', label: 'Featured in Vogue', img: gallery[2] },
     { year: '2024', label: 'Built this little corner of the internet', img: gallery[3] },
   ];
+  const journey = journeyDefaults.map((d, i) => ({
+    year: journeyFromConfig[i]?.year ?? d.year,
+    label: journeyFromConfig[i]?.label ?? d.label,
+    img: journeyFromConfig[i]?.img ?? d.img,
+  }));
 
   // Members CTA destination — cross-domain on root, internal on members.
   const membersLoginUrl = isMembersDomain() ? '/login' : crossDomainUrl('/login', 'members');

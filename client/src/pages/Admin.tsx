@@ -1020,14 +1020,15 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
       setGalleryAlbums(next);
     };
 
-    const addSlideToActiveHero = (slide: { desktop?: string; mobile?: string }) => {
+    const addSlideToActiveHero = (slides: Array<{ desktop?: string; mobile?: string }>) => {
+      if (!slides.length) return;
       const activeIdx = heroAlbums.findIndex(a => a.active);
       if (activeIdx < 0) return;
       const next = heroAlbums.map((a, i) => i === activeIdx
-        ? { ...a, slides: [...(a.slides || []), slide] }
+        ? { ...a, slides: [...(a.slides || []), ...slides] }
         : a);
       setHeroAlbums(next);
-      setStatus('Slide added — remember to Save Changes');
+      setStatus(`${slides.length} slide${slides.length === 1 ? '' : 's'} added — remember to Save Changes`);
       setTimeout(() => setStatus(''), 3000);
     };
 
@@ -1192,13 +1193,13 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                     </div>
                     <div>
                       <div style={{ fontSize: '0.66rem', color: 'var(--v3-muted)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>
-                        Desktop · 16:5
+                        Desktop · 16:7
                       </div>
                       {slide.desktop ? (
                         <img src={slide.desktop} alt="" loading="lazy"
-                          style={{ width: '100%', aspectRatio: '16/5', objectFit: 'cover', objectPosition: 'center top', borderRadius: 6, background: '#eee' }} />
+                          style={{ width: '100%', aspectRatio: '16/7', objectFit: 'cover', objectPosition: 'center top', borderRadius: 6, background: '#eee' }} />
                       ) : (
-                        <div style={{ aspectRatio: '16/5', borderRadius: 6, background: 'var(--v3-cream)', border: '1px dashed var(--v3-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v3-muted)', fontSize: '0.74rem' }}>
+                        <div style={{ aspectRatio: '16/7', borderRadius: 6, background: 'var(--v3-cream)', border: '1px dashed var(--v3-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v3-muted)', fontSize: '0.74rem' }}>
                           No desktop
                         </div>
                       )}
@@ -1343,6 +1344,163 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
               Create your first album above to start adding photos.
             </p>
           )}
+        </div>
+
+        {/* ───── About-section portrait + Journey cards ───────────────────── */}
+        <div className="av2-section" style={{ marginTop: 20 }}>
+          <p className="av2-section-label" style={{ marginBottom: 4 }}>About-section portrait</p>
+          <p style={{ fontSize: '0.74rem', color: 'var(--v3-muted)', marginBottom: 10 }}>
+            The round portrait on the home page next to "HELLO, I'M …". Square crop works best (1:1). Falls back to your hero image if empty.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6 }}>
+            {formData.images?.aboutPortrait ? (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={formData.images.aboutPortrait}
+                  alt=""
+                  style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--v3-rose-100)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev: any) => ({
+                    ...prev,
+                    images: { ...prev.images, aboutPortrait: '' },
+                  }))}
+                  style={{
+                    position: 'absolute', top: -6, right: -6, width: 24, height: 24,
+                    borderRadius: '50%', border: 'none', background: 'var(--v3-danger)',
+                    color: '#fff', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 700,
+                  }}>✕</button>
+              </div>
+            ) : (
+              <div style={{
+                width: 96, height: 96, borderRadius: '50%',
+                background: 'var(--v3-cream)', border: '1px dashed var(--v3-line)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--v3-muted)', fontSize: '0.7rem',
+              }}>(empty)</div>
+            )}
+            <DragDropUpload
+              accept="image/*"
+              onFiles={async (files) => {
+                if (!files.length) return;
+                setStatus('Uploading portrait…');
+                const res = await uploadImage(files[0]);
+                if (res.url) {
+                  setFormData((prev: any) => ({
+                    ...prev,
+                    images: { ...prev.images, aboutPortrait: res.url },
+                  }));
+                  setStatus('Portrait uploaded — remember to Save Changes');
+                  setTimeout(() => setStatus(''), 3000);
+                } else {
+                  setStatus('Upload failed');
+                }
+              }}
+              title="Upload portrait"
+              hint="JPEG/PNG · 800×800 ideal"
+              icon="👤"
+              style={{ flex: 1, minHeight: 96 }}
+            />
+          </div>
+        </div>
+
+        <div className="av2-section" style={{ marginTop: 20 }}>
+          <p className="av2-section-label" style={{ marginBottom: 4 }}>The Journey (4 polaroid cards)</p>
+          <p style={{ fontSize: '0.74rem', color: 'var(--v3-muted)', marginBottom: 14 }}>
+            Each card shows a year, a one-line milestone, and a photo. Tap any card to edit.
+          </p>
+          {(() => {
+            const journeyDefaults = [
+              { year: '2019', label: 'Started the blog' },
+              { year: '2021', label: 'First brand collab' },
+              { year: '2023', label: 'Featured in Vogue' },
+              { year: '2024', label: 'Built this little corner of the internet' },
+            ];
+            const journey: Array<{ year?: string; label?: string; img?: string }> =
+              Array.isArray(formData.journey) ? formData.journey : [];
+            const cards = journeyDefaults.map((d, i) => ({
+              year: journey[i]?.year ?? d.year,
+              label: journey[i]?.label ?? d.label,
+              img: journey[i]?.img ?? '',
+            }));
+            const updateCard = (idx: number, patch: Partial<{ year: string; label: string; img: string }>) => {
+              const next = cards.map((c, i) => i === idx ? { ...c, ...patch } : c);
+              setFormData((prev: any) => ({ ...prev, journey: next }));
+            };
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                {cards.map((c, i) => (
+                  <div key={i} style={{
+                    border: '1px solid var(--v3-rose-100)', borderRadius: 10,
+                    padding: 12, background: '#fff',
+                  }}>
+                    {c.img ? (
+                      <div style={{ position: 'relative' }}>
+                        <img
+                          src={c.img}
+                          alt=""
+                          style={{ width: '100%', aspectRatio: '4/5', objectFit: 'cover', borderRadius: 6, background: 'var(--v3-cream)' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateCard(i, { img: '' })}
+                          style={{
+                            position: 'absolute', top: 6, right: 6, width: 24, height: 24,
+                            borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)',
+                            color: '#fff', cursor: 'pointer', fontSize: '0.74rem',
+                          }}>✕</button>
+                      </div>
+                    ) : (
+                      <DragDropUpload
+                        accept="image/*"
+                        onFiles={async (files) => {
+                          if (!files.length) return;
+                          setStatus(`Uploading card ${i + 1}…`);
+                          const res = await uploadImage(files[0]);
+                          if (res.url) {
+                            updateCard(i, { img: res.url });
+                            setStatus('Uploaded — remember to Save Changes');
+                            setTimeout(() => setStatus(''), 3000);
+                          } else {
+                            setStatus('Upload failed');
+                          }
+                        }}
+                        title="+ Add photo"
+                        hint="4:5 portrait"
+                        icon="🖼"
+                        style={{ aspectRatio: '4/5', minHeight: 'auto' }}
+                      />
+                    )}
+                    <input
+                      type="text"
+                      value={c.year}
+                      onChange={(e) => updateCard(i, { year: e.target.value })}
+                      placeholder="Year"
+                      style={{
+                        marginTop: 10, width: '100%', padding: '6px 10px',
+                        border: '1px solid var(--v3-line)', borderRadius: 6,
+                        fontSize: '0.86rem', fontWeight: 700, fontFamily: 'inherit',
+                        background: 'var(--v3-cream)',
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={c.label}
+                      onChange={(e) => updateCard(i, { label: e.target.value })}
+                      placeholder="Milestone label"
+                      style={{
+                        marginTop: 6, width: '100%', padding: '6px 10px',
+                        border: '1px solid var(--v3-line)', borderRadius: 6,
+                        fontSize: '0.78rem', fontFamily: 'inherit',
+                        background: 'var(--v3-cream)',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Add Slide modal (rendered when user clicks "+ Add slide" inside an active hero album) */}

@@ -131,6 +131,16 @@ const Creator = sequelize.define('Creator', {
   // Used in chat header, message bubbles, typing indicator, dashboard "Latest Message" card.
   chatAvatarUrl: { type: DataTypes.STRING, allowNull: true },
 
+  // Dedicated portrait for the home "Hello, I'm …" about block.
+  // Independent of profileImage / hero so creators can pick a different photo
+  // for the about section without changing their hero slider.
+  aboutPortrait: { type: DataTypes.STRING, allowNull: true },
+
+  // The Journey timeline cards on the home page.
+  // Shape: [{ year: string, label: string, img: string }, ...] — exactly 4
+  // items in practice, but storage is flexible.
+  journey: { type: DataTypes.JSON, defaultValue: [] },
+
   // Visibility toggles — creator can hide certain compliance UI until needed.
   // Age gate: required for adult content in many jurisdictions, OFF only when card
   //   processor not in use. Default ON.
