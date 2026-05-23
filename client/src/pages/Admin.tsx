@@ -1020,14 +1020,15 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
       setGalleryAlbums(next);
     };
 
-    const addSlideToActiveHero = (slide: { desktop?: string; mobile?: string }) => {
+    const addSlideToActiveHero = (slides: Array<{ desktop?: string; mobile?: string }>) => {
+      if (!slides.length) return;
       const activeIdx = heroAlbums.findIndex(a => a.active);
       if (activeIdx < 0) return;
       const next = heroAlbums.map((a, i) => i === activeIdx
-        ? { ...a, slides: [...(a.slides || []), slide] }
+        ? { ...a, slides: [...(a.slides || []), ...slides] }
         : a);
       setHeroAlbums(next);
-      setStatus('Slide added — remember to Save Changes');
+      setStatus(`${slides.length} slide${slides.length === 1 ? '' : 's'} added — remember to Save Changes`);
       setTimeout(() => setStatus(''), 3000);
     };
 

@@ -327,12 +327,22 @@ body.v3, body.v3 .app, body.v3 main.container { max-width: 100vw; }
   height: 100%;
   object-fit: contain;
   opacity: 0;
-  transform: scale(1.04);
-  transition: opacity 1.2s ease, transform 6s ease;
+  transform: scale(1.06);
+  transition: opacity 1.6s ease;
 }
 .v3-hero-slide.active {
   opacity: 1;
-  transform: scale(1);
+  /* Ken Burns: slow continuous zoom-pan while the slide is showing.
+     Runs as long as the slide stays active — restarts on each activation
+     because the animation is bound to a class change. */
+  animation: v3-ken-burns 8s ease-out forwards;
+}
+@keyframes v3-ken-burns {
+  0%   { transform: scale(1.06) translate(0%, 0%); }
+  100% { transform: scale(1.00) translate(-1.2%, 0.6%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v3-hero-slide.active { animation: none; transform: scale(1); }
 }
 .v3-hero-dots {
   position: absolute;
