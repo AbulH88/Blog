@@ -1,0 +1,50 @@
+#!/bin/bash
+# Auto-deploy on push to main.
+#
+# Tracked in the repo so every clone gets it. Activate once per clone with:
+#   git config core.hooksPath .githooks
+#
+# How it works:
+#   - git fires this hook BEFORE the push uploads to origin
+#   - We read stdin to see which refs are being pushed
+#   - Only fire deploy when 'main' is being pushed
+#   - Background the deploy (with a small delay) so the actual git push
+#     completes first — deploy.sh on the VPS does `git pull`, so it needs
+#     the new commits to already be on origin
+#   - Output is logged to .deploy/last-deploy.log so you can inspect it
+#
+# To bypass (e.g. pushing a WIP branch with no intent to deploy):
+#   git push --no-verify
+
+deploy=0
+while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    deploy=1
+  fi
+done
+
+if [ "$deploy" = "1" ]; then
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  LOG="$REPO_ROOT/.deploy/last-deploy.log"
+
+  if [ ! -f "$REPO_ROOT/.deploy/ssh_run.py" ]; then
+    echo "→ Skipping auto-deploy: .deploy/ssh_run.py not found on this machine."
+    exit 0
+  fi
+
+  nohup bash -c "
+    sleep 3
+    cd '$REPO_ROOT'
+    echo '════ deploy started:' \$(date) '════' > '$LOG'
+    python .deploy/ssh_run.py 'bash /root/deploy.sh' >> '$LOG' 2>&1
+    echo '════ deploy finished:' \$(date) '════' >> '$LOG'
+  " >/dev/null 2>&1 </dev/null &
+  disown 2>/dev/null || true
+
+  echo ""
+  echo "→ Push to main detected — VPS deploy queued (3s after upload)."
+  echo "→ Tail progress with: tail -f .deploy/last-deploy.log"
+  echo ""
+fi
+
+exit 0
