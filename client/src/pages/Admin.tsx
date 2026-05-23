@@ -1193,13 +1193,13 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
                     </div>
                     <div>
                       <div style={{ fontSize: '0.66rem', color: 'var(--v3-muted)', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>
-                        Desktop · 16:5
+                        Desktop · 16:7
                       </div>
                       {slide.desktop ? (
                         <img src={slide.desktop} alt="" loading="lazy"
-                          style={{ width: '100%', aspectRatio: '16/5', objectFit: 'cover', objectPosition: 'center top', borderRadius: 6, background: '#eee' }} />
+                          style={{ width: '100%', aspectRatio: '16/7', objectFit: 'cover', objectPosition: 'center top', borderRadius: 6, background: '#eee' }} />
                       ) : (
-                        <div style={{ aspectRatio: '16/5', borderRadius: 6, background: 'var(--v3-cream)', border: '1px dashed var(--v3-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v3-muted)', fontSize: '0.74rem' }}>
+                        <div style={{ aspectRatio: '16/7', borderRadius: 6, background: 'var(--v3-cream)', border: '1px dashed var(--v3-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v3-muted)', fontSize: '0.74rem' }}>
                           No desktop
                         </div>
                       )}
