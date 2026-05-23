@@ -304,8 +304,8 @@ body.v3, body.v3 .app, body.v3 main.container { max-width: 100vw; }
   width: 100%;
   aspect-ratio: 16 / 7;
   max-height: 600px;
-  object-fit: cover;
-  object-position: center top;
+  object-fit: contain;
+  background: var(--v3-terracotta);
   display: block;
   border-radius: 2px;
 }
@@ -315,6 +315,7 @@ body.v3, body.v3 .app, body.v3 main.container { max-width: 100vw; }
   width: 100%;
   aspect-ratio: 16 / 7;
   max-height: 600px;
+  background: var(--v3-terracotta);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -323,8 +324,7 @@ body.v3, body.v3 .app, body.v3 main.container { max-width: 100vw; }
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center top;
+  object-fit: contain;
   opacity: 0;
   transform: scale(1.04);
   transition: opacity 1.2s ease, transform 6s ease;
