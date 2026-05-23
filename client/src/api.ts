@@ -50,7 +50,11 @@ const normalize = (creator: any) => ({
     // Full album structure for admin UI.
     heroAlbums: Array.isArray(creator.heroAlbums) ? creator.heroAlbums : [],
     galleryAlbums: Array.isArray(creator.galleryAlbums) ? creator.galleryAlbums : [],
+    // Dedicated home-page about portrait (round image next to "HELLO, I'M …").
+    aboutPortrait: creator.aboutPortrait || '',
   },
+  // The Journey timeline cards on the home page.
+  journey: Array.isArray(creator.journey) ? creator.journey : [],
   links: creator.links || {},
   cta: { primary: 'Unlock Exclusive Content 🔒', secondary: 'View Gallery' },
   theme: creator.theme || {},
@@ -94,6 +98,8 @@ const denormalize = (config: any) => {
     // Full album structure — admin UI writes this directly.
     ...(config.images?.heroAlbums !== undefined ? { heroAlbums: config.images.heroAlbums } : {}),
     ...(config.images?.galleryAlbums !== undefined ? { galleryAlbums: config.images.galleryAlbums } : {}),
+    ...(config.images?.aboutPortrait !== undefined ? { aboutPortrait: config.images.aboutPortrait } : {}),
+    ...(config.journey !== undefined ? { journey: config.journey } : {}),
     links: config.links || {},
     theme: config.theme || {},
     seo: config.seo || {},

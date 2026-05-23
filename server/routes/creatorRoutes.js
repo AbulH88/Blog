@@ -42,6 +42,7 @@ router.patch('/:slug', requireAuth, requireCreator, async (req, res) => {
       'welcomeEnabled', 'welcomePpvText', 'welcomeMediaUrl', 'welcomePpvPrice',
       'chatAvatarUrl', 'ageGateEnabled', 'disclosureVisible', 'searchIndexable',
       'aiAutoReplyEnabled', 'aiNsfwLevel', 'aiApprovalRequired', 'aiPersonaPrompt',
+      'aboutPortrait', 'journey',
     ];
     const allowed = Object.fromEntries(
       Object.entries(req.body).filter(([k]) => ALLOWED_FIELDS.includes(k))

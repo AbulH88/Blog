@@ -98,6 +98,10 @@ const applyMigrations = async () => {
   // Dedicated chat avatar (separate from logo + hero)
   await addIfMissing('Creators', 'chatAvatarUrl', { type: DataTypes.STRING, allowNull: true });
 
+  // Home — about-section portrait + journey timeline cards
+  await addIfMissing('Creators', 'aboutPortrait', { type: DataTypes.STRING, allowNull: true });
+  await addIfMissing('Creators', 'journey', { type: DataTypes.JSON, defaultValue: [] });
+
   // Visibility toggles
   await addIfMissing('Creators', 'ageGateEnabled', { type: DataTypes.BOOLEAN, defaultValue: true });
   await addIfMissing('Creators', 'disclosureVisible', { type: DataTypes.BOOLEAN, defaultValue: true });
