@@ -6,6 +6,7 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import TipModal from '../components/TipModal';
 import FanSidebar from '../components/FanSidebar';
 import PayMethodPicker from '../components/PayMethodPicker';
+import VerifyEmailGate from '../components/VerifyEmailGate';
 
 const fullUrl = (p?: string | null) => {
   if (!p) return '';
@@ -335,7 +336,10 @@ const Chat = ({ config }: { config: any }) => {
   );
 
   return (
-    <>
+    <VerifyEmailGate
+      title="start messaging"
+      subtitle="Chat with the creator opens up as soon as you verify your email. Keeps your account safe and prevents spam."
+    >
       {MobileLayout}
       {DesktopShell}
       {tipOpen && creatorId && (
@@ -366,7 +370,7 @@ const Chat = ({ config }: { config: any }) => {
           onSuccess={onPaySuccess}
         />
       )}
-    </>
+    </VerifyEmailGate>
   );
 };
 

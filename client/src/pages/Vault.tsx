@@ -8,6 +8,7 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import VaultTile from '../components/VaultTile';
 import FanSidebar from '../components/FanSidebar';
 import PayMethodPicker from '../components/PayMethodPicker';
+import VerifyEmailGate from '../components/VerifyEmailGate';
 
 // Lazy-load JoinPremiumModal so its signup pitch text + avatar never
 // land in any chunk that loads on the marketing root domain. Same defense-
@@ -190,7 +191,10 @@ const Vault = ({ config }: { config: any }) => {
   );
 
   return (
-    <>
+    <VerifyEmailGate
+      title="open the Vault"
+      subtitle="The Vault is exclusive content — verify your email so unlocks land on your account safely."
+    >
       {MobileLayout}
       {DesktopShell}
       <Suspense fallback={null}>
@@ -213,7 +217,7 @@ const Vault = ({ config }: { config: any }) => {
           onSuccess={async () => { setPayTarget(null); await refresh(); }}
         />
       )}
-    </>
+    </VerifyEmailGate>
   );
 };
 
