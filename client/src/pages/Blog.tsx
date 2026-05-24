@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { SERVER_URL } from '../api';
 
 const CATEGORIES = ['Travel', 'Lifestyle', 'Fashion', 'Style', 'Beauty'];
@@ -44,16 +45,18 @@ const Blog = ({ blog }: { blog: any[] }) => {
         <div className="v3-blog-layout">
           <div>
             {featured && (
-              <article className="v3-blog-hero">
-                <div className="v3-blog-hero-img" style={{ backgroundImage: featured.image ? `url("${fullUrl(featured.image)}")` : undefined }} />
-                <div className="v3-blog-hero-body">
-                  <span className="v3-blog-chip">{featured.category || CATEGORIES[0]}</span>
-                  <h2 className="v3-blog-h2">{featured.title}</h2>
-                  <p className="v3-blog-excerpt">{featured.excerpt}</p>
-                  <p className="v3-blog-meta">{formatDate(featured.date || featured.createdAt)} · {readMinutes((featured.excerpt || '') + (featured.content || ''))} min read</p>
-                  <a href="#" className="v3-blog-readlink">Read story →</a>
-                </div>
-              </article>
+              <Link to={`/blog/${featured.id}`} className="v3-blog-hero-link">
+                <article className="v3-blog-hero">
+                  <div className="v3-blog-hero-img" style={{ backgroundImage: featured.image ? `url("${fullUrl(featured.image)}")` : undefined }} />
+                  <div className="v3-blog-hero-body">
+                    <span className="v3-blog-chip">{featured.category || CATEGORIES[0]}</span>
+                    <h2 className="v3-blog-h2">{featured.title}</h2>
+                    <p className="v3-blog-excerpt">{featured.excerpt}</p>
+                    <p className="v3-blog-meta">{formatDate(featured.date || featured.createdAt)} · {readMinutes((featured.excerpt || '') + (featured.content || ''))} min read</p>
+                    <span className="v3-blog-readlink">Read story →</span>
+                  </div>
+                </article>
+              </Link>
             )}
 
             {rest.length === 0 ? (
@@ -63,15 +66,17 @@ const Blog = ({ blog }: { blog: any[] }) => {
             ) : (
               <div className="v3-blog-grid">
                 {rest.map((post) => (
-                  <article key={post.id} className="v3-blog-card">
-                    <div className="img" style={{ backgroundImage: post.image ? `url("${fullUrl(post.image)}")` : undefined }} />
-                    <div className="body">
-                      <span className="v3-blog-chip">{post.category || CATEGORIES[0]}</span>
-                      <h2 className="v3-blog-h2">{post.title}</h2>
-                      <p className="v3-blog-excerpt" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{post.excerpt}</p>
-                      <p className="v3-blog-meta">{formatDate(post.date || post.createdAt)}</p>
-                    </div>
-                  </article>
+                  <Link key={post.id} to={`/blog/${post.id}`} className="v3-blog-card-link">
+                    <article className="v3-blog-card">
+                      <div className="img" style={{ backgroundImage: post.image ? `url("${fullUrl(post.image)}")` : undefined }} />
+                      <div className="body">
+                        <span className="v3-blog-chip">{post.category || CATEGORIES[0]}</span>
+                        <h2 className="v3-blog-h2">{post.title}</h2>
+                        <p className="v3-blog-excerpt" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{post.excerpt}</p>
+                        <p className="v3-blog-meta">{formatDate(post.date || post.createdAt)}</p>
+                      </div>
+                    </article>
+                  </Link>
                 ))}
               </div>
             )}

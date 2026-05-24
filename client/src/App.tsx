@@ -25,6 +25,7 @@ import { isMembersDomain } from './lib/hostname';
 const Gallery        = lazy(() => import('./pages/Gallery'));
 const Vault          = lazy(() => import('./pages/Vault'));
 const Blog           = lazy(() => import('./pages/Blog'));
+const BlogPost       = lazy(() => import('./pages/BlogPost'));
 const Admin          = lazy(() => import('./pages/Admin'));
 const FanDashboard   = lazy(() => import('./pages/FanDashboard'));
 const Chat           = lazy(() => import('./pages/Chat'));
@@ -203,6 +204,7 @@ function App() {
                         (/about merged into Home page, no longer a standalone route) */}
                     <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
                     <Route path="/blog" element={<Blog blog={config.blog} />} />
+                    <Route path="/blog/:id" element={<BlogPost blog={config.blog} />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 ) : (
@@ -212,6 +214,7 @@ function App() {
                     {/* /about merged into Home — no standalone route */}
                     <Route path="/gallery" element={<Gallery images={config.images.gallery} />} />
                     <Route path="/blog" element={<Blog blog={config.blog} />} />
+                    <Route path="/blog/:id" element={<BlogPost blog={config.blog} />} />
                     {/* Legal pages — kept on root for compliance + SEO */}
                     <Route path="/terms" element={<Terms config={config} />} />
                     <Route path="/privacy" element={<Privacy config={config} />} />
