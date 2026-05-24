@@ -2537,7 +2537,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
       <div className="av2-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <p className="av2-section-label" style={{ marginBottom: 0 }}>Blog Posts</p>
-          <button onClick={() => setEditingPost({ title: '', excerpt: '', content: '' })}
+          <button onClick={() => setEditingPost({ title: '', excerpt: '', content: '', image: '', date: new Date().toISOString().slice(0, 10) })}
             style={{ background: 'var(--v3-terracotta)', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>
             + New Post
           </button>
@@ -2548,8 +2548,32 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
             <input className="av2-input" value={editingPost.title} onChange={e => setEditingPost({ ...editingPost, title: e.target.value })} />
             <label className="av2-label">Excerpt</label>
             <textarea className="av2-input" rows={2} value={editingPost.excerpt} onChange={e => setEditingPost({ ...editingPost, excerpt: e.target.value })} style={{ resize: 'vertical' }} />
-            <label className="av2-label">Content</label>
-            <textarea className="av2-input" rows={5} value={editingPost.content} onChange={e => setEditingPost({ ...editingPost, content: e.target.value })} style={{ resize: 'vertical' }} />
+            <label className="av2-label">Content (supports paragraph breaks)</label>
+            <textarea className="av2-input" rows={10} value={editingPost.content} onChange={e => setEditingPost({ ...editingPost, content: e.target.value })} style={{ resize: 'vertical' }} />
+            <label className="av2-label">Cover image URL</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+              <input className="av2-input" style={{ marginBottom: 0, flex: 1 }} placeholder="/uploads/…  or  https://…"
+                value={editingPost.image || ''} onChange={e => setEditingPost({ ...editingPost, image: e.target.value })} />
+              <label style={{ background: 'var(--v3-cream)', border: '1px solid var(--v3-line)', borderRadius: 6, padding: '8px 12px', cursor: 'pointer', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                Upload
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setStatus('Uploading cover…');
+                  const r = await uploadImage(file);
+                  if (r?.url) {
+                    setEditingPost({ ...editingPost, image: r.url });
+                    setStatus('Cover uploaded — Save the post when ready');
+                    setTimeout(() => setStatus(''), 3000);
+                  }
+                }} />
+              </label>
+            </div>
+            {editingPost.image && (
+              <img src={editingPost.image} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 6, marginBottom: 12, border: `1px solid ${C.border}` }} />
+            )}
+            <label className="av2-label">Date</label>
+            <input className="av2-input" type="date" value={(editingPost.date || '').slice(0, 10)} onChange={e => setEditingPost({ ...editingPost, date: e.target.value })} />
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-primary" style={{ flex: 1, padding: '10px' }} onClick={saveBlogPost}>Save</button>
               <button className="btn btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => setEditingPost(null)}>Cancel</button>
@@ -2558,10 +2582,15 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         ) : formData.blog?.length === 0 ? (
           <p style={{ color: '#444', fontSize: '0.85rem' }}>No blog posts yet.</p>
         ) : formData.blog?.map((post: any) => (
-          <div key={post.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: `1px solid ${C.border}` }}>
-            <div>
+          <div key={post.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: `1px solid ${C.border}`, gap: 12 }}>
+            {post.image ? (
+              <img src={post.image} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 56, height: 56, borderRadius: 6, background: 'var(--v3-cream)', border: `1px dashed ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: C.muted, flexShrink: 0 }}>img?</div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>{post.title}</p>
-              <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: C.muted }}>{(post.excerpt || '').substring(0, 60)}…</p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(post.excerpt || '').substring(0, 80)}…</p>
             </div>
             <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
               <button onClick={() => setEditingPost(post)} style={{ background: 'none', border: 'none', color: 'var(--v3-terracotta)', cursor: 'pointer', fontSize: '0.82rem' }}>Edit</button>
