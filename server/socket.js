@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { Message, Creator, Collection, Subscription } = require('./models');
+const { Message, Creator, Collection, Subscription, User } = require('./models');
 const aiChat = require('./services/aiChat');
 const ppvApproval = require('./services/ppvApproval');
 require('dotenv').config();
@@ -131,6 +131,18 @@ const setupSocket = (io) => {
         if (!content || typeof content !== 'string' || content.length > 5000) return;
         const creator = await Creator.findOne({ where: { slug: creatorSlug } });
         if (!creator || user.role !== 'fan') return;
+
+        // Email-verification gate. Mirrors the requireVerifiedEmail HTTP
+        // middleware — silently dropping is bad UX, so we emit a typed
+        // error back so the client can prompt the fan to verify.
+        const fanUser = await User.findByPk(user.userId, { attributes: ['emailVerified'] });
+        if (!fanUser || fanUser.emailVerified !== true) {
+          socket.emit('message_error', {
+            reason: 'email_unverified',
+            message: 'Please verify your email before sending messages.',
+          });
+          return;
+        }
 
         const msg = await Message.create({
           creatorId: creator.id,
