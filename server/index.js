@@ -232,6 +232,9 @@ app.get('/api/health', async (_req, res) => {
 app.get('/robots.txt', async (req, res) => {
   try {
     res.type('text/plain');
+    // Don't let Cloudflare/edge caches hold a stale version — robots.txt
+    // depends on Creator.searchIndexable which can flip at any time.
+    res.setHeader('Cache-Control', 'no-store, must-revalidate');
 
     // members.* subdomain — ALWAYS hard-block all crawlers, regardless of
     // the searchIndexable toggle. The paywall side of the platform must
