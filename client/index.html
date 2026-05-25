@@ -2,24 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/uploads/1779388514905.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Default to no-index. App.tsx removes this dynamically when Creator.searchIndexable is true. -->
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
 
-    <!-- Open Graph / Twitter Card defaults. App.tsx overrides these at runtime with
-         the live creator config. These fallbacks are what social-preview crawlers
-         (Slack, iMessage, etc.) see before any JS runs.
-         IMPORTANT: keep this lifestyle-creator neutral. No "premium", "members",
-         "vault", "exclusive", "private". Anything monetization-adjacent lives on
-         the members.* subdomain only. -->
+    <!-- Open Graph / Twitter Card defaults.
+         NOTE: bots don't run JS, so these static values are what FB/IG/TT/X
+         actually see. The server (server/index.js → root index.html handler)
+         rewrites these from Creator.seo when serving so admin edits flow
+         through to link previews without a rebuild.
+         IMPORTANT: keep this lifestyle-creator neutral. No "premium",
+         "members", "vault", "exclusive", "private". Anything monetization-
+         adjacent lives on the members.* subdomain only. -->
+    <meta name="description" content="NYC lifestyle, fashion, and personal diaries by Cristina Adam. NYC born and raised." />
+    <meta property="og:url" content="https://thecristinaadam.com/" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Cristina Adam — NYC Lifestyle" />
-    <meta property="og:description" content="NYC lifestyle, travel, fashion, creative work — daily moments from Cristina." />
-    <meta property="og:image" content="/favicon.svg" />
+    <meta property="og:site_name" content="Cristina Adam" />
+    <meta property="og:title" content="Cristina Adam | NYC — Personal Blog" />
+    <meta property="og:description" content="NYC lifestyle, fashion, and personal diaries by Cristina Adam. NYC born and raised." />
+    <meta property="og:image" content="https://thecristinaadam.com/uploads/1779594812844.jpg" />
+    <meta property="og:image:width" content="1920" />
+    <meta property="og:image:height" content="848" />
+    <meta property="og:image:alt" content="Cristina Adam — NYC Lifestyle" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cristina Adam | NYC — Personal Blog" />
+    <meta name="twitter:description" content="NYC lifestyle, fashion, and personal diaries by Cristina Adam." />
+    <meta name="twitter:image" content="https://thecristinaadam.com/uploads/1779594812844.jpg" />
 
-    <title>client</title>
+    <title>Cristina Adam | NYC — Personal Blog</title>
   </head>
   <body>
     <div id="root"></div>
