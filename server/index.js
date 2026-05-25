@@ -261,23 +261,74 @@ app.get('/robots.txt', async (req, res) => {
     const creator = await Creator.findOne({ attributes: ['searchIndexable'] });
     const indexable = creator?.searchIndexable === true;
     if (indexable) {
-      res.send(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /r/\n`);
-    } else {
-      // Block everything — including IG/Facebook/Twitter preview bots.
       res.send([
-        '# Site is private during launch — no indexing allowed.',
+        '# Public mode — search indexing on.',
+        'User-agent: *',
+        'Allow: /',
+        'Disallow: /api/',
+        'Disallow: /admin',
+        'Disallow: /r/',
+        '',
+        '# Block AI scrapers (training-data harvesters)',
+        'User-agent: GPTBot',
+        'Disallow: /',
+        'User-agent: ClaudeBot',
+        'Disallow: /',
+        'User-agent: CCBot',
+        'Disallow: /',
+        'User-agent: Bytespider',
+        'Disallow: /',
+        'User-agent: Google-Extended',
+        'Disallow: /',
+        'User-agent: Applebot-Extended',
+        'Disallow: /',
+      ].join('\n'));
+    } else {
+      // Private-launch mode: block general crawlers + AI scrapers, but
+      // EXPLICITLY ALLOW social-media link-preview bots so Instagram /
+      // TikTok / Facebook / Twitter bio links still render preview cards.
+      // The previous version disallowed these, which was hostile to the
+      // very bots that drive bio-link traffic to the marketing site.
+      res.send([
+        '# Private launch — no general indexing, but link previews work.',
+        '',
+        '# Default: block everything (incl. Googlebot, Bingbot, etc.)',
         'User-agent: *',
         'Disallow: /',
         '',
-        '# Block social-media preview bots specifically',
+        '# Block AI training/scraping bots',
+        'User-agent: GPTBot',
+        'Disallow: /',
+        'User-agent: ClaudeBot',
+        'Disallow: /',
+        'User-agent: CCBot',
+        'Disallow: /',
+        'User-agent: Bytespider',
+        'Disallow: /',
+        '',
+        '# Allow social-media link-preview bots — needed for IG/TikTok bio links',
         'User-agent: facebookexternalhit',
-        'Disallow: /',
+        'Allow: /',
         'User-agent: Twitterbot',
-        'Disallow: /',
+        'Allow: /',
         'User-agent: Instagram',
-        'Disallow: /',
+        'Allow: /',
         'User-agent: meta-externalagent',
-        'Disallow: /',
+        'Allow: /',
+        'User-agent: TikTokBot',
+        'Allow: /',
+        'User-agent: LinkedInBot',
+        'Allow: /',
+        'User-agent: Pinterest',
+        'Allow: /',
+        'User-agent: Slackbot',
+        'Allow: /',
+        'User-agent: WhatsApp',
+        'Allow: /',
+        'User-agent: TelegramBot',
+        'Allow: /',
+        'User-agent: Discordbot',
+        'Allow: /',
       ].join('\n'));
     }
   } catch {
