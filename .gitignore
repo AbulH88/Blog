@@ -58,3 +58,6 @@ HANDOFF.md
 
 # Graphify (knowledge graph) outputs — local AI analysis, not source
 graphify-out/
+blog-seed.json
+blog-posts-oneline.json
+blog-loader.js

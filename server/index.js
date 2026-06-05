@@ -23,7 +23,7 @@ const setupSocket = require('./socket');
 
 // Allowed origins — driven by ALLOWED_ORIGINS env var (comma-separated).
 // Must be set in production to your frontend domain(s).
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173')
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://members.localhost:5173,http://members.localhost:5174')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
@@ -358,6 +358,11 @@ app.use('/api/ai', require('./routes/aiChatRoutes'));
 // the redirect helper will detect and avoid double-prefixing).
 app.use('/r', require('./routes/shortlinkRoutes'));
 app.use('/api/r', require('./routes/shortlinkRoutes'));
+
+// Public, bot-safe Fanvue entry point on the marketing root:
+//   GET /f/:slug — humans 302 to the creator's Fanvue; social bots get a
+//   neutral page (gate is in-Node because root nginx allows preview bots).
+app.use('/f', require('./routes/fanvueRoutes'));
 
 // ─── Admin upload ──────────────────────────────────────────────────────────────
 // Custom middleware wrapper so we can conditionally skip sharp processing

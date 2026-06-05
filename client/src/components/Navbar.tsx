@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { SERVER_URL } from '../api';
 import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
+import { fanvueLink } from '../lib/fanvueLink';
+import SocialIcons from './SocialIcons';
 
 // NOTE: JoinPremiumModal used to be mounted from the Navbar (via a "Step
 // Inside ✨" button) but has been removed — see below. The component still
@@ -14,10 +16,11 @@ const Navbar = ({
   siteTitle,
   instagramHandle,
   logoUrl,
+  fanvueUrl,
 }: {
   siteTitle: string;
   instagramHandle?: string;
-  /** Reserved for future use — Fanvue alt-checkout used to wire here */
+  /** Bot-safe "Tip with a card" nav button on the marketing root. */
   fanvueUrl?: string;
   logoUrl?: string;
   /** Reserved for future use */
@@ -128,6 +131,25 @@ const Navbar = ({
               <path d="m21 21-4.3-4.3" />
             </svg>
           </button>
+
+          {/* Bot-safe "Tip with a card" nav button — marketing root only,
+              shown when a Fanvue URL is configured. Neutral copy + /f/ smart
+              link (302s humans to Fanvue, neutral page for social bots). */}
+          {!isMembersDomain() && fanvueUrl && (
+            <a
+              href={fanvueLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="v3-btn v3-btn-primary"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                textDecoration: 'none', fontSize: '0.72rem', padding: '10px 16px',
+                background: 'var(--v3-terracotta)',
+              }}
+            >
+              <SocialIcons name="card" size={15} /> Tip
+            </a>
+          )}
 
           {fanUser ? (
             <>

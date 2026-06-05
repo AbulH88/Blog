@@ -1,7 +1,7 @@
 type IconName =
   | 'instagram' | 'tiktok' | 'youtube' | 'twitter'
   | 'threads' | 'pinterest'
-  | 'shopping' | 'document' | 'handshake';
+  | 'shopping' | 'document' | 'handshake' | 'card';
 
 interface Props {
   name: IconName | string;
@@ -63,6 +63,14 @@ const SocialIcons = ({ name, size = 28, color = '#fff' }: Props) => {
           <polyline points="14 2 14 8 20 8"/>
           <line x1="16" y1="13" x2="8" y2="13"/>
           <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+      );
+    case 'card':
+      return (
+        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2"/>
+          <line x1="2" y1="10" x2="22" y2="10"/>
+          <line x1="6" y1="15" x2="10" y2="15"/>
         </svg>
       );
     case 'handshake':

@@ -4,6 +4,7 @@ import SocialIcons from '../components/SocialIcons';
 import HeroSlider from '../components/HeroSlider';
 import InstagramFeed from '../components/InstagramFeed';
 import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
+import { fanvueLink } from '../lib/fanvueLink';
 
 interface Tile {
   kind: 'terracotta' | 'navy';
@@ -36,6 +37,11 @@ const Home = ({ config }: { config: any }) => {
 
   const tiles: Tile[] = (config?.featuredLinks?.length ? config.featuredLinks : defaultTiles)
     .filter((t: Tile) => !!t.title && !!t.href);
+
+  // Bot-safe Fanvue link used by the hero CTA below. Points at our /f/:slug
+  // endpoint (302s humans to Fanvue, neutral page for social bots), so the
+  // real destination never ships in the root bundle.
+  const fanvueHref = config?.fanvueUrl ? fanvueLink() : '';
 
   const heroImages: string[] = config?.images?.heroSlider?.length
     ? config.images.heroSlider
@@ -99,6 +105,29 @@ const Home = ({ config }: { config: any }) => {
         <div className="v3-hero-frame">
           <HeroSlider images={heroImages} mobileImages={heroImagesMobile} alt={config?.siteTitle} />
         </div>
+
+        {/* Bot-safe Fanvue CTA, directly under the hero (above the fold).
+            Neutral copy + /f/:slug smart link → 302s humans to Fanvue, hands
+            social bots a neutral page. Only when a Fanvue URL is configured. */}
+        {fanvueHref && (
+          <div style={{ textAlign: 'center', marginTop: 18 }}>
+            <a
+              href={fanvueHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="v3-btn v3-btn-primary"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+                textDecoration: 'none', padding: '13px 30px',
+                background: 'var(--v3-terracotta)', color: '#fff',
+                borderRadius: 999, fontWeight: 800, fontSize: '0.95rem',
+                letterSpacing: 0.4, boxShadow: '0 6px 18px rgba(193,103,72,0.28)',
+              }}
+            >
+              <SocialIcons name="card" size={20} /> Tip with a card →
+            </a>
+          </div>
+        )}
       </section>
 
       {/* Welcome + Featured links | Instagram feed */}

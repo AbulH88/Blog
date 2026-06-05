@@ -35,6 +35,7 @@ const Compliance2257 = lazy(() => import('./pages/Compliance2257'));
 // Members conversion CTA — lazy-loaded so its strings never ship in the
 // main bundle. Only mounted on the marketing root domain (see below).
 const MembersScrollCta = lazy(() => import('./components/MembersScrollCta'));
+const FanvueFloat      = lazy(() => import('./components/FanvueFloat'));
 const PaymentReturn  = lazy(() => import('./pages/PaymentReturn'));
 const FanSettings    = lazy(() => import('./pages/FanSettings'));
 const DMCA           = lazy(() => import('./pages/DMCA'));
@@ -231,6 +232,9 @@ function App() {
                     chunk + scroll detection means bots that download the
                     HTML and leave never trigger it. */}
                 {!isMembersDomain() && <MembersScrollCta config={config} />}
+                {/* Floating "Tip with a card" pill — root domain only, always
+                    visible while scrolling. Bot-safe (neutral copy + /f/ link). */}
+                {!isMembersDomain() && <FanvueFloat fanvueUrl={config.fanvueUrl} />}
               </Suspense>
             </main>
             <Footer config={config} />
