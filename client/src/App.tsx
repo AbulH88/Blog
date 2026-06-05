@@ -173,7 +173,6 @@ function App() {
           <>
             <Navbar
               siteTitle={config.siteTitle}
-              fanvueEnabled={!!config.fanvueUrl}
               logoUrl={config.logoUrl}
               avatarUrl={config.chatAvatarUrl || config.images?.hero || config.images?.heroSlider?.[0] || config.logoUrl}
             />

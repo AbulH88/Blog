@@ -4299,24 +4299,10 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   max-width: 1120px; margin: 0 auto;
 }
 
-/* ── Neutral hub "Support" buttons → /f/ click-through ──
-   No platform branding on the public hub; the Fanvue logo appears only on
-   the /f/ landing page after the click. */
-
-/* Navbar chip — terracotta to match the v3 CTA system */
-.v3-fanvue-chip {
-  display: inline-flex; align-items: center;
-  text-decoration: none;
-  font-family: var(--v3-body);
-  font-size: 0.72rem; font-weight: 700;
-  letter-spacing: 1.2px; text-transform: uppercase;
-  padding: 10px 18px; border-radius: 6px;
-  background: var(--v3-terracotta); color: #fff;
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-.v3-fanvue-chip:hover { background: var(--v3-terracotta-dark); transform: translateY(-1px); }
-
-/* Floating pill — always on screen, bottom-right */
+/* ── Neutral "Support" floating CTA → /f/ click-through ──
+   The only Fanvue entry point on the public hub. No platform branding here;
+   the Fanvue logo appears only on the /f/ landing page after the click.
+   Floating pill — always on screen, bottom-right (best mobile CTA pattern). */
 .v3-fanvue-float {
   position: fixed;
   right: max(18px, env(safe-area-inset-right));
