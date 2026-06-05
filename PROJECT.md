@@ -1,10 +1,45 @@
 # Cristina Adam Platform — Single Source of Truth
 
-> **Last updated:** 2026-05-23
+> **Last updated:** 2026-06-06
 > **Live:** https://thecristinaadam.com (marketing) · https://members.thecristinaadam.com (members)
-> **Status:** ✅ Shipped and running in production
+> **Status:** ✅ Shipped and running in production · 🚧 `feature/fanvue-public-link` branch in review (NOT deployed)
 
 A creator monetization platform — bio/marketing site on the root domain, age-gated members area on a subdomain, single Node backend, single Postgres DB. Built for crypto + (future) card payments.
+
+---
+
+## 0. Current branch under review — `feature/fanvue-public-link` (NOT deployed)
+
+> This section is for AI/peer reviewers (Gemini, GPT, Claude). It describes
+> work that exists on the branch only — `main` and production are unchanged.
+
+**Two things shipped on this branch, local-only:**
+
+### 0.1 Editorial homepage redesign (marketing root)
+Premium/editorial pass on the public Home page, replacing the old linktree look:
+- Hero typography overlay (creator name + tagline + **View Gallery** / **Members** buttons)
+- **2×2 "Featured Content"** image grid replacing the old social-link tile grid (the Linktree look)
+- Premium navy **Members band** with neutral, bot-safe copy
+- "Blog" → "**Journal**" nav rename
+- Root footer now shows **Privacy + Terms** (DMCA/2257 stay members-only — adult-compliance signal kept off root)
+- Staggered page-load motion; existing `v3-*` classes untouched (cleanly revertible)
+
+### 0.2 Fanvue public link — outside the login gate, branded, bot-aware
+**Problem solved:** Fanvue (card-friendly payment funnel) was buried behind signup→verify→login, so most fans never reached it. The in-app wallet is crypto-only, so Fanvue is the card path. We surfaced it on the public marketing site.
+
+**What a human sees:** the official Fanvue logo + "Fanvue" in the navbar and a floating pill. One tap → Fanvue.
+
+**Bot-handling approach (HONEST framing — risk reduction, NOT a guarantee):**
+- **SPA shell** — the static HTML served to everyone is neutral (no Fanvue, lifestyle meta, `noindex` default). The app (and the Fanvue button) is drawn client-side by JS. A non-JS preview crawler sees neutral content. *This is not cloaking — same bytes to everyone.*
+- **Server-sourced branding** — the word "Fanvue" + the logo live only in `server/lib/fanvueBrand.js`, sent at runtime via the creator config API **only to non-bot User-Agents** (UA-gated). Never in the JS bundle (verified: main bundle has 0 `Fanvue` / 0 logo / 0 `fanvue.com`). *This IS cloaking (different content by UA).*
+- **UA-gated redirect** — the bio/button link is `thecristinaadam.com/f/:slug` → `server/routes/fanvueRoutes.js` → known social bots get a neutral 200, humans 302 to Fanvue.
+
+**Known caveats / open decision (flagged for reviewers):**
+1. UA-gating is **one spoofable layer** — keys off `facebookexternalhit`/`TikTokBot` etc. IP-based or renamed crawlers bypass it.
+2. **`/f/` redirect is default-allow** — a redirect-follower with a *non-bot* UA still reaches `fanvue.com` (verified). Tightening to **default-deny** (only clear human signals get the 302) is an **open decision** — closes the hole but is more aggressively cloaky and could block rare real users.
+3. **Cloaking risk** — serving different content to bots vs humans can be classified as cloaking by platforms. Standard for adult creators, but never guaranteed safe; future crawler changes can expose what's hidden today.
+
+**Files:** `server/lib/fanvueBrand.js`, `server/lib/socialBots.js`, `server/routes/fanvueRoutes.js`, `server/routes/creatorRoutes.js` (UA-gate), `client/src/components/{Navbar,FanvueFloat}.tsx`, `client/src/lib/fanvueLink.ts`, `client/src/api.ts`, `client/vite.config.ts`, `client/src/pages/Home.tsx`, `client/src/styles/theme-v3.css`.
 
 ---
 
