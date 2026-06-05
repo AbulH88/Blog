@@ -1,57 +1,78 @@
 /**
- * Public, bot-safe Fanvue entry point.
+ * Public Fanvue entry point — "Clean Hub" click-through landing page.
  *
  *   GET /f/:slug
  *
- * Lives on the MARKETING ROOT domain (e.g. thecristinaadam.com/f/cristina).
- * Unlike the members subdomain, the root deliberately ALLOWS social-preview
- * bots (so IG/TikTok can render a clean preview of the creator's bio link).
- * That means we cannot rely on nginx to filter bots here — the gate has to
- * live in Node, per-request, by User-Agent.
+ * ⚠️  THIS RESPONSE MUST BE IDENTICAL FOR ALL USER-AGENTS.
+ *     No bot detection, no UA branching, no conditional status/headers/body.
+ *     See PROJECT.md §0.2. (We deliberately removed the old cloaking that
+ *     served bots a neutral page and humans a redirect — cloaking is itself a
+ *     platform-risk signal. The safe pattern is one consistent landing page
+ *     where the visitor clicks through to Fanvue.)
  *
- * Behaviour:
- *   - A social-preview crawler (facebookexternalhit, TikTokBot, …) gets a
- *     neutral 200 HTML page. No redirect, no "Fanvue" string, nothing that
- *     could flag the creator's IG/TikTok account. The bot makes its harmless
- *     preview and leaves none the wiser.
- *   - A real browser gets a 302 straight to the creator's Fanvue profile —
- *     one tap from the bio/homepage, no login, no signup.
- *
- * The Fanvue URL is never written into client HTML or the JS bundle; it is
- * only ever revealed in a 302 served to a non-bot request at click time.
- *
- * Mirrors the existing `/r/:character` shortlink pattern (shortlinkRoutes.js).
+ * Behaviour (same for everyone):
+ *   - 404 if the creator/slug isn't found or has no Fanvue configured.
+ *   - Otherwise a 200 HTML landing page showing the Fanvue logo + a visible
+ *     "Continue →" button. The redirect to Fanvue happens ONLY when the
+ *     visitor clicks that button (a normal <a href>).
  */
 const express = require('express');
 const router = express.Router();
 
 const { Creator } = require('../models');
 const events = require('../services/events');
-const { isSocialBot } = require('../lib/socialBots');
+const { fanvueBranding } = require('../lib/fanvueBrand');
 
-/**
- * Minimal, lifestyle-neutral page served to social-preview crawlers.
- * Intentionally boring: no monetization language, no Fanvue, no redirect.
- */
-function neutralBotPage(displayName) {
-  const name = (displayName || 'Welcome').replace(/[<>&]/g, '');
+const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+
+/** Click-through landing page — identical bytes for every visitor. */
+function landingPage({ name, fanvueUrl, label, logo }) {
+  const safeName = esc(name);
+  const href = esc(fanvueUrl);
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>${name}</title>
-<meta property="og:title" content="${name}">
-<meta property="og:description" content="Lifestyle, travel, and creative work.">
+<link rel="icon" href="data:,">
+<title>${safeName}</title>
+<style>
+  :root { --cream:#FDF6EC; --ink:#1F1A14; --muted:#8A7E70; --terra:#C75A3E; --line:#E8DCC8; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--cream); color:var(--ink);
+         font-family:'Inter',system-ui,-apple-system,sans-serif; padding:24px; }
+  .card { width:100%; max-width:380px; background:#fff; border:1px solid var(--line);
+          border-radius:18px; padding:38px 30px; text-align:center;
+          box-shadow:0 18px 50px rgba(31,26,20,0.10); }
+  .logo { width:64px; height:64px; border-radius:16px; margin:0 auto 18px; display:block; }
+  h1 { font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; font-weight:700;
+       font-size:2rem; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:0.92rem; margin:0 0 26px; line-height:1.5; }
+  .btn { display:block; width:100%; padding:15px 22px; border-radius:999px;
+         background:var(--terra); color:#fff; text-decoration:none; font-weight:700;
+         font-size:0.98rem; letter-spacing:0.3px; transition:background .15s, transform .15s;
+         box-shadow:0 6px 18px rgba(199,90,62,0.28); }
+  .btn:hover { background:#A8482F; transform:translateY(-1px); }
+  .foot { margin-top:18px; font-size:0.74rem; color:var(--muted); }
+</style>
 </head>
-<body style="font-family:system-ui,sans-serif;text-align:center;padding:60px 20px;color:#333">
-<p>Loading…</p>
+<body>
+  <main class="card">
+    <img class="logo" src="${logo}" alt="${esc(label)}" />
+    <h1>${safeName}</h1>
+    <p class="sub">Continue to my ${esc(label)} page.</p>
+    <a class="btn" href="${href}" rel="noopener noreferrer">Continue →</a>
+    <p class="foot">You're leaving this site — opens ${esc(label)}.</p>
+  </main>
 </body>
 </html>`;
 }
 
-// GET /f/:slug — primary entry. Bot → neutral 200; human → 302 to Fanvue.
+// GET /f/:slug — one identical landing page for everyone; click → Fanvue.
 router.get('/:slug', async (req, res) => {
   const { slug } = req.params;
 
@@ -59,35 +80,27 @@ router.get('/:slug', async (req, res) => {
   try {
     creator = await Creator.findOne({ where: { slug } });
   } catch {
-    /* DB hiccup — fall through to graceful redirect below */
+    /* DB hiccup — treat as not found below */
   }
 
-  // No creator or no Fanvue configured → never a dead link; bounce to home.
+  // 404 if no creator or nothing to link to.
   if (!creator || !creator.fanvueUrl) {
-    return res.redirect(302, '/');
+    return res.status(404).type('html').send('<!doctype html><meta charset="utf-8"><title>Not found</title><p>Not found.</p>');
   }
 
-  // Edge caches must NOT cache this per-UA response (we vary the answer by
-  // User-Agent). Same no-store posture we use for robots.txt.
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.set('Vary', 'User-Agent');
-
-  // Social-preview crawler → neutral page, never sees Fanvue.
-  if (isSocialBot(req.headers['user-agent'])) {
-    return res.status(200).type('html').send(neutralBotPage(creator.displayName));
-  }
-
-  // Real human → log the click, then bounce straight to Fanvue.
+  // Best-effort funnel logging — uniform for every request, not UA-conditional.
   try {
-    events.log('fanvue_link_clicked', {
-      creatorId: creator.id,
-      props: { slug, source: 'redirect' },
-    });
+    events.log('fanvue_landing_view', { creatorId: creator.id, props: { slug } });
   } catch {
     /* analytics best-effort */
   }
 
-  return res.redirect(302, creator.fanvueUrl);
+  const { label, logo } = fanvueBranding();
+  // Same content for all → safe to cache uniformly. NO Vary: User-Agent.
+  res.set('Cache-Control', 'public, max-age=60');
+  return res.status(200).type('html').send(
+    landingPage({ name: creator.displayName, fanvueUrl: creator.fanvueUrl, label, logo })
+  );
 });
 
 module.exports = router;

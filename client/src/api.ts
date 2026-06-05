@@ -75,10 +75,6 @@ const normalize = (creator: any) => ({
   subscriptionPricePremium: creator.subscriptionPricePremium,
   welcomeMessage: creator.welcomeMessage,
   fanvueUrl: creator.fanvueUrl || '',
-  // Bot-safe Fanvue branding (label + logo mark). Set by the server ONLY for
-  // non-bot requests — absent for social crawlers. Never hard-coded in the
-  // bundle, so a code scan can't find the word "Fanvue".
-  fanvue: creator.fanvue || null,
   billingDescriptor: creator.billingDescriptor || '',
   logoUrl: creator.logoUrl || '',
   chatAvatarUrl: creator.chatAvatarUrl || '',

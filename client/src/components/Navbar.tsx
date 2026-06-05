@@ -15,13 +15,13 @@ const Navbar = ({
   siteTitle,
   instagramHandle,
   logoUrl,
-  fanvue,
+  fanvueEnabled,
 }: {
   siteTitle: string;
   instagramHandle?: string;
-  /** Bot-safe Fanvue branding (label + logo) from server config.
-   *  Present only for non-bot requests — absent strings stay out of the bundle. */
-  fanvue?: { label: string; logo: string } | null;
+  /** Whether the creator has a Fanvue funnel configured. Drives a NEUTRAL
+   *  hub button → /f/:slug click-through page. No platform name on the hub. */
+  fanvueEnabled?: boolean;
   logoUrl?: string;
   /** Reserved for future use */
   avatarUrl?: string;
@@ -132,20 +132,12 @@ const Navbar = ({
             </svg>
           </button>
 
-          {/* Fanvue nav button — marketing root only. Branding (logo + label)
-              comes from server config, present only for non-bot requests, so
-              the word "Fanvue" never sits in the JS bundle. The link is the
-              UA-gated /f/ redirect (302s humans to Fanvue, neutral for bots). */}
-          {!isMembersDomain() && fanvue && (
-            <a
-              href={fanvueLink()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="v3-btn v3-fanvue-chip"
-              aria-label={fanvue.label}
-            >
-              <img className="v3-fanvue-mark" src={fanvue.logo} alt="" />
-              {fanvue.label}
+          {/* Neutral hub button → /f/ click-through (marketing root only).
+              No platform name on the public hub; the /f/ landing page reveals
+              Fanvue after the click. Same page for everyone — no cloaking. */}
+          {!isMembersDomain() && fanvueEnabled && (
+            <a href={fanvueLink()} className="v3-btn v3-fanvue-chip">
+              Support
             </a>
           )}
 

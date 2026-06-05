@@ -27,19 +27,19 @@ Premium/editorial pass on the public Home page, replacing the old linktree look:
 ### 0.2 Fanvue public link — outside the login gate, branded, bot-aware
 **Problem solved:** Fanvue (card-friendly payment funnel) was buried behind signup→verify→login, so most fans never reached it. The in-app wallet is crypto-only, so Fanvue is the card path. We surfaced it on the public marketing site.
 
-**What a human sees:** the official Fanvue logo + "Fanvue" in the navbar and a floating pill. One tap → Fanvue.
+**Approach — "Clean Hub + click-through" (NO cloaking, identical for all UAs):**
+This is the documented-safe pattern for adult-creator funnels (own-domain neutral hub → click-through to the platform). We deliberately removed the earlier User-Agent cloaking after research showed cloaking is itself a platform-risk signal.
 
-**Bot-handling approach (HONEST framing — risk reduction, NOT a guarantee):**
-- **SPA shell** — the static HTML served to everyone is neutral (no Fanvue, lifestyle meta, `noindex` default). The app (and the Fanvue button) is drawn client-side by JS. A non-JS preview crawler sees neutral content. *This is not cloaking — same bytes to everyone.*
-- **Server-sourced branding** — the word "Fanvue" + the logo live only in `server/lib/fanvueBrand.js`, sent at runtime via the creator config API **only to non-bot User-Agents** (UA-gated). Never in the JS bundle (verified: main bundle has 0 `Fanvue` / 0 logo / 0 `fanvue.com`). *This IS cloaking (different content by UA).*
-- **UA-gated redirect** — the bio/button link is `thecristinaadam.com/f/:slug` → `server/routes/fanvueRoutes.js` → known social bots get a neutral 200, humans 302 to Fanvue.
+- **Neutral hub** — the marketing root is a clean, SFW hub (gallery/journal/socials/members). Navbar + floating pill show a **neutral "Support" button** (no platform name) → `/f/:slug`.
+- **`/f/:slug` click-through** (`server/routes/fanvueRoutes.js`) — serves **one identical 200 HTML landing page to every visitor** (bot or human): the official Fanvue logo + a visible **"Continue →"** button. The redirect to `fanvueUrl` happens **only when the visitor clicks**. 404 if no creator/Fanvue. **No bot detection, no UA branching, no `Vary: User-Agent`** — verified byte/header-identical across UAs.
+- **Config endpoint** (`server/routes/creatorRoutes.js`) — returns the same JSON to everyone (the old per-UA Fanvue stripping was removed).
+- **Bio-link preview stays neutral** — not by cloaking, but because the site is a client-rendered SPA: the static HTML shell a crawler reads is lifestyle-neutral (`noindex` default), and the hub is drawn client-side. Same bytes for everyone.
 
-**Known caveats / open decision (flagged for reviewers):**
-1. UA-gating is **one spoofable layer** — keys off `facebookexternalhit`/`TikTokBot` etc. IP-based or renamed crawlers bypass it.
-2. **`/f/` redirect is default-allow** — a redirect-follower with a *non-bot* UA still reaches `fanvue.com` (verified). Tightening to **default-deny** (only clear human signals get the 302) is an **open decision** — closes the hole but is more aggressively cloaky and could block rare real users.
-3. **Cloaking risk** — serving different content to bots vs humans can be classified as cloaking by platforms. Standard for adult creators, but never guaranteed safe; future crawler changes can expose what's hidden today.
+**Hard invariant (guardrail comments in both route files):** `/f/:slug` and the creator config endpoint MUST be identical for all User-Agents. No `req.headers['user-agent']` reads in the funnel path.
 
-**Files:** `server/lib/fanvueBrand.js`, `server/lib/socialBots.js`, `server/routes/fanvueRoutes.js`, `server/routes/creatorRoutes.js` (UA-gate), `client/src/components/{Navbar,FanvueFloat}.tsx`, `client/src/lib/fanvueLink.ts`, `client/src/api.ts`, `client/vite.config.ts`, `client/src/pages/Home.tsx`, `client/src/styles/theme-v3.css`.
+**One disclosed, separate exception:** the nginx `members.*` vhost still 403s social bots — that blocks previews of the age-gated adult members area (consistent block-all posture, not funnel cloaking) and never touches the root hub or `/f/`.
+
+**Files:** `server/routes/fanvueRoutes.js` (landing page), `server/routes/creatorRoutes.js` (UA-gate removed), `server/lib/fanvueBrand.js` (logo for the landing page), `client/src/components/{Navbar,FanvueFloat}.tsx` (neutral "Support" button), `client/src/lib/fanvueLink.ts`, `client/src/api.ts`, `client/src/pages/Home.tsx`, `client/src/styles/theme-v3.css`. (`server/lib/socialBots.js` now unused by Node — kept only to mirror the nginx members list.)
 
 ---
 

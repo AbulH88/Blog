@@ -173,7 +173,7 @@ function App() {
           <>
             <Navbar
               siteTitle={config.siteTitle}
-              fanvue={config.fanvue}
+              fanvueEnabled={!!config.fanvueUrl}
               logoUrl={config.logoUrl}
               avatarUrl={config.chatAvatarUrl || config.images?.hero || config.images?.heroSlider?.[0] || config.logoUrl}
             />
@@ -234,7 +234,7 @@ function App() {
                 {!isMembersDomain() && <MembersScrollCta config={config} />}
                 {/* Floating "Support with a card" pill — root domain only, always
                     visible while scrolling. Bot-safe (neutral copy + /f/ link). */}
-                {!isMembersDomain() && <FanvueFloat fanvue={config.fanvue} />}
+                {!isMembersDomain() && <FanvueFloat fanvueEnabled={!!config.fanvueUrl} />}
               </Suspense>
             </main>
             <Footer config={config} />
