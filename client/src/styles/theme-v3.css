@@ -4304,18 +4304,30 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
    platform branding on the hub; the Fanvue logo appears only on the /f/
    landing page after the click. */
 
-/* Navbar chip — terracotta to match the v3 CTA system */
+/* Navbar chip — premium primary. Warm gradient + soft glow so it reads as
+   the standout money CTA, distinct from the outline "Members" button. */
 .v3-fanvue-chip {
-  display: inline-flex; align-items: center;
+  display: inline-flex; align-items: center; gap: 6px;
   text-decoration: none;
   font-family: var(--v3-body);
-  font-size: 0.72rem; font-weight: 700;
-  letter-spacing: 1.2px; text-transform: uppercase;
+  font-size: 0.72rem; font-weight: 800;
+  letter-spacing: 1.4px; text-transform: uppercase;
   padding: 10px 18px; border-radius: 6px;
-  background: var(--v3-terracotta); color: #fff;
-  transition: background 0.15s ease, transform 0.15s ease;
+  color: #fff;
+  background: linear-gradient(135deg, var(--v3-terracotta-light) 0%, var(--v3-terracotta) 55%, var(--v3-terracotta-dark) 100%);
+  box-shadow: 0 4px 14px rgba(199, 90, 62, 0.32);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
-.v3-fanvue-chip:hover { background: var(--v3-terracotta-dark); transform: translateY(-1px); }
+.v3-fanvue-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 20px rgba(199, 90, 62, 0.42);
+  filter: brightness(1.04);
+}
+.v3-fanvue-chip .vip-star,
+.v3-fanvue-float .vip-star {
+  font-size: 0.86em; line-height: 1;
+  color: #FFE9A8; /* soft gold accent */
+}
 
 /* Floating pill — always on screen, bottom-right (best mobile CTA pattern) */
 .v3-fanvue-float {
@@ -4323,17 +4335,18 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   right: max(18px, env(safe-area-inset-right));
   bottom: max(18px, env(safe-area-inset-bottom));
   z-index: 900;
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 7px;
   padding: 12px 22px;
-  background: var(--v3-terracotta); color: #fff;
+  color: #fff;
+  background: linear-gradient(135deg, var(--v3-terracotta-light) 0%, var(--v3-terracotta) 55%, var(--v3-terracotta-dark) 100%);
   text-decoration: none; border-radius: 999px;
   font-family: var(--v3-body);
-  font-weight: 700; font-size: 0.9rem; letter-spacing: 0.3px;
-  box-shadow: 0 8px 24px rgba(199, 90, 62, 0.30);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s;
+  font-weight: 800; font-size: 0.9rem; letter-spacing: 0.3px;
+  box-shadow: 0 8px 24px rgba(199, 90, 62, 0.34);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 .v3-fanvue-float:hover {
-  background: var(--v3-terracotta-dark);
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(199, 90, 62, 0.38);
+  filter: brightness(1.04);
+  box-shadow: 0 12px 30px rgba(199, 90, 62, 0.42);
 }

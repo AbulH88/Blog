@@ -137,7 +137,7 @@ const Navbar = ({
               the /f/ landing page. Same page for everyone — no cloaking. */}
           {!isMembersDomain() && fanvueEnabled && (
             <a href={fanvueLink()} className="v3-btn v3-fanvue-chip">
-              Join VIP
+              <span className="vip-star" aria-hidden>✦</span> Join VIP
             </a>
           )}
 
@@ -177,8 +177,8 @@ const Navbar = ({
             // signup-pitch language. Cross-domain navigates to members.*/login.
             <a
               href={crossDomainUrl('/login', 'members')}
-              className="v3-btn v3-btn-primary"
-              style={{ textDecoration: 'none' }}
+              className="v3-btn v3-btn-outline"
+              style={{ textDecoration: 'none', fontSize: '0.72rem', padding: '9px 18px' }}
             >
               Members
             </a>

@@ -18,8 +18,9 @@ export default function FanvueFloat({ fanvueEnabled }: Props) {
 
   return (
     <a href={fanvueLink()} className="v3-fanvue-float" aria-label="Join VIP">
+      <span className="vip-star" aria-hidden>✦</span>
       Join VIP
-      <span aria-hidden style={{ opacity: 0.55, marginLeft: 2 }}>→</span>
+      <span aria-hidden style={{ opacity: 0.6, marginLeft: 2 }}>→</span>
     </a>
   );
 }
