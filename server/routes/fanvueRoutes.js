@@ -64,9 +64,9 @@ function landingPage({ name, fanvueUrl, label, logo }) {
   <main class="card">
     <img class="logo" src="${logo}" alt="${esc(label)}" />
     <h1>${safeName}</h1>
-    <p class="sub">Continue to my ${esc(label)} page.</p>
+    <p class="sub">Tap below to continue to my ${esc(label)} page.</p>
     <a class="btn" href="${href}" rel="noopener noreferrer">Continue →</a>
-    <p class="foot">You're leaving this site — opens ${esc(label)}.</p>
+    <p class="foot">No signup needed — opens ${esc(label)}</p>
   </main>
 </body>
 </html>`;
