@@ -21,7 +21,7 @@ export default defineConfig({
           // match by filename. Strings inside the chunk are obviously still
           // there, but the chunk is only fetched on user interaction, never
           // by a passive HTML crawl.
-          if (/Join|Premium|Invit|Welcome|Members|Cta/i.test(name)) {
+          if (/Join|Premium|Invit|Welcome|Members|Cta|Fanvue/i.test(name)) {
             return 'assets/m-[hash].js';
           }
           return 'assets/[name]-[hash].js';

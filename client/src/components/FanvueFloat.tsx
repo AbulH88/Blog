@@ -1,51 +1,37 @@
 /**
- * Floating "Tip with a card" pill — fixed to the bottom-right, stays visible
- * while scrolling so the card-payment door is never more than one tap away.
+ * Floating Fanvue pill — fixed to the bottom-right, stays visible while
+ * scrolling so the Fanvue door is never more than one tap away.
  *
- * Bot-safe:
- *   - Neutral copy (no "Fanvue" / adult words)
- *   - Links to our /f/:slug endpoint (302s humans to Fanvue, neutral page for
- *     social bots) — the real fanvue.com URL never ships in the bundle.
+ * Bot-safe by construction:
+ *   - The branding (logo mark + "Fanvue" label) comes from the server config
+ *     and is present ONLY for non-bot requests, so the word "Fanvue" and the
+ *     logo never live in the client JS bundle.
+ *   - The link is the UA-gated /f/:slug redirect (302s humans to Fanvue,
+ *     neutral page for social-preview bots).
  *
  * Mounted on the marketing root domain only (App.tsx gates with
- * !isMembersDomain()). Renders nothing if the creator has no Fanvue URL.
+ * !isMembersDomain()). Renders nothing if Fanvue branding is absent.
  */
 import { fanvueLink } from '../lib/fanvueLink';
-import SocialIcons from './SocialIcons';
 
 interface Props {
-  fanvueUrl?: string | null;
+  fanvue?: { label: string; logo: string } | null;
 }
 
-export default function FanvueFloat({ fanvueUrl }: Props) {
-  if (!fanvueUrl) return null;
+export default function FanvueFloat({ fanvue }: Props) {
+  if (!fanvue) return null;
 
   return (
     <a
       href={fanvueLink()}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Tip with a card"
-      style={{
-        position: 'fixed',
-        right: 'max(18px, env(safe-area-inset-right))',
-        bottom: 'max(18px, env(safe-area-inset-bottom))',
-        zIndex: 900,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 9,
-        padding: '13px 20px',
-        background: 'var(--v3-terracotta, #C16748)',
-        color: '#fff',
-        textDecoration: 'none',
-        borderRadius: 999,
-        fontWeight: 800,
-        fontSize: '0.9rem',
-        letterSpacing: 0.3,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.22)',
-      }}
+      aria-label={fanvue.label}
+      className="v3-fanvue-float"
     >
-      <SocialIcons name="card" size={19} /> Tip with a card
+      <img className="v3-fanvue-mark" src={fanvue.logo} alt="" />
+      {fanvue.label}
+      <span aria-hidden style={{ opacity: 0.55, marginLeft: 2 }}>→</span>
     </a>
   );
 }

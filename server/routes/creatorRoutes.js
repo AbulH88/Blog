@@ -4,6 +4,8 @@ const { Creator, Subscription, Transaction, Post, sequelize } = require('../mode
 const { Op } = require('sequelize');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
 const cache = require('../services/cache');
+const { isSocialBot } = require('../lib/socialBots');
+const { fanvueBranding } = require('../lib/fanvueBrand');
 
 const router = express.Router();
 
@@ -21,7 +23,21 @@ router.get('/:slug', async (req, res) => {
       return publicData;
     });
     if (!data) return res.status(404).json({ error: 'Creator not found' });
-    res.json(data);
+
+    // ── Bot-safe Fanvue branding (applied per-request, OUTSIDE the shared
+    //    cache so bot vs human responses never cross-contaminate) ──
+    // Social-preview crawlers (IG/TikTok/Meta) must never see the Fanvue
+    // funnel. We strip the URL and never attach the branding for them. Real
+    // humans get the label + logo mark so the client can render genuine
+    // Fanvue branding without the word "Fanvue" ever living in the JS bundle.
+    const out = { ...data };
+    res.set('Vary', 'User-Agent');
+    if (isSocialBot(req.headers['user-agent'])) {
+      delete out.fanvueUrl;
+    } else if (out.fanvueUrl) {
+      out.fanvue = fanvueBranding();
+    }
+    res.json(out);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch creator', detail: err.message });
   }

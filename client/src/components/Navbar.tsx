@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { SERVER_URL } from '../api';
 import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
 import { fanvueLink } from '../lib/fanvueLink';
-import SocialIcons from './SocialIcons';
 
 // NOTE: JoinPremiumModal used to be mounted from the Navbar (via a "Step
 // Inside ✨" button) but has been removed — see below. The component still
@@ -16,12 +15,13 @@ const Navbar = ({
   siteTitle,
   instagramHandle,
   logoUrl,
-  fanvueUrl,
+  fanvue,
 }: {
   siteTitle: string;
   instagramHandle?: string;
-  /** Bot-safe "Tip with a card" nav button on the marketing root. */
-  fanvueUrl?: string;
+  /** Bot-safe Fanvue branding (label + logo) from server config.
+   *  Present only for non-bot requests — absent strings stay out of the bundle. */
+  fanvue?: { label: string; logo: string } | null;
   logoUrl?: string;
   /** Reserved for future use */
   avatarUrl?: string;
@@ -99,7 +99,7 @@ const Navbar = ({
           <Link to="/">Home</Link>
           {/* /about merged into Home (scroll-anchored), no nav link needed */}
           <Link to="/gallery">Gallery</Link>
-          <Link to="/blog">Blog</Link>
+          <Link to="/blog">Journal</Link>
         </div>
 
         <div className="v3-nav-right">
@@ -132,22 +132,20 @@ const Navbar = ({
             </svg>
           </button>
 
-          {/* Bot-safe "Tip with a card" nav button — marketing root only,
-              shown when a Fanvue URL is configured. Neutral copy + /f/ smart
-              link (302s humans to Fanvue, neutral page for social bots). */}
-          {!isMembersDomain() && fanvueUrl && (
+          {/* Fanvue nav button — marketing root only. Branding (logo + label)
+              comes from server config, present only for non-bot requests, so
+              the word "Fanvue" never sits in the JS bundle. The link is the
+              UA-gated /f/ redirect (302s humans to Fanvue, neutral for bots). */}
+          {!isMembersDomain() && fanvue && (
             <a
               href={fanvueLink()}
               target="_blank"
               rel="noopener noreferrer"
-              className="v3-btn v3-btn-primary"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                textDecoration: 'none', fontSize: '0.72rem', padding: '10px 16px',
-                background: 'var(--v3-terracotta)',
-              }}
+              className="v3-btn v3-fanvue-chip"
+              aria-label={fanvue.label}
             >
-              <SocialIcons name="card" size={15} /> Tip
+              <img className="v3-fanvue-mark" src={fanvue.logo} alt="" />
+              {fanvue.label}
             </a>
           )}
 
@@ -207,7 +205,7 @@ const Navbar = ({
           <div className="v3-mobile-menu" role="menu">
             <Link to="/"        role="menuitem">Home</Link>
             <Link to="/gallery" role="menuitem">Gallery</Link>
-            <Link to="/blog"    role="menuitem">Blog</Link>
+            <Link to="/blog"    role="menuitem">Journal</Link>
             {fanUser && (
               <Link to="/dashboard" role="menuitem" className="v3-mobile-menu-cta">
                 My Dashboard →

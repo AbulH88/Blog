@@ -173,7 +173,7 @@ function App() {
           <>
             <Navbar
               siteTitle={config.siteTitle}
-              fanvueUrl={config.fanvueUrl}
+              fanvue={config.fanvue}
               logoUrl={config.logoUrl}
               avatarUrl={config.chatAvatarUrl || config.images?.hero || config.images?.heroSlider?.[0] || config.logoUrl}
             />
@@ -232,9 +232,9 @@ function App() {
                     chunk + scroll detection means bots that download the
                     HTML and leave never trigger it. */}
                 {!isMembersDomain() && <MembersScrollCta config={config} />}
-                {/* Floating "Tip with a card" pill — root domain only, always
+                {/* Floating "Support with a card" pill — root domain only, always
                     visible while scrolling. Bot-safe (neutral copy + /f/ link). */}
-                {!isMembersDomain() && <FanvueFloat fanvueUrl={config.fanvueUrl} />}
+                {!isMembersDomain() && <FanvueFloat fanvue={config.fanvue} />}
               </Suspense>
             </main>
             <Footer config={config} />

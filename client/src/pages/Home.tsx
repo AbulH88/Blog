@@ -1,62 +1,38 @@
 import { Link } from 'react-router-dom';
 import { SERVER_URL } from '../api';
-import SocialIcons from '../components/SocialIcons';
 import HeroSlider from '../components/HeroSlider';
 import InstagramFeed from '../components/InstagramFeed';
 import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
-import { fanvueLink } from '../lib/fanvueLink';
-
-interface Tile {
-  kind: 'terracotta' | 'navy';
-  icon: string;
-  title: string;
-  subtitle?: string;
-  extra?: string;
-  href: string;
-}
 
 const fullUrl = (p?: string) => (!p ? '' : (p.startsWith('http') ? p : `${SERVER_URL}${p}`));
 
 const DEFAULT_FAVORITES = ['☕ Iced lattes', '🌿 Vintage finds', '📷 Film cameras', '🌅 Sunsets', '✈️ Solo travel'];
 const DEFAULT_PRESS = ['VOGUE', 'BAZAAR', 'ELLE', 'REFINERY29', 'GRAZIA'];
 
+// Editorial 2×2 "Featured Content" cards. Bot-safe, neutral captions; each
+// links into an internal page (Gallery / Journal). Images are sourced from
+// the creator's gallery, falling back to hero shots so the grid is never bare.
+const FEATURED_DEFS = [
+  { cat: 'Lifestyle',   ttl: 'Everyday moments', href: '/gallery' },
+  { cat: 'Travel',      ttl: 'Places I wander',  href: '/gallery' },
+  { cat: 'Photography', ttl: 'Through my lens',   href: '/gallery' },
+  { cat: 'Journal',     ttl: 'Stories & notes',   href: '/blog' },
+];
+
 const Home = ({ config }: { config: any }) => {
-  const ig = config?.links?.instagram || '';
-  const tk = config?.links?.tiktok || '';
-  const yt = config?.links?.youtube || '';
-
-  // Default tiles fall back if creator hasn't customised in Bio Builder
-  const defaultTiles: Tile[] = [
-    { kind: 'terracotta', icon: 'instagram', title: 'INSTAGRAM', subtitle: 'Follow', href: ig },
-    { kind: 'navy',       icon: 'tiktok',    title: 'TIKTOK',    subtitle: 'Watch',  href: tk },
-    { kind: 'terracotta', icon: 'youtube',   title: 'YOUTUBE',   subtitle: 'Latest videos', href: yt },
-    { kind: 'navy',       icon: 'shopping',  title: 'SHOP',      subtitle: 'My favorites',  href: '' },
-    { kind: 'navy',       icon: 'document',  title: 'BLOG',      subtitle: 'Stories', href: '/blog' },
-    { kind: 'terracotta', icon: 'handshake', title: 'COLLABS',   subtitle: 'Work with me', href: '' },
-  ];
-
-  const tiles: Tile[] = (config?.featuredLinks?.length ? config.featuredLinks : defaultTiles)
-    .filter((t: Tile) => !!t.title && !!t.href);
-
-  // Bot-safe Fanvue link used by the hero CTA below. Points at our /f/:slug
-  // endpoint (302s humans to Fanvue, neutral page for social bots), so the
-  // real destination never ships in the root bundle.
-  const fanvueHref = config?.fanvueUrl ? fanvueLink() : '';
-
   const heroImages: string[] = config?.images?.heroSlider?.length
     ? config.images.heroSlider
     : (config?.images?.hero ? [config.images.hero] : []);
   // Per-index mobile overrides; empty array if creator hasn't uploaded any.
-  // HeroSlider falls back to the desktop image when mobileImages[i] is empty.
   const heroImagesMobile: string[] = config?.images?.heroSliderMobile || [];
 
   const bio = config?.homeBio || config?.heroSubtitle || '';
   const fullBio = config?.bio || 'Tell your story here. Edit your bio from Admin → Bio Builder.';
-  const name = (config?.siteTitle || 'Cristina').toUpperCase();
+  const displayName = config?.siteTitle || 'Cristina';
+  const name = displayName.toUpperCase();
   const firstName = name.split(' ')[0];
 
-  // Portrait for the About section — prefers a dedicated upload, falls
-  // back through hero → gallery so existing installs keep working.
+  // Portrait for the About section.
   const portrait =
     config?.images?.aboutPortrait ||
     config?.images?.hero ||
@@ -64,10 +40,15 @@ const Home = ({ config }: { config: any }) => {
     config?.images?.gallery?.[0] ||
     '';
 
-  // Journey: 4 milestones, each fully editable in admin (year + label + img).
-  // Falls back to gallery-derived defaults when the creator hasn't set them
-  // yet so the section is never empty on a new install.
-  const gallery = config?.images?.gallery || [];
+  const gallery: string[] = config?.images?.gallery || [];
+
+  // Featured Content image pool: gallery first, hero shots as backup.
+  const featurePool: string[] = [...gallery, ...heroImages].filter(Boolean);
+  const featured = FEATURED_DEFS
+    .map((d, i) => ({ ...d, img: featurePool[i] || (featurePool.length ? featurePool[i % featurePool.length] : '') }))
+    .filter((c) => c.img);
+
+  // Journey: 4 milestones, each editable in admin (year + label + img).
   const journeyFromConfig: Array<{ year?: string; label?: string; img?: string }> =
     Array.isArray(config?.journey) ? config.journey : [];
   const journeyDefaults = [
@@ -84,6 +65,7 @@ const Home = ({ config }: { config: any }) => {
 
   // Members CTA destination — cross-domain on root, internal on members.
   const membersLoginUrl = isMembersDomain() ? '/login' : crossDomainUrl('/login', 'members');
+  const galleryUrl = isMembersDomain() ? '/gallery' : '/gallery';
 
   return (
     <div style={{ background: 'var(--v3-cream)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
@@ -100,86 +82,54 @@ const Home = ({ config }: { config: any }) => {
         <path d="M40 30 Q70 90 40 170 Q10 90 40 30 Z" fill="#B8924F" opacity="0.25"/>
       </svg>
 
-      {/* Hero */}
+      {/* ── Hero with editorial typography overlay ──────────────── */}
       <section className="v3-hero">
         <div className="v3-hero-frame">
           <HeroSlider images={heroImages} mobileImages={heroImagesMobile} alt={config?.siteTitle} />
-        </div>
 
-        {/* Bot-safe Fanvue CTA, directly under the hero (above the fold).
-            Neutral copy + /f/:slug smart link → 302s humans to Fanvue, hands
-            social bots a neutral page. Only when a Fanvue URL is configured. */}
-        {fanvueHref && (
-          <div style={{ textAlign: 'center', marginTop: 18 }}>
-            <a
-              href={fanvueHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="v3-btn v3-btn-primary"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-                textDecoration: 'none', padding: '13px 30px',
-                background: 'var(--v3-terracotta)', color: '#fff',
-                borderRadius: 999, fontWeight: 800, fontSize: '0.95rem',
-                letterSpacing: 0.4, boxShadow: '0 6px 18px rgba(193,103,72,0.28)',
-              }}
-            >
-              <SocialIcons name="card" size={20} /> Tip with a card →
-            </a>
-          </div>
-        )}
-      </section>
-
-      {/* Welcome + Featured links | Instagram feed */}
-      <section className="v3-content-grid">
-        <div className="v3-welcome">
-          <h1>WELCOME TO MY WORLD!</h1>
-          <p className="tagline">LIFESTYLE • TRAVEL • FASHION • CREATIVITY</p>
-          <p className="bio">
-            {bio || `Hi, I'm ${config?.siteTitle || 'Cristina'}! 🌿 Sharing my journey, favorite moments, style finds, and travel adventures with you. Let's connect and inspire each other! ✨`}
-          </p>
-
-          <p className="v3-section-label">FEATURED LINKS</p>
-
-          {tiles.length === 0 ? (
-            <p style={{ color: 'var(--v3-muted)', fontSize: '0.86rem' }}>
-              No featured links yet — set them in Admin → Bio Builder.
+          {/* Overlay: name + tagline + neutral subline + 2 CTAs. Bot-safe copy.
+              Staggered fade-up on load for an elegant reveal. */}
+          <div className="v3-hero-overlay">
+            <p className="v3-hero-eyebrow v3-anim" style={{ animationDelay: '0.05s' }}>Welcome</p>
+            <h1 className="v3-hero-name v3-anim" style={{ animationDelay: '0.15s' }}>{displayName}</h1>
+            <p className="v3-hero-tagline v3-anim" style={{ animationDelay: '0.28s' }}>
+              Lifestyle · Photography · Travel
             </p>
-          ) : (
-            <div className="v3-link-grid">
-              {tiles.map((t, i) => {
-                const isExternal = t.href?.startsWith('http');
-                const inner = (
-                  <>
-                    <span className="icon" aria-hidden>
-                      <SocialIcons name={t.icon} size={28} />
-                    </span>
-                    <span className="title">{t.title}</span>
-                    {t.subtitle && <span className="subtitle">{t.subtitle}</span>}
-                    {t.extra && <span className="subtitle" style={{ fontWeight: 700, marginTop: -2 }}>{t.extra}</span>}
-                  </>
-                );
-                return isExternal ? (
-                  <a key={i} href={t.href} target="_blank" rel="noreferrer" className={`v3-link-tile ${t.kind}`}>
-                    {inner}
-                  </a>
-                ) : (
-                  <Link key={i} to={t.href || '#'} className={`v3-link-tile ${t.kind}`}>
-                    {inner}
-                  </Link>
-                );
-              })}
+            <p className="v3-hero-sub v3-anim" style={{ animationDelay: '0.4s' }}>
+              A little corner of lifestyle, travel &amp; creative work.
+            </p>
+            <div className="v3-hero-cta v3-anim" style={{ animationDelay: '0.55s' }}>
+              <Link to={galleryUrl} className="v3-btn v3-btn-ghost">View Gallery</Link>
+              <a href={membersLoginUrl} className="v3-btn v3-btn-primary">Members</a>
             </div>
-          )}
+          </div>
         </div>
-
-        <InstagramFeed
-          gallery={config?.images?.gallery || []}
-          instagramUrl={config?.links?.instagram || ''}
-        />
       </section>
 
-      {/* About section — merged from former /about page */}
+      {/* ── Featured Content — editorial 2×2 grid ───────────────── */}
+      {featured.length > 0 && (
+        <section className="v3-featured">
+          <div className="v3-ed-head">
+            <p className="eyebrow">Explore</p>
+            <h2>{bio ? 'Lifestyle, travel & creative work' : `Inside ${firstName}'s world`}</h2>
+            {bio && <p>{bio}</p>}
+          </div>
+          <div className="v3-featured-grid">
+            {featured.map((c, i) => (
+              <Link key={i} to={c.href} className="v3-featured-card">
+                <img src={fullUrl(c.img)} alt={c.ttl} loading="lazy" />
+                <div className="v3-featured-cap">
+                  <p className="cat">{c.cat}</p>
+                  <p className="ttl">{c.ttl}</p>
+                  <span className="arrow">View →</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── About ───────────────────────────────────────────────── */}
       <div className="v3-about">
         <div className="v3-about-inner">
           <section className="v3-about-hero">
@@ -225,61 +175,24 @@ const Home = ({ config }: { config: any }) => {
               ))}
             </div>
           </section>
-
-          {/* Members CTA — replaces the old newsletter signup. The copy is
-              intentionally bot-safe (no subscribe/premium/exclusive/adult
-              language) while still being emotionally compelling for humans.
-              "People who actually show up" is the conversion hook — fans
-              self-identify as the kind of person this is for. */}
-          <section className="v3-cta-strip">
-            <p style={{
-              fontSize: '0.78rem', letterSpacing: 1.2, fontWeight: 700,
-              opacity: 0.7, margin: '0 0 8px', textTransform: 'uppercase',
-            }}>
-              P.S.
-            </p>
-            <h3 style={{ margin: '0 0 10px' }}>There's more, if you want it.</h3>
-            <p style={{ margin: 0, opacity: 0.92, fontSize: '0.94rem', lineHeight: 1.6 }}>
-              Photos, stories, and the little moments I share with people who actually show up.
-            </p>
-            <a
-              href={membersLoginUrl}
-              className="v3-btn v3-btn-primary"
-              style={{
-                display: 'inline-block',
-                textDecoration: 'none',
-                marginTop: 18,
-                padding: '12px 28px',
-                background: '#fff',
-                color: 'var(--v3-ink)',
-                borderRadius: 999,
-                fontWeight: 700,
-                letterSpacing: 0.5,
-              }}
-            >
-              Come in →
-            </a>
-
-            <div className="icons" style={{ marginTop: 22 }}>
-              {config?.links?.instagram && (
-                <a href={config.links.instagram} target="_blank" rel="noreferrer" aria-label="Instagram">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-5.838 2.435-5.838 5.838s2.435 5.838 5.838 5.838 5.838-2.435 5.838-5.838-2.435-5.838-5.838-5.838zm0 9.674c-2.09 0-3.836-1.746-3.836-3.836s1.746-3.836 3.836-3.836 3.836 1.746 3.836 3.836-1.746 3.836-3.836 3.836zm5.838-10.499c.742 0 1.344.603 1.344 1.344s-.603 1.344-1.344 1.344-1.344-.603-1.344-1.344.603-1.344 1.344-1.344z"/></svg>
-                </a>
-              )}
-              {config?.links?.tiktok && (
-                <a href={config.links.tiktok} target="_blank" rel="noreferrer" aria-label="TikTok">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.83 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z"/></svg>
-                </a>
-              )}
-              {config?.links?.twitter && (
-                <a href={config.links.twitter} target="_blank" rel="noreferrer" aria-label="X">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 7.719 8.502 11.231h-6.653l-5.208-6.817-5.964 6.817H1.614l7.737-8.854L.813 2.25h6.823l4.707 6.227L18.244 2.25z"/></svg>
-                </a>
-              )}
-            </div>
-          </section>
         </div>
       </div>
+
+      {/* ── Members band — premium, neutral, bot-safe ───────────── */}
+      <section className="v3-members-band">
+        <p className="eyebrow">Members</p>
+        <h2>There's more, if you want it.</h2>
+        <p>More photos, stories, and the little moments — for the people who actually show up.</p>
+        <a href={membersLoginUrl} className="v3-btn">Come in →</a>
+      </section>
+
+      {/* ── Instagram feed — full-width closing section ─────────── */}
+      <section className="v3-ig-section">
+        <InstagramFeed
+          gallery={config?.images?.gallery || []}
+          instagramUrl={config?.links?.instagram || ''}
+        />
+      </section>
     </div>
   );
 };

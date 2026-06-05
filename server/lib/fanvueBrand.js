@@ -1,0 +1,28 @@
+/**
+ * Fanvue brand assets — kept SERVER-SIDE on purpose.
+ *
+ * The word "Fanvue" and the logo live here, in server code, and are sent to
+ * the client only at runtime (via the creator config endpoint) and only for
+ * NON-bot requests. They are never compiled into the client JS bundle, so a
+ * scanner that downloads the static .js files can't find the string "Fanvue"
+ * or the logo. Social-preview crawlers are UA-filtered before this is attached.
+ *
+ * LOGO is the official Fanvue mark (green rounded square + black glyph),
+ * downscaled to 64×64 and inlined as a base64 data URI so it ships with the
+ * config payload (no separate asset request, nothing in the bundle).
+ */
+
+// Official Fanvue mark — 64×64 PNG, base64 data URI.
+const LOGO_DATAURI =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAALAklEQVR42uWbaYydZ3XHf+d5nvdus3o84zWuF2wFu4Y2TsFNakUQgZLGNNCWSasKtWobslApUquCUL9MTdMPfEECCbIqSFRqVVvqosRZoKg0ELtxSpQCcROTDRI7Y3vGnjvLXd73eZ7TD++die1MnMnMtWdiH2lGulez3PN/z/o/5wizyJAOmT3sUQQd3DtoG4Mrrtc03Bx9vFY1biRoDyKGpSSqUZwZQ80rknAAYx7e7+75PoKiCAwJsiee+2ty7huDOmj3yb4AsLt5+x+j3IVytSkaYhbRLKJRWYoiVpDEYBJDaASMmEMIX3+keO8/nqvbrABM/8Du6u1bKHGvLSTXx+AJU5kqEgUVRGQ24JaGFaCgqogKWNvpMMYSUv9dE8MdD5cffPVcEORc5W+Y+POPJcVkryRmwI83vYKRpWbuc/YKjQLRdRedZmHYN3Tw8e77f3QmCGba5/fJvvCp2m27XCHZr1EHfLXpEXHvV+UBRMQg4ny16VVZZYvy2I3VW39zn+wLQzpkAGQ64H26fucVXsKPERkIzRBEsFxColGDrTirQY+FwG880XH/8BBDracraOrTB2wpGYgN7y815QHEiI01710pWWM03IOghzksArB76vM320rh37PxhkfEcQmLKiHpKtjYjDfuL9/7hEFVQtQvaYyqiHA5iKpqCF8CkJumbtsJ+pQGNUs2vbXdH1Axxkf1O41G/V1bcVaVyGUiGom2YhMR+2mjsEu9AipcNqKiQRHY5UR0S0wjshT8X1vfdEHJ/10dWRDRNKKRKx1B+9REkEXyfwWNiri8js8L7fl/FM0i0UfEyHkRiFFRtM8h4tBFK04wBYsrW7JqSjZSJzQCzKfZEtCgFAbKJH0FYj2c3xJUEcUuWs7XoNgOR/PNOr/8xmFOHzhBdqpJbEbQeQIQlaSnwLZ7r6XnI/2Emj+/JQBusZ68rTgar03y3B/8gKkXq9jOJG9nDfPOxuKE2isTvP6tF1j2D9cR5oCjWwyfFyPENPL8Fw5Se3mC4qoyMVPmHP2kFbBmGnPJrUYE9YrtSuaMoVsM00+WFXn57ucYO3iSwooSMY3vaNZnmrAqEBQNgegV9RFtPWaxBkkMfR9bxYa/+lVCI7yr+V90ADQorjth7L9P8MtvvkDSV0B9nJXZAYjNSGj6/GdEMInBVCxJb4lCf5HCqjKltR2UfqWD0hUVSiu76PrQMsQJsRnmlE3cRTV9J4Sa58iX/4eYRVzRzTzBGXpGBF9NAaG4tkLnB3vo2NpDZVM3pXUVCivLJH1FXE+CLTvEmrfoIK+EukcbEYwsLRfQoCTdRV784iHGnx0lWV4kr0DPiOJe0SwwsHsdq27ZQPfV/RRWlDCJzRWMuZIaIuoVP5mdHTamXcbMPYheFAA0ixT6yrzxnSO8/sARkr5ZlA+KLVmu/NY1rPzM+rxvrXtCzRPUn1XoTVd78h4UXTQANIskfSVGvn+UI1/+Ma4zeRurLEbwExlb9lzFms9sonFqCowgra8LKRcOgKhohEJfidEnh/nZrU/l1Zc1bwNAg+I6E3qvGSBtNPMgeIEVnxZzQRT3iilaCsuKHPvnV/jJ5/6LWPeYgp11piAmD46NN2qYgiWGi1ebm3Y1M+oVomIqjmRZkcaxGs//xQEO33kQQg7IOw5UJP87R7/9c8SArbg8x8cFdoYXxAVaCk9/cJMYbDFPRzENTB4e4/i+13hz76ukxxskvQVUlfNNkzQorith5HvH+NmtT7F5z1WU1nagIRIaAc3ijKW0u2eV3x6/Vd9LKsuLEYeIELNANtKk9tI41UMjnHpymPFnR/HVFNuVYBJzdp5/d+aWrJpSWlNh5e+tp/+GtXRs66WwvAiQp73YJuIut7rm3AFQcN0J6WiT6tMnqR4aYeKnp6i9NEFzuE6seaRgsBWHWJm3+YqVvAKcyjAlR3lDJ91X9dF3/Wr6b1ibu1IWFw7CewXAFC1Hv/1zXr//ReqvTqI+Is5ginkNLlYg0p7BaSvHa1RiMxKbuRv0fXw12x/ahe1wEHRhILQAMHPt21/72vP8311P0zxaw3UnJMuLuK4ESUweF7y2b2qs+f9Fc+CT3gKltRVG/+MYY08dx3W4tv0vN5f63U9kvPlPr5D0FzElh2bhgkdnZJobyK2qOVynvKmLrg/3EeqhbQWSmQvNZCuOvutWkp5oEMZTiK1ZvG1jSJaz/2ZsBrKxlOxUE4Ky/BNr+PB3rqO8voOYhrZlAzeHCSsxjWy+ewcdW3s5+cjrTL5QJRtt5jm7xeToPIuX6dQW04ivZRAV25lQXt9B57Zeej7ST++1K+jcvizPBFO+reXx3IKg5rbiOgvEpqf+6iTVZ0YYefwooz94k9gIuK7kvYFgciLeT2ZoGimuqdDz0X6W/dZKuncsp7ypi6SvOJNuY82j0D7l55MGNSpiBFM0mKJDVZl4dpSXvvIcp58cxnUX5hScxOalr2aRno8OsPoPN9J3/WpK6zoQY4g+oM1IbBVA7er8FgbAOZSytj6b60pQr/z0T3/IyONH89fnAUGskJ1O6dzaw4YvfoiB3VdgS45Q9zmLM63wHAYc7QDAzTtCtzYI/HiK7UzY8nc7qD59ktgIYGXWLCFGyE43WfO5zWy5ewfJsgJ+PCNrNPPW1woXWxbcDIkzxJqndEWFjq29ORk5CxeXP/kmG/5yO9u+eQ1SMGSn05nozyIN5ly7RnpiBFu2rRdv5+uz0Sbrbr+SzX97Fb7anHl/scW1aRmJ6CN+PMuJDD37yfuxlOWfXMOWv78aP5HOaYD5vuIDxAm+mtEcrmMSQfWtdjk2A8U1FT74tZ2t4KlLag3DtGHbBFMw1H8xSXqiMdMbzFhGI7D5Kzsor+8k1MIF5/guvgVEEGcZf3aUMJXNKChOyMaarPzsBlb9/nqyseaS8Pn2A9Cayo4dOPkWkSn5VKe4qsIH/ubXiI3AUl23NAv1f1MwNIdrTPzkFLZs0QjGGXw1ZcNfb6e8sYtQDyzVBTSz0KU7SQzpiQbp8TqmaBFRGsdqrLplI2v/ZDPZ+NI0/fYAYPIhZHljJz07+0lPNoheWXf7lWz9xk40i4u2eXPx6oAIpmDZ/uAuxg6dpLS6Qtev56SFBl3ym4cONEMkmTfDI/n4y1YcK3avI2YRP5Fd+GamDYyTosGAnBZrWscGCwAhKNlY+tZezlJWXlFjBFE5ZcRwxCQGnddm0iyUlln6+5aKqhQMGH3RqJgf5VFalMtGRMUKCj80hvCvvuaDCOayUd9g/FTIbGL/zeyvPPgMUQ+6jgRVApf8pjzBVQoQ45P7i/f9r0FESfiqGCOy0DjwvrgjQhGExH4VwAzpkHms9OAj2WT6aNJdcsQz9lEuNYnqk66i87XsXx4r3/e9QR1srVgpYjrNbb6RHTdl5zRquPRuBDTYSuJCI3vDdcQvoCrb2JbfCEzf0d1U+/y1xpnvqtIR695jLpH7oajeVpzTyHhoxE883vvAM0M6ZPbInijnHk7eNP5n10mpsNckZuWlcDiJoklP0cY0HPON7LNP9Dx08MzDSZntdPbGsds+YCvmHpvYT8YYCJMehSCotBZ1ZclWOPnScOt0NsEYQ0j9YzqV3flo30O/eMfT2dmOpz/l7/gjDXqXBt1py/bs42ldcodQ+Wxh+ni6HhArB4zl6w+7+/YCDO4dtPtuOc/xNLOcz6PI73DHx0Mj3qxBrwHdRNQedIkdVwpBjBnDyMti5YAafeTR5P7/nA7y73Q+//+OwJnqwAYs5wAAAABJRU5ErkJggg==';
+
+/**
+ * The branding payload the client renders. Returned only to human requests.
+ *   - label: the display name ("Fanvue")
+ *   - logo:  base64 data URI of the official mark (rendered as an <img>)
+ */
+function fanvueBranding() {
+  return { label: 'Fanvue', logo: LOGO_DATAURI };
+}
+
+module.exports = { fanvueBranding };

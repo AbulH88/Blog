@@ -4093,3 +4093,260 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   .v3-footer { flex-direction: column; gap: 10px; text-align: center; }
   .v3-stat-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   EDITORIAL HOMEPAGE REDESIGN (2026)
+   Refined luxury direction layered on the v3 system. New classes
+   only — existing v3-* untouched, so it's cleanly revertible.
+   Hero typography overlay · Featured Content 2×2 · Members band ·
+   staggered page-load motion.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Page-load stagger ───────────────────────────────────────── */
+@keyframes v3-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.v3-anim { opacity: 0; animation: v3-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .v3-anim { opacity: 1; animation: none; }
+}
+
+/* ── Hero typography overlay ─────────────────────────────────── */
+.v3-hero-overlay {
+  position: absolute;
+  inset: 28px;                       /* match .v3-hero-frame padding */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: clamp(22px, 4vw, 54px);
+  padding-bottom: clamp(36px, 5vw, 66px);
+  border-radius: 2px;
+  background: linear-gradient(to top,
+    rgba(31, 26, 20, 0.64) 0%,
+    rgba(31, 26, 20, 0.30) 30%,
+    rgba(31, 26, 20, 0.05) 58%,
+    transparent 100%);
+  pointer-events: none;              /* keep slider arrows/dots clickable */
+}
+.v3-hero-overlay > * { pointer-events: auto; }
+.v3-hero-eyebrow {
+  font-family: var(--v3-body);
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 4px; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0 0 12px;
+}
+.v3-hero-name {
+  font-family: var(--v3-display);
+  font-style: italic; font-weight: 700;
+  font-size: clamp(2.7rem, 7vw, 5.4rem);
+  line-height: 0.92;
+  color: #fff;
+  margin: 0 0 14px;
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.28);
+}
+.v3-hero-tagline {
+  font-family: var(--v3-body);
+  font-size: clamp(0.72rem, 1.5vw, 0.92rem);
+  font-weight: 500; letter-spacing: 3.5px; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0 0 8px;
+}
+.v3-hero-sub {
+  font-family: var(--v3-display);
+  font-style: italic;
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  color: rgba(255, 255, 255, 0.88);
+  margin: 0 0 22px;
+  max-width: 30ch;
+}
+.v3-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.v3-hero-cta .v3-btn { box-shadow: 0 6px 20px rgba(0, 0, 0, 0.20); }
+.v3-hero-cta .v3-btn-ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.v3-hero-cta .v3-btn-ghost:hover { background: rgba(255, 255, 255, 0.24); }
+@media (max-width: 700px) {
+  .v3-hero-overlay {
+    inset: 0;
+    padding: 18px; padding-bottom: 44px;
+    background: linear-gradient(to top,
+      rgba(31, 26, 20, 0.70) 0%, rgba(31, 26, 20, 0.12) 52%, transparent 100%);
+  }
+  .v3-hero-sub { display: none; }
+}
+
+/* ── Editorial section heading ───────────────────────────────── */
+.v3-ed-head { text-align: center; max-width: 740px; margin: 0 auto clamp(28px, 4vw, 46px); }
+.v3-ed-head .eyebrow {
+  font-family: var(--v3-body);
+  font-size: 0.74rem; font-weight: 700;
+  letter-spacing: 5px; text-transform: uppercase;
+  color: var(--v3-terracotta);
+  margin: 0 0 12px;
+}
+.v3-ed-head h2 {
+  font-family: var(--v3-heading);
+  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  line-height: 1.06; margin: 0; color: var(--v3-ink);
+}
+.v3-ed-head p {
+  font-family: var(--v3-body);
+  font-size: 1rem; line-height: 1.7;
+  color: var(--v3-ink-soft);
+  margin: 16px auto 0; max-width: 56ch;
+}
+
+/* ── Featured Content (2×2 editorial grid) ───────────────────── */
+.v3-featured {
+  position: relative; z-index: 1;
+  padding: clamp(50px, 6vw, 88px) clamp(20px, 5vw, 60px) clamp(18px, 3vw, 36px);
+  background: var(--v3-cream);
+}
+.v3-featured-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 16px; max-width: 1120px; margin: 0 auto;
+}
+.v3-featured-card {
+  position: relative; display: block;
+  aspect-ratio: 4 / 3; overflow: hidden;
+  border-radius: 4px; text-decoration: none;
+  background: var(--v3-cream-deep);
+  box-shadow: var(--v3-shadow-sm);
+}
+.v3-featured-card img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.v3-featured-card:hover img { transform: scale(1.07); }
+.v3-featured-card::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to top,
+    rgba(31, 26, 20, 0.62) 0%, rgba(31, 26, 20, 0.08) 48%, transparent 100%);
+}
+.v3-featured-cap {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  padding: clamp(16px, 2.4vw, 28px); color: #fff;
+}
+.v3-featured-cap .cat {
+  font-family: var(--v3-body);
+  font-size: 0.64rem; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: var(--v3-terracotta-light); margin: 0 0 5px;
+}
+.v3-featured-cap .ttl {
+  font-family: var(--v3-heading);
+  font-size: clamp(1.1rem, 2vw, 1.55rem); line-height: 1.1; margin: 0;
+  transform: translateY(3px);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.v3-featured-cap .arrow {
+  display: inline-block; margin-top: 7px;
+  font-size: 0.78rem; letter-spacing: 2px;
+  opacity: 0; transform: translateX(-8px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.v3-featured-card:hover .v3-featured-cap .ttl { transform: translateY(0); }
+.v3-featured-card:hover .v3-featured-cap .arrow { opacity: 0.95; transform: translateX(0); }
+@media (max-width: 640px) {
+  .v3-featured-grid { gap: 10px; }
+  .v3-featured-card { aspect-ratio: 1 / 1; }
+}
+
+/* ── Members band (premium, neutral, bot-safe) ───────────────── */
+.v3-members-band {
+  position: relative; z-index: 1;
+  margin: clamp(44px, 6vw, 84px) clamp(20px, 5vw, 60px);
+  border-radius: 8px; overflow: hidden;
+  background:
+    radial-gradient(120% 150% at 0% 0%, rgba(199, 90, 62, 0.55) 0%, transparent 55%),
+    linear-gradient(135deg, var(--v3-navy) 0%, var(--v3-navy-dark) 100%);
+  color: #fff; text-align: center;
+  padding: clamp(46px, 6vw, 78px) clamp(24px, 5vw, 64px);
+}
+.v3-members-band .eyebrow {
+  font-family: var(--v3-body);
+  font-size: 0.74rem; font-weight: 700;
+  letter-spacing: 5px; text-transform: uppercase;
+  color: var(--v3-terracotta-light); margin: 0 0 14px;
+}
+.v3-members-band h2 {
+  font-family: var(--v3-heading);
+  font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.04;
+  margin: 0 0 14px; color: #fff;
+}
+.v3-members-band p {
+  font-family: var(--v3-body);
+  font-size: 1rem; line-height: 1.7;
+  color: rgba(255, 255, 255, 0.82);
+  max-width: 480px; margin: 0 auto 28px;
+}
+.v3-members-band .v3-btn {
+  background: #fff; color: var(--v3-navy-dark);
+  font-weight: 700; padding: 15px 40px;
+}
+.v3-members-band .v3-btn:hover { background: var(--v3-cream); }
+
+/* ── Instagram feed as a full-width closing section ──────────── */
+.v3-ig-section {
+  position: relative; z-index: 1;
+  padding: clamp(18px, 3vw, 36px) clamp(20px, 5vw, 60px) clamp(50px, 6vw, 84px);
+  max-width: 1120px; margin: 0 auto;
+}
+
+/* ── Fanvue branded buttons (logo mark + label from server config) ──
+   The mark SVG + "Fanvue" label arrive at runtime from the config API
+   (non-bot requests only), so neither lives in the JS bundle. */
+.v3-fanvue-mark {
+  display: inline-block; flex-shrink: 0;
+  width: 18px; height: 18px;
+  border-radius: 5px; object-fit: contain;
+}
+.v3-fanvue-mark svg { display: block; width: 100%; height: 100%; }
+
+/* Navbar chip — clean white so the gradient mark carries the colour */
+.v3-fanvue-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  text-decoration: none;
+  font-family: var(--v3-body);
+  font-size: 0.8rem; font-weight: 700;
+  letter-spacing: 0.2px; text-transform: none;
+  padding: 8px 14px; border-radius: 8px;
+  background: #fff; color: var(--v3-ink);
+  border: 1px solid var(--v3-line);
+  box-shadow: var(--v3-shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s;
+}
+.v3-fanvue-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--v3-faint);
+  box-shadow: var(--v3-shadow);
+}
+.v3-fanvue-chip .v3-fanvue-mark { width: 19px; height: 19px; }
+
+/* Floating pill — always on screen, bottom-right */
+.v3-fanvue-float {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 900;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 12px 20px;
+  background: #fff; color: var(--v3-ink);
+  text-decoration: none; border-radius: 999px;
+  font-family: var(--v3-body);
+  font-weight: 700; font-size: 0.9rem; letter-spacing: 0.2px;
+  border: 1px solid var(--v3-line);
+  box-shadow: 0 8px 26px rgba(31, 26, 20, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.v3-fanvue-float:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(31, 26, 20, 0.24);
+}
+.v3-fanvue-float .v3-fanvue-mark { width: 22px; height: 22px; }

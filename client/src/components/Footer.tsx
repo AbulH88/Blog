@@ -12,12 +12,13 @@ const Footer = ({ config }: { config: any }) => {
   ) return null;
 
   const isImmersiveMobile = false;
-  // Legal links (Privacy/Terms/DMCA/Disclosure) only render on the members
-  // subdomain. The marketing root stays minimal — social icons + © line only
-  // — so IG/TikTok crawlers don't have legal-page paths to follow. Legal
-  // routes still exist on members.* (required for compliance + card
-  // processor verification).
-  const showLegal = isMembersDomain();
+  // Legal links are split by domain for bot-safety:
+  //   - Root (marketing): Privacy + Terms only. These are generic, every
+  //     legit site has them, and they add trust + SEO. SAFE for IG/TikTok
+  //     crawlers.
+  //   - Members: also DMCA + 2257 (adult-content compliance). "2257" signals
+  //     an adult site, so it must NOT appear on the public root. Kept here.
+  const onMembers = isMembersDomain();
 
   const year = new Date().getFullYear();
 
@@ -48,14 +49,13 @@ const Footer = ({ config }: { config: any }) => {
 
       <p className="copy">© {year} {config.siteTitle?.toUpperCase()}. ALL RIGHTS RESERVED.</p>
 
-      {showLegal && (
-        <div className="v3-footer-links">
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/terms">Terms</a>
-          <a href="/dmca">DMCA</a>
-          {config?.disclosureVisible !== false && <a href="/2257">Disclosure</a>}
-        </div>
-      )}
+      <div className="v3-footer-links">
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms</a>
+        {/* Adult-compliance pages stay members-only — never on the public root */}
+        {onMembers && <a href="/dmca">DMCA</a>}
+        {onMembers && config?.disclosureVisible !== false && <a href="/2257">Disclosure</a>}
+      </div>
     </footer>
   );
 };
