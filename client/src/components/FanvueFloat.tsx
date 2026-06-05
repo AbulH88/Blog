@@ -17,8 +17,8 @@ export default function FanvueFloat({ fanvueEnabled }: Props) {
   if (!fanvueEnabled) return null;
 
   return (
-    <a href={fanvueLink()} className="v3-fanvue-float" aria-label="Support">
-      Support
+    <a href={fanvueLink()} className="v3-fanvue-float" aria-label="Join VIP">
+      Join VIP
       <span aria-hidden style={{ opacity: 0.55, marginLeft: 2 }}>→</span>
     </a>
   );

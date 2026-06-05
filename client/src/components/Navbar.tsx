@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { SERVER_URL } from '../api';
 import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
+import { fanvueLink } from '../lib/fanvueLink';
 
 // NOTE: JoinPremiumModal used to be mounted from the Navbar (via a "Step
 // Inside ✨" button) but has been removed — see below. The component still
@@ -14,9 +15,13 @@ const Navbar = ({
   siteTitle,
   instagramHandle,
   logoUrl,
+  fanvueEnabled,
 }: {
   siteTitle: string;
   instagramHandle?: string;
+  /** Whether a Fanvue funnel is configured → shows a neutral "Support"
+   *  button → /f/ click-through page (no platform name on the hub). */
+  fanvueEnabled?: boolean;
   logoUrl?: string;
   /** Reserved for future use */
   avatarUrl?: string;
@@ -126,6 +131,15 @@ const Navbar = ({
               <path d="m21 21-4.3-4.3" />
             </svg>
           </button>
+
+          {/* Neutral hub "Support" button → /f/ click-through (marketing root
+              only). No platform name on the public hub; Fanvue is revealed on
+              the /f/ landing page. Same page for everyone — no cloaking. */}
+          {!isMembersDomain() && fanvueEnabled && (
+            <a href={fanvueLink()} className="v3-btn v3-fanvue-chip">
+              Join VIP
+            </a>
+          )}
 
           {fanUser ? (
             <>
