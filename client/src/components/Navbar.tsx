@@ -28,8 +28,32 @@ const Navbar = ({
 }) => {
   const [fanUser, setFanUser] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Glass-over-hero nav: on the marketing home page the nav floats transparently
+  // over the hero photo until the user scrolls, then turns into a solid bar.
+  const isHomeRoot = !isMembersDomain() && location.pathname === '/';
+  const glass = isHomeRoot && !scrolled;
+
+  useEffect(() => {
+    if (!isHomeRoot) { setScrolled(false); return; }
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isHomeRoot]);
+
+  // Body classes drive the content offset + brand-bar hide (see theme-v3.css).
+  useEffect(() => {
+    document.body.classList.toggle('v3-home', isHomeRoot);
+    document.body.classList.toggle('v3-nav-glass', glass);
+    return () => {
+      document.body.classList.remove('v3-home');
+      document.body.classList.remove('v3-nav-glass');
+    };
+  }, [isHomeRoot, glass]);
 
   useEffect(() => {
     const u = localStorage.getItem('fanUser');
@@ -75,7 +99,7 @@ const Navbar = ({
     : '';
 
   return (
-    <div className={isImmersiveMobile ? 'v3-chrome v3-chrome--mobile-hidden' : 'v3-chrome'}>
+    <div className={`v3-chrome${glass ? ' v3-chrome--glass' : ''}${isImmersiveMobile ? ' v3-chrome--mobile-hidden' : ''}`}>
       {/* Top terracotta brand bar */}
       <div className="v3-brand-bar">
         {siteTitle?.toUpperCase()} <span style={{ opacity: 0.7, margin: '0 6px' }}>|</span> {handle}

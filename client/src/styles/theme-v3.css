@@ -4350,3 +4350,58 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   filter: brightness(1.04);
   box-shadow: 0 12px 30px rgba(199, 90, 62, 0.42);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   GLASS-OVER-HERO NAV (Option G)
+   Fixed header. On the marketing home page it floats transparently
+   over the hero photo (white text), then turns solid on scroll.
+   On every other page it's a normal solid bar. Content is offset so
+   the fixed header never covers it (except the home hero, by design).
+   ══════════════════════════════════════════════════════════════ */
+body.v3 .v3-chrome {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+}
+/* Reserve space for the fixed header on every page… */
+body.v3 main.container { padding-top: 116px; }
+/* …except the home page, where the hero sits under the glass nav. */
+body.v3.v3-home main.container { padding-top: 0; }
+/* Immersive home: drop the terracotta brand strip so the hero is clean. */
+body.v3.v3-home .v3-brand-bar { display: none; }
+
+/* Solid state (default / scrolled / other pages) keeps the cream bar. */
+.v3-chrome .v3-nav { transition: background 0.28s ease, border-color 0.28s ease; }
+
+/* Glass state — transparent blurred bar, white text, over the hero photo. */
+.v3-chrome--glass .v3-nav {
+  background: rgba(31, 26, 20, 0.10);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+.v3-chrome--glass .v3-nav-links a,
+.v3-chrome--glass .v3-logo {
+  color: #fff; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+}
+.v3-chrome--glass .v3-nav-links a:hover { color: var(--v3-terracotta-light); }
+.v3-chrome--glass .v3-nav-search { color: #fff; }
+.v3-chrome--glass .v3-nav-burger { color: #fff; border-color: rgba(255,255,255,0.5); }
+/* Members button → white outline so it reads on the photo */
+.v3-chrome--glass .v3-btn-outline {
+  color: #fff; border-color: rgba(255, 255, 255, 0.75);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.35);
+}
+.v3-chrome--glass .v3-btn-outline:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+/* Home hero: sit flush at the top + a soft top scrim so the white nav
+   text/logo stays readable over any photo. */
+body.v3.v3-home .v3-hero { padding-top: 0; }
+body.v3.v3-home .v3-hero-frame::after,
+body.v3.v3-home .v3-hero-frame::before { opacity: 0.4; }
+body.v3.v3-home .v3-hero-slider::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.10) 22%, transparent 42%);
+}
+
+@media (max-width: 700px) {
+  body.v3 main.container { padding-top: 92px; }
+  body.v3.v3-home main.container { padding-top: 0; }
+}
