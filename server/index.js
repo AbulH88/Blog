@@ -364,6 +364,9 @@ app.use('/api/r', require('./routes/shortlinkRoutes'));
 //   neutral page (gate is in-Node because root nginx allows preview bots).
 app.use('/f', require('./routes/fanvueRoutes'));
 
+// Fanvue API integration (admin module: OAuth connect + chats/earnings/etc).
+app.use('/api/fanvue', require('./routes/fanvueApiRoutes'));
+
 // ─── Admin upload ──────────────────────────────────────────────────────────────
 // Custom middleware wrapper so we can conditionally skip sharp processing
 // when the client passes ?raw=1 (used for logos / chat avatars where

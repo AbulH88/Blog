@@ -10,6 +10,7 @@ import {
 } from '../api';
 import AdminMessages from './AdminMessages';
 import AdminAiChatbot from './AdminAiChatbot';
+import AdminFanvue from './AdminFanvue';
 import AdminBroadcast from './AdminBroadcast';
 import DragDropUpload from '../components/DragDropUpload';
 import FunnelCard from '../components/FunnelCard';
@@ -20,7 +21,7 @@ import AdminNotificationBell from '../components/AdminNotificationBell';
 type Tab =
   | 'overview' | 'biobuilder' | 'analytics' | 'content' | 'gallery'
   | 'messages' | 'broadcast' | 'audience' | 'branding'
-  | 'aichatbot' | 'settings' | 'support';
+  | 'aichatbot' | 'fanvue' | 'settings' | 'support';
 
 const TABS: { id: Tab; label: string; icon: string; badge?: string }[] = [
   { id: 'overview',   label: 'Dashboard',    icon: '🏠', badge: 'Active' },
@@ -33,6 +34,7 @@ const TABS: { id: Tab; label: string; icon: string; badge?: string }[] = [
   { id: 'audience',   label: 'Audience',     icon: '👥' },
   { id: 'branding',   label: 'Branding',     icon: '🔗' },
   { id: 'aichatbot',  label: 'AI Chatbot',   icon: '🤖' },
+  { id: 'fanvue',     label: 'Fanvue',       icon: '💚' },
   { id: 'settings',   label: 'Settings',     icon: '⚙' },
   { id: 'support',    label: 'Support',      icon: '?' },
 ];
@@ -53,7 +55,11 @@ const mkColors = (dark: boolean) => ({
 
 const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => void }) => {
   const [formData, setFormData]     = useState(config);
-  const [activeTab, setActiveTab]   = useState<Tab>('overview');
+  // Honor ?tab= (e.g. the Fanvue OAuth callback redirects to ?tab=fanvue).
+  const [activeTab, setActiveTab]   = useState<Tab>(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return (t as Tab) || 'overview';
+  });
   const [isDark, setIsDark] = useState(() => localStorage.getItem('adminTheme') !== 'light');
   // Mobile nav drawer — sidebar slides in from left on < 960px screens.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -2731,6 +2737,7 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
         {activeTab === 'audience'   && renderAudience()}
         {activeTab === 'branding'   && renderPlaceholder('Branding', 'Logo, colors, fonts, domain — make the site feel like you.')}
         {activeTab === 'aichatbot'  && <AdminAiChatbot isDark={isDark} />}
+        {activeTab === 'fanvue'     && <AdminFanvue />}
         {activeTab === 'settings'   && renderSettings()}
         {activeTab === 'support'    && renderPlaceholder('Support', 'Docs, FAQs, and a direct line to the team.')}
       </main>

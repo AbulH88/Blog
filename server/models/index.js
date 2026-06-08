@@ -286,6 +286,35 @@ const applyMigrations = async () => {
     console.warn('Creators.albums migration warn:', err.message);
   }
 
+  // Add Fanvue API integration columns. Idempotent.
+  try {
+    const dialect = sequelize.getDialect();
+    const cols = [
+      ['fanvueClientId',      'VARCHAR(255)',              'TEXT'],
+      ['fanvueClientSecret',  'VARCHAR(255)',              'TEXT'],
+      ['fanvueAccessToken',   'TEXT',                      'TEXT'],
+      ['fanvueRefreshToken',  'TEXT',                      'TEXT'],
+      ['fanvueTokenExpiresAt','TIMESTAMP WITH TIME ZONE',  'TEXT'],
+      ['fanvueScopes',        'VARCHAR(255)',              'TEXT'],
+      ['fanvueConnected',     'BOOLEAN DEFAULT false',     'INTEGER DEFAULT 0'],
+      ['fanvueUserUuid',      'VARCHAR(255)',              'TEXT'],
+      ['fanvueHandle',        'VARCHAR(255)',              'TEXT'],
+    ];
+    if (dialect === 'postgres') {
+      for (const [name, pgType] of cols) {
+        await sequelize.query(`ALTER TABLE "Creators" ADD COLUMN IF NOT EXISTS "${name}" ${pgType}`);
+      }
+    } else {
+      const [existing] = await sequelize.query("PRAGMA table_info(Creators)");
+      const names = new Set(existing.map(c => c.name));
+      for (const [name, , sqliteType] of cols) {
+        if (!names.has(name)) await sequelize.query(`ALTER TABLE Creators ADD COLUMN ${name} ${sqliteType}`);
+      }
+    }
+  } catch (err) {
+    console.warn('Creators.fanvue migration warn:', err.message);
+  }
+
   // Backfill: lift legacy flat heroImages / heroImagesMobile / galleryImages
   // into a single "Default" album per creator. Runs once — only when the
   // album field is empty AND the flat array has data. Existing albums are

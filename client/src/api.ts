@@ -902,3 +902,22 @@ export const login = async (password: string) => {
   });
   return res.json();
 };
+
+// ─── Fanvue integration (admin / creator-authed) ───────────────────────────
+const fvHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
+const fvGet  = (p: string) => fetch(`${API_URL}/fanvue${p}`, { headers: fvHeaders() }).then(r => r.json());
+const fvPost = (p: string, body?: any) =>
+  fetch(`${API_URL}/fanvue${p}`, { method: 'POST', headers: fvHeaders(), body: JSON.stringify(body || {}) }).then(r => r.json());
+
+export const fanvueStatus       = () => fvGet('/status');
+export const fanvueConnect      = () => fvGet('/connect');
+export const fanvueDisconnect   = () => fvPost('/disconnect');
+export const fanvueSaveCreds    = (b: { clientId?: string; clientSecret?: string; accessToken?: string; refreshToken?: string }) => fvPost('/credentials', b);
+export const fanvueAccount      = () => fvGet('/account');
+export const fanvueChats        = (q = '') => fvGet(`/chats${q}`);
+export const fanvueMessages     = (uuid: string, q = '') => fvGet(`/chats/${uuid}/messages${q}`);
+export const fanvueSendMessage  = (uuid: string, b: any) => fvPost(`/chats/${uuid}/messages`, b);
+export const fanvueEarningsSummary = () => fvGet('/earnings/summary');
+export const fanvueEarningsData = (q = '') => fvGet(`/earnings/data${q}`);
+export const fanvueSubscribers  = (q = '') => fvGet(`/subscribers${q}`);
+export const fanvueTopFans      = (q = '') => fvGet(`/fans/top-spending${q}`);

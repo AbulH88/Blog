@@ -54,6 +54,22 @@ const Creator = sequelize.define('Creator', {
   // Fanvue link — outbound CTA target for the "Join Premium" modal
   fanvueUrl: { type: DataTypes.STRING, allowNull: true },
 
+  // ─── Fanvue API integration (OAuth 2.0) ─────────────────────────────
+  // SERVER-ONLY. These must NEVER be returned in the public creator config
+  // (see creatorRoutes GET /:slug, which strips them) or shipped to clients.
+  // OAuth app credentials (client_secret_basic auth):
+  fanvueClientId:     { type: DataTypes.STRING, allowNull: true },
+  fanvueClientSecret: { type: DataTypes.STRING, allowNull: true },
+  // Tokens minted via the authorize/refresh flow (access ~1h, refresh long-lived):
+  fanvueAccessToken:  { type: DataTypes.TEXT, allowNull: true },
+  fanvueRefreshToken: { type: DataTypes.TEXT, allowNull: true },
+  fanvueTokenExpiresAt: { type: DataTypes.DATE, allowNull: true },
+  fanvueScopes:       { type: DataTypes.STRING, allowNull: true },
+  fanvueConnected:    { type: DataTypes.BOOLEAN, defaultValue: false },
+  // Cached display info from /current-user (avoids an extra call for status):
+  fanvueUserUuid:     { type: DataTypes.STRING, allowNull: true },
+  fanvueHandle:       { type: DataTypes.STRING, allowNull: true },
+
   // Discreet billing descriptor — shown on bank statements for every
   // charge. Max ~22 chars (Visa/MC limit). Must be neutral / brand-safe —
   // adult processors will reject anything revealing the nature of the

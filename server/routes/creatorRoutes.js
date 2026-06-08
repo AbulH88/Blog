@@ -22,7 +22,14 @@ router.get('/:slug', async (req, res) => {
     const data = await cache.getOrSet(`creator:public:${slug}`, 60, async () => {
       const creator = await Creator.findOne({ where: { slug } });
       if (!creator) return null;
-      const { passwordHash, email, ...publicData } = creator.toJSON();
+      // Omit secrets + Fanvue API tokens — these must never reach any client.
+      // (fanvueUrl is kept: it's the public funnel destination.)
+      const {
+        passwordHash, email,
+        fanvueClientId, fanvueClientSecret, fanvueAccessToken, fanvueRefreshToken,
+        fanvueTokenExpiresAt, fanvueScopes, fanvueConnected, fanvueUserUuid, fanvueHandle,
+        ...publicData
+      } = creator.toJSON();
       return publicData;
     });
     if (!data) return res.status(404).json({ error: 'Creator not found' });

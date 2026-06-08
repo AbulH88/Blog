@@ -76,6 +76,24 @@ async function getOrSet(key, ttlSec, compute) {
   return fresh;
 }
 
+/** Plain set with TTL (Redis in prod = cluster-safe across PM2 workers). */
+async function set(key, ttlSec, value) {
+  if (redis.isEnabled()) {
+    try { await redis.client.setex(key, ttlSec, JSON.stringify(value)); return; }
+    catch (err) { console.warn('[cache] set error:', err.message); }
+  }
+  setLocal(key, value, ttlSec);
+}
+
+/** Plain get — returns null on miss/expiry. */
+async function get(key) {
+  if (redis.isEnabled()) {
+    try { const c = await redis.client.get(key); return c ? JSON.parse(c) : null; }
+    catch (err) { console.warn('[cache] get error:', err.message); return null; }
+  }
+  return getLocal(key);
+}
+
 /** Invalidate a single key (e.g. after a write that affects cached data). */
 async function del(key) {
   if (redis.isEnabled()) {
@@ -106,4 +124,4 @@ async function delPattern(pattern) {
   }
 }
 
-module.exports = { getOrSet, del, delPattern };
+module.exports = { getOrSet, set, get, del, delPattern };
