@@ -905,19 +905,25 @@ export const login = async (password: string) => {
 
 // ─── Fanvue integration (admin / creator-authed) ───────────────────────────
 const fvHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
-const fvGet  = (p: string) => fetch(`${API_URL}/fanvue${p}`, { headers: fvHeaders() }).then(r => r.json());
-const fvPost = (p: string, body?: any) =>
-  fetch(`${API_URL}/fanvue${p}`, { method: 'POST', headers: fvHeaders(), body: JSON.stringify(body || {}) }).then(r => r.json());
+const fvRaw = (p: string, opts?: any) => fetch(`${API_URL}/fanvue${p}`, opts || { headers: fvHeaders() }).then(r => r.json());
 
-export const fanvueStatus       = () => fvGet('/status');
-export const fanvueConnect      = () => fvGet('/connect');
-export const fanvueDisconnect   = () => fvPost('/disconnect');
-export const fanvueSaveCreds    = (b: { clientId?: string; clientSecret?: string; accessToken?: string; refreshToken?: string }) => fvPost('/credentials', b);
-export const fanvueAccount      = () => fvGet('/account');
-export const fanvueChats        = (q = '') => fvGet(`/chats${q}`);
-export const fanvueMessages     = (uuid: string, q = '') => fvGet(`/chats/${uuid}/messages${q}`);
-export const fanvueSendMessage  = (uuid: string, b: any) => fvPost(`/chats/${uuid}/messages`, b);
-export const fanvueEarningsSummary = () => fvGet('/earnings/summary');
-export const fanvueEarningsData = (q = '') => fvGet(`/earnings/data${q}`);
-export const fanvueSubscribers  = (q = '') => fvGet(`/subscribers${q}`);
-export const fanvueTopFans      = (q = '') => fvGet(`/fans/top-spending${q}`);
+export const fanvueStatus     = () => fvRaw('/status');
+export const fanvueConnect    = () => fvRaw('/connect');
+export const fanvueDisconnect = () => fvRaw('/disconnect', { method: 'POST', headers: fvHeaders() });
+export const fanvueSaveCreds  = (b: { clientId?: string; clientSecret?: string; accessToken?: string; refreshToken?: string }) =>
+  fvRaw('/credentials', { method: 'POST', headers: fvHeaders(), body: JSON.stringify(b) });
+
+// Generic allow-listed proxy — pass the full Fanvue path (incl. query string).
+export const fanvueGet  = (path: string) => fvRaw(`/get?path=${encodeURIComponent(path)}`);
+export const fanvuePost = (path: string, body?: any) =>
+  fvRaw(`/post?path=${encodeURIComponent(path)}`, { method: 'POST', headers: fvHeaders(), body: JSON.stringify(body || {}) });
+
+// Named convenience wrappers used across the Fanvue admin module.
+export const fanvueAccount      = () => fanvueGet('/current-user/account');
+export const fanvueChats        = (q = '') => fanvueGet(`/chats${q}`);
+export const fanvueMessages     = (uuid: string, q = '') => fanvueGet(`/chats/${uuid}/messages${q}`);
+export const fanvueSendMessage  = (uuid: string, b: any) => fanvuePost(`/chats/${uuid}/messages`, b);
+export const fanvueEarningsSummary = () => fanvueGet('/earnings/summary');
+export const fanvueEarningsData = (q = '') => fanvueGet(`/earnings/data${q}`);
+export const fanvueSubscribers  = (q = '') => fanvueGet(`/subscribers${q}`);
+export const fanvueTopFans      = () => fanvueGet('/insights/top-spending-fans');

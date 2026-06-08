@@ -107,28 +107,62 @@ router.get('/status', loadCreator, (req, res) => {
   });
 });
 
-// ── Thin proxies over the Fanvue API (auto-refresh handled in the service) ──
-const proxy = (method, pathFn) => [loadCreator, async (req, res) => {
-  try {
-    const data = await fanvue.fanvueFetch(req.creator, method, pathFn(req), method === 'POST' ? req.body : undefined);
-    res.json(data);
-  } catch (err) {
-    if (/not connected|reconnect/i.test(err.message)) return res.status(409).json({ error: err.message, needsConnect: true });
-    res.status(err.status || 502).json({ error: err.message, detail: err.body });
+// ── Generic, allow-listed proxy over the Fanvue API ──────────────────────────
+// One pair of routes covers every creator-level resource. Hard limits:
+//   - only the creator's OWN account (their stored token)
+//   - only GET (read) + a tiny POST allow-list (send message / mass message)
+//   - only paths matching the allow-list below (no arbitrary host/path)
+// The client passes the full Fanvue path (incl. query) in ?path=.
+const GET_ALLOW = [
+  /^\/current-user(\/(account|unread-counts))?$/,
+  /^\/notifications$/,
+  /^\/posts$/,
+  /^\/posts\/[\w-]+$/,
+  /^\/posts\/[\w-]+\/(comments|likes|tips)$/,
+  /^\/chats$/,
+  /^\/chats\/[\w-]+\/(messages|media)$/,
+  /^\/vault\/folders$/,
+  /^\/vault\/folders\/[^/?]+(\/media)?$/,
+  /^\/(custom-lists|smart-lists)$/,
+  /^\/(custom-lists|smart-lists)\/[\w-]+\/members$/,
+  /^\/user\/media$/,
+  /^\/media\/[\w-]+$/,
+  /^\/tracking-links$/,
+  /^\/tracking-links\/[\w-]+\/users$/,
+  /^\/insights\/top-spending-fans$/,
+  /^\/insights\/fans\/[\w-]+$/,
+  /^\/earnings\/(summary|data|percentile|reversals)$/,
+  /^\/(subscribers|followers)$/,
+  /^\/content-collections$/,
+  /^\/(mass-messages|template-messages)$/,
+];
+const POST_ALLOW = [
+  /^\/chats\/[\w-]+\/messages$/,
+  /^\/mass-messages$/,
+];
+
+function handleErr(res, err) {
+  if (/not connected|reconnect/i.test(err.message)) return res.status(409).json({ error: err.message, needsConnect: true });
+  res.status(err.status || 502).json({ error: err.message, detail: err.body });
+}
+const pathOf = (full) => String(full || '').split('?')[0];
+
+router.get('/get', loadCreator, async (req, res) => {
+  const full = String(req.query.path || '');
+  if (!full.startsWith('/') || !GET_ALLOW.some(re => re.test(pathOf(full)))) {
+    return res.status(400).json({ error: `Path not allowed: ${pathOf(full)}` });
   }
-}];
+  try { res.json(await fanvue.fanvueFetch(req.creator, 'GET', full)); }
+  catch (err) { handleErr(res, err); }
+});
 
-const qs = (req) => { const s = new URLSearchParams(req.query).toString(); return s ? `?${s}` : ''; };
-
-router.get('/account',            ...proxy('GET',  (req) => `/current-user/account`));
-router.get('/me',                 ...proxy('GET',  (req) => `/current-user`));
-router.get('/chats',              ...proxy('GET',  (req) => `/chats${qs(req)}`));
-router.get('/chats/:uuid/messages', ...proxy('GET', (req) => `/chats/${req.params.uuid}/messages${qs(req)}`));
-router.post('/chats/:uuid/messages', ...proxy('POST', (req) => `/chats/${req.params.uuid}/messages`));
-router.get('/earnings/summary',   ...proxy('GET',  (req) => `/earnings/summary${qs(req)}`));
-router.get('/earnings/data',      ...proxy('GET',  (req) => `/earnings/data${qs(req)}`));
-router.get('/subscribers',        ...proxy('GET',  (req) => `/subscribers${qs(req)}`));
-router.get('/followers',          ...proxy('GET',  (req) => `/followers${qs(req)}`));
-router.get('/fans/top-spending',  ...proxy('GET',  (req) => `/fans/top-spending${qs(req)}`));
+router.post('/post', loadCreator, async (req, res) => {
+  const full = String(req.query.path || '');
+  if (!full.startsWith('/') || !POST_ALLOW.some(re => re.test(pathOf(full)))) {
+    return res.status(400).json({ error: `Path not allowed: ${pathOf(full)}` });
+  }
+  try { res.json(await fanvue.fanvueFetch(req.creator, 'POST', full, req.body)); }
+  catch (err) { handleErr(res, err); }
+});
 
 module.exports = router;
