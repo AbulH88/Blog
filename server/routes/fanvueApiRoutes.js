@@ -62,8 +62,10 @@ async function loadCreator(req, res, next) {
 router.post('/credentials', loadCreator, async (req, res) => {
   const { clientId, clientSecret, accessToken, refreshToken } = req.body || {};
   const patch = {};
-  if (clientId !== undefined) patch.fanvueClientId = clientId.trim() || null;
-  if (clientSecret !== undefined && clientSecret !== '') patch.fanvueClientSecret = clientSecret.trim();
+  // Only overwrite when a non-empty value is supplied — saving with blank
+  // fields must NOT wipe already-stored credentials.
+  if (clientId && clientId.trim()) patch.fanvueClientId = clientId.trim();
+  if (clientSecret && clientSecret.trim()) patch.fanvueClientSecret = clientSecret.trim();
   if (accessToken !== undefined && accessToken !== '') {
     patch.fanvueAccessToken = accessToken.trim();
     // Manual paste: assume ~1h validity unless a refresh token is also given.
