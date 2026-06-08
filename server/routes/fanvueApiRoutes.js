@@ -52,10 +52,14 @@ router.get('/callback', async (req, res) => {
 router.use(requireAuth, requireCreator);
 
 async function loadCreator(req, res, next) {
-  const creator = await Creator.findByPk(req.user.creatorId);
-  if (!creator) return res.status(404).json({ error: 'Creator not found' });
-  req.creator = creator;
-  next();
+  try {
+    const creator = await Creator.findByPk(req.user.creatorId);
+    if (!creator) return res.status(404).json({ error: 'Creator not found' });
+    req.creator = creator;
+    next();
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load creator', detail: err.message });
+  }
 }
 
 // Save OAuth client credentials and/or manually-pasted tokens.

@@ -905,7 +905,19 @@ export const login = async (password: string) => {
 
 // ─── Fanvue integration (admin / creator-authed) ───────────────────────────
 const fvHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
-const fvRaw = (p: string, opts?: any) => fetch(`${API_URL}/fanvue${p}`, opts || { headers: fvHeaders() }).then(r => r.json());
+// Always resolve to an object. If the server returns non-JSON (e.g. an nginx
+// 5xx HTML page), surface a structured error instead of throwing so the UI
+// can show what actually happened.
+const fvRaw = async (p: string, opts?: any) => {
+  try {
+    const res = await fetch(`${API_URL}/fanvue${p}`, opts || { headers: fvHeaders() });
+    const text = await res.text();
+    try { return text ? JSON.parse(text) : {}; }
+    catch { return { error: `Server returned HTTP ${res.status}`, detail: text.slice(0, 300) }; }
+  } catch (e: any) {
+    return { error: `Request failed: ${e?.message || 'network error'}` };
+  }
+};
 
 export const fanvueStatus     = () => fvRaw('/status');
 export const fanvueConnect    = () => fvRaw('/connect');

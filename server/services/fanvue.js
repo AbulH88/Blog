@@ -134,9 +134,11 @@ async function fanvueFetch(creator, method, path, body, _retry = false) {
     return fanvueFetch(creator, method, path, body, true);
   }
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text.slice(0, 500) }; }
   if (!res.ok) {
-    const err = new Error(`Fanvue ${method} ${path} → ${res.status}`);
+    const detail = (data && (data.error_description || data.message || data.error)) || '';
+    const err = new Error(`Fanvue ${method} ${path} → ${res.status}${detail ? ' · ' + detail : ''}`);
     err.status = res.status; err.body = data;
     throw err;
   }
