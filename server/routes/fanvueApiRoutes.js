@@ -108,11 +108,9 @@ router.get('/status', loadCreator, (req, res) => {
 });
 
 // ── Generic, allow-listed proxy over the Fanvue API ──────────────────────────
-// One pair of routes covers every creator-level resource. Hard limits:
-//   - only the creator's OWN account (their stored token)
-//   - only GET (read) + a tiny POST allow-list (send message / mass message)
-//   - only paths matching the allow-list below (no arbitrary host/path)
-// The client passes the full Fanvue path (incl. query) in ?path=.
+// Hard limits: only the creator's OWN account (their stored token), and only
+// paths matching the per-method allow-list below. Agency endpoints
+// (/agencies/*, /creators/{uuid}/*) are deliberately excluded everywhere.
 const GET_ALLOW = [
   /^\/current-user(\/(account|unread-counts))?$/,
   /^\/notifications$/,
@@ -126,19 +124,59 @@ const GET_ALLOW = [
   /^\/(custom-lists|smart-lists)$/,
   /^\/(custom-lists|smart-lists)\/[\w-]+\/members$/,
   /^\/user\/media$/,
-  /^\/media\/[\w-]+$/,
+  /^\/media\/bulk$/,
+  /^\/media\/[\w-]+(\/entitled)?$/,
+  /^\/media\/multipart-uploads\/[\w-]+\/signed-urls$/,
   /^\/tracking-links$/,
   /^\/tracking-links\/[\w-]+\/users$/,
+  /^\/tracking-metadata\/[\w-]+$/,
   /^\/insights\/top-spending-fans$/,
-  /^\/insights\/fans\/[\w-]+$/,
+  /^\/insights\/fans(\/[\w-]+|\/bulk)$/,
   /^\/earnings\/(summary|data|percentile|reversals)$/,
   /^\/(subscribers|followers)$/,
   /^\/content-collections$/,
   /^\/(mass-messages|template-messages)$/,
+  /^\/template-messages\/[\w-]+$/,
 ];
+// Writes (create / send / actions)
 const POST_ALLOW = [
+  /^\/posts$/,
+  /^\/posts\/[\w-]+\/(pin|repost|comments)$/,
+  /^\/chats$/,
   /^\/chats\/[\w-]+\/messages$/,
+  /^\/chats\/messages\/(bulk|media\/resolve)$/,
+  /^\/vault\/folders$/,
+  /^\/vault\/folders\/[^/?]+\/media$/,
+  /^\/custom-lists$/,
+  /^\/custom-lists\/[\w-]+\/members$/,
+  /^\/media\/multipart-uploads$/,
+  /^\/media\/multipart-uploads\/[\w-]+\/complete$/,
+  /^\/media\/[\w-]+\/grant-access$/,
+  /^\/tracking-links$/,
   /^\/mass-messages$/,
+  /^\/insights\/fans\/bulk$/,
+  /^\/content-collections$/,
+];
+const PATCH_ALLOW = [
+  /^\/posts\/[\w-]+$/,
+  /^\/chats\/[\w-]+$/,
+  /^\/vault\/folders\/[^/?]+$/,
+  /^\/custom-lists\/[\w-]+$/,
+  /^\/mass-messages\/[\w-]+$/,
+  /^\/content-collections\/[\w-]+$/,
+];
+const DELETE_ALLOW = [
+  /^\/posts\/[\w-]+$/,
+  /^\/posts\/[\w-]+\/pin$/,
+  /^\/posts\/[\w-]+\/comments\/[\w-]+$/,
+  /^\/chats\/[\w-]+\/messages\/[\w-]+$/,
+  /^\/vault\/folders\/[^/?]+$/,
+  /^\/vault\/folders\/[^/?]+\/media\/[\w-]+$/,
+  /^\/custom-lists\/[\w-]+$/,
+  /^\/custom-lists\/[\w-]+\/members\/[\w-]+$/,
+  /^\/tracking-links\/[\w-]+$/,
+  /^\/mass-messages\/[\w-]+$/,
+  /^\/content-collections\/[\w-]+$/,
 ];
 
 function handleErr(res, err) {
@@ -147,22 +185,24 @@ function handleErr(res, err) {
 }
 const pathOf = (full) => String(full || '').split('?')[0];
 
-router.get('/get', loadCreator, async (req, res) => {
-  const full = String(req.query.path || '');
-  if (!full.startsWith('/') || !GET_ALLOW.some(re => re.test(pathOf(full)))) {
-    return res.status(400).json({ error: `Path not allowed: ${pathOf(full)}` });
-  }
-  try { res.json(await fanvue.fanvueFetch(req.creator, 'GET', full)); }
-  catch (err) { handleErr(res, err); }
-});
+// Single handler factory: validates the path against the method's allow-list,
+// then forwards to Fanvue with the creator's token (auto-refresh in the service).
+function proxyHandler(method, allow) {
+  return [loadCreator, async (req, res) => {
+    const full = String(req.query.path || '');
+    if (!full.startsWith('/') || !allow.some(re => re.test(pathOf(full)))) {
+      return res.status(400).json({ error: `Path not allowed for ${method}: ${pathOf(full)}` });
+    }
+    try {
+      const body = (method === 'POST' || method === 'PATCH') ? req.body : undefined;
+      res.json(await fanvue.fanvueFetch(req.creator, method, full, body));
+    } catch (err) { handleErr(res, err); }
+  }];
+}
 
-router.post('/post', loadCreator, async (req, res) => {
-  const full = String(req.query.path || '');
-  if (!full.startsWith('/') || !POST_ALLOW.some(re => re.test(pathOf(full)))) {
-    return res.status(400).json({ error: `Path not allowed: ${pathOf(full)}` });
-  }
-  try { res.json(await fanvue.fanvueFetch(req.creator, 'POST', full, req.body)); }
-  catch (err) { handleErr(res, err); }
-});
+router.get('/get',       ...proxyHandler('GET', GET_ALLOW));
+router.post('/post',     ...proxyHandler('POST', POST_ALLOW));
+router.patch('/patch',   ...proxyHandler('PATCH', PATCH_ALLOW));
+router.delete('/delete', ...proxyHandler('DELETE', DELETE_ALLOW));
 
 module.exports = router;

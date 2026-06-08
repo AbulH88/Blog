@@ -917,6 +917,10 @@ export const fanvueSaveCreds  = (b: { clientId?: string; clientSecret?: string; 
 export const fanvueGet  = (path: string) => fvRaw(`/get?path=${encodeURIComponent(path)}`);
 export const fanvuePost = (path: string, body?: any) =>
   fvRaw(`/post?path=${encodeURIComponent(path)}`, { method: 'POST', headers: fvHeaders(), body: JSON.stringify(body || {}) });
+export const fanvuePatch = (path: string, body?: any) =>
+  fvRaw(`/patch?path=${encodeURIComponent(path)}`, { method: 'PATCH', headers: fvHeaders(), body: JSON.stringify(body || {}) });
+export const fanvueDelete = (path: string) =>
+  fvRaw(`/delete?path=${encodeURIComponent(path)}`, { method: 'DELETE', headers: fvHeaders() });
 
 // Named convenience wrappers used across the Fanvue admin module.
 export const fanvueAccount      = () => fanvueGet('/current-user/account');

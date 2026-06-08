@@ -4,16 +4,27 @@ import {
   fanvueStatus, fanvueConnect, fanvueDisconnect, fanvueSaveCreds,
   fanvueAccount, fanvueChats, fanvueMessages, fanvueSendMessage,
   fanvueEarningsSummary, fanvueEarningsData, fanvueSubscribers, fanvueTopFans,
-  fanvueGet,
+  fanvueGet, fanvuePost, fanvuePatch, fanvueDelete,
 } from '../api';
 
+// Run a write call, surface errors, then refresh. Keeps the write controls terse.
+async function run(p: Promise<any>, onDone?: () => void) {
+  const r = await p;
+  if (r && r.error) { alert('Fanvue error: ' + r.error); return false; }
+  onDone?.(); return true;
+}
+const ask = (label: string, def = '') => { const v = window.prompt(label, def); return v == null ? null : v.trim(); };
+const sure = (label: string) => window.confirm(label);
+const btn: React.CSSProperties = { fontSize: '0.72rem', padding: '6px 12px', border: '1px solid var(--v3-line)', borderRadius: 6, background: '#fff', cursor: 'pointer', fontFamily: 'inherit' };
+
 type Sub =
-  | 'overview' | 'chats' | 'posts' | 'subscribers' | 'earnings'
+  | 'overview' | 'chats' | 'posts' | 'subscribers' | 'earnings' | 'broadcast'
   | 'vault' | 'lists' | 'media' | 'tracking' | 'notifications' | 'connect';
 
 const SUBS: { id: Sub; label: string; icon: string }[] = [
   { id: 'overview',      label: 'Overview',      icon: '📊' },
   { id: 'chats',         label: 'Chats',         icon: '💬' },
+  { id: 'broadcast',     label: 'Broadcast',     icon: '📣' },
   { id: 'posts',         label: 'Posts',         icon: '📝' },
   { id: 'subscribers',   label: 'Fans',          icon: '👥' },
   { id: 'earnings',      label: 'Earnings',      icon: '💰' },
@@ -111,6 +122,7 @@ export default function AdminFanvue() {
           {sub === 'connect'       && <ConnectTab status={status} onChange={loadStatus} />}
           {sub === 'overview'      && gate(<OverviewTab />)}
           {sub === 'chats'         && gate(<ChatsTab />)}
+          {sub === 'broadcast'     && gate(<BroadcastTab />)}
           {sub === 'posts'         && gate(<PostsTab />)}
           {sub === 'subscribers'   && gate(<FansTab />)}
           {sub === 'earnings'      && gate(<EarningsTab />)}
@@ -269,20 +281,34 @@ function PostsTab() {
   const [posts, setPosts] = useState<any[] | undefined>(undefined);
   const [sel, setSel] = useState<any>(null);
   const [detail, setDetail] = useState<{ likes: any[]; tips: any[]; comments: any[] } | null>(null);
-  useEffect(() => { fanvueGet('/posts').then(d => setPosts(asArray(d))).catch(() => setPosts([])); }, []);
+  const loadPosts = () => fanvueGet('/posts').then(d => setPosts(asArray(d))).catch(() => setPosts([]));
+  useEffect(() => { loadPosts(); }, []);
+  const idOf = (p: any) => pick(p, 'uuid', 'id');
   const open = async (p: any) => {
-    setSel(p); setDetail(null);
-    const id = pick(p, 'uuid', 'id');
+    setSel(p); setDetail(null); const id = idOf(p);
     const [likes, tips, comments] = await Promise.all([
       fanvueGet(`/posts/${id}/likes`), fanvueGet(`/posts/${id}/tips`), fanvueGet(`/posts/${id}/comments`),
     ]);
     setDetail({ likes: asArray(likes), tips: asArray(tips), comments: asArray(comments) });
   };
+  const newPost = async () => {
+    const text = ask('Post caption / text:'); if (text == null) return;
+    const priceStr = ask('Price in USD (blank = free):', '');
+    const body: any = { text };
+    if (priceStr) body.price = Number(priceStr);
+    await run(fanvuePost('/posts', body), loadPosts);
+  };
+  const editPost = async (p: any) => { const t = ask('New caption:', pick(p, 'text', 'caption') || ''); if (t == null) return; await run(fanvuePatch(`/posts/${idOf(p)}`, { text: t }), () => { loadPosts(); setSel(null); }); };
+  const delPost = async (p: any) => { if (!sure('Delete this post?')) return; await run(fanvueDelete(`/posts/${idOf(p)}`), () => { loadPosts(); setSel(null); }); };
+  const pin = async (p: any) => { await run(fanvuePost(`/posts/${idOf(p)}/pin`, {}), loadPosts); };
+  const repost = async (p: any) => { await run(fanvuePost(`/posts/${idOf(p)}/repost`, {}), loadPosts); };
+  const addComment = async (p: any) => { const t = ask('Comment:'); if (!t) return; await run(fanvuePost(`/posts/${idOf(p)}/comments`, { text: t }), () => open(p)); };
+  const delComment = async (p: any, c: any) => { if (!sure('Delete comment?')) return; await run(fanvueDelete(`/posts/${idOf(p)}/comments/${pick(c, 'uuid', 'id')}`), () => open(p)); };
   if (posts === undefined) return <div className="v3-card">Loading posts…</div>;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
       <div className="v3-card" style={{ maxHeight: 560, overflowY: 'auto' }}>
-        <div className="v3-card-head"><h3>Posts</h3></div>
+        <div className="v3-card-head"><h3>Posts</h3><button style={btn} onClick={newPost}>+ New post</button></div>
         {posts.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>No posts.</p> : posts.map((p, i) => (
           <button key={i} onClick={() => open(p)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 8px', border: 'none', borderTop: i ? '1px solid var(--v3-line)' : 'none', background: sel === p ? 'var(--v3-cream-deep)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
             <div style={{ fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pick(p, 'text', 'caption', 'title') || '(no caption)'}</div>
@@ -291,12 +317,20 @@ function PostsTab() {
         ))}
       </div>
       <div className="v3-card">
-        {!sel ? <p style={{ color: 'var(--v3-muted)' }}>Select a post to see its likes, tips & comments.</p> :
+        {!sel ? <p style={{ color: 'var(--v3-muted)' }}>Select a post to see engagement & manage it.</p> :
           !detail ? 'Loading…' : (<>
-            <div className="v3-card-head"><h3>Engagement</h3></div>
+            <div className="v3-card-head"><h3>Manage post</h3></div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+              <button style={btn} onClick={() => editPost(sel)}>✏️ Edit</button>
+              <button style={btn} onClick={() => pin(sel)}>📌 Pin</button>
+              <button style={btn} onClick={() => repost(sel)}>🔁 Repost</button>
+              <button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => delPost(sel)}>🗑 Delete</button>
+            </div>
             <Section title={`❤ Likes (${detail.likes.length})`} rows={detail.likes} render={(l, i) => <Row key={i} main={nameOf(l)} />} />
             <Section title={`💝 Tips (${detail.tips.length})`} rows={detail.tips} render={(t, i) => <Row key={i} main={nameOf(t)} right={money(pick(t, 'amount', 'total', 'value'))} />} />
-            <Section title={`💬 Comments (${detail.comments.length})`} rows={detail.comments} render={(c, i) => <Row key={i} main={nameOf(c)} sub={pick(c, 'text', 'content', 'body')} />} />
+            <div className="v3-card-head" style={{ marginTop: 4 }}><h3 style={{ fontSize: '0.78rem' }}>💬 Comments ({detail.comments.length})</h3><button style={btn} onClick={() => addComment(sel)}>+ Comment</button></div>
+            {detail.comments.length === 0 ? <p style={{ color: 'var(--v3-muted)', fontSize: '0.82rem' }}>None.</p> :
+              detail.comments.slice(0, 30).map((c, i) => <Row key={i} main={nameOf(c)} sub={pick(c, 'text', 'content', 'body')} right="✕" onClick={() => delComment(sel, c)} />)}
           </>)}
       </div>
     </div>
@@ -372,21 +406,25 @@ function VaultTab() {
   const [folders, setFolders] = useState<any[] | undefined>(undefined);
   const [sel, setSel] = useState<any>(null);
   const [media, setMedia] = useState<any[]>([]);
-  useEffect(() => { fanvueGet('/vault/folders').then(d => setFolders(asArray(d))).catch(() => setFolders([])); }, []);
-  const open = async (f: any) => {
-    setSel(f); const name = pick(f, 'name', 'folderName', 'id');
-    setMedia(asArray(await fanvueGet(`/vault/folders/${encodeURIComponent(name)}/media`)));
-  };
+  const load = () => fanvueGet('/vault/folders').then(d => setFolders(asArray(d))).catch(() => setFolders([]));
+  useEffect(() => { load(); }, []);
+  const nameOfF = (f: any) => pick(f, 'name', 'folderName', 'id');
+  const open = async (f: any) => { setSel(f); setMedia(asArray(await fanvueGet(`/vault/folders/${encodeURIComponent(nameOfF(f))}/media`))); };
+  const create = async () => { const n = ask('Folder name:'); if (!n) return; await run(fanvuePost('/vault/folders', { name: n }), load); };
+  const rename = async (f: any) => { const n = ask('Rename folder:', nameOfF(f)); if (!n) return; await run(fanvuePatch(`/vault/folders/${encodeURIComponent(nameOfF(f))}`, { name: n }), () => { load(); setSel(null); }); };
+  const del = async (f: any) => { if (!sure('Delete folder? (media is kept)')) return; await run(fanvueDelete(`/vault/folders/${encodeURIComponent(nameOfF(f))}`), () => { load(); setSel(null); }); };
   if (folders === undefined) return <div className="v3-card">Loading vault…</div>;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14 }}>
       <div className="v3-card">
-        <div className="v3-card-head"><h3>Folders</h3></div>
+        <div className="v3-card-head"><h3>Folders</h3><button style={btn} onClick={create}>+ Folder</button></div>
         {folders.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>No folders.</p> :
           folders.map((f, i) => <Row key={i} onClick={() => open(f)} active={sel === f} main={pick(f, 'name', 'folderName') || 'Folder'} right={String(pick(f, 'mediaCount', 'count') ?? '')} />)}
       </div>
       <div className="v3-card">
-        <div className="v3-card-head"><h3>{sel ? pick(sel, 'name', 'folderName') : 'Media'}</h3></div>
+        <div className="v3-card-head"><h3>{sel ? nameOfF(sel) : 'Media'}</h3>
+          {sel && <span style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => rename(sel)}>Rename</button><button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(sel)}>Delete</button></span>}
+        </div>
         {!sel ? <p style={{ color: 'var(--v3-muted)' }}>Pick a folder.</p> : <MediaGrid items={media} />}
       </div>
     </div>
@@ -398,19 +436,37 @@ function ListsTab() {
   const [custom, setCustom] = useState<any[]>([]);
   const [smart, setSmart] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
-  useEffect(() => { (async () => {
+  const load = async () => {
     setCustom(asArray(await fanvueGet('/custom-lists').catch(() => null)));
     setSmart(asArray(await fanvueGet('/smart-lists').catch(() => null)));
     setLoaded(true);
-  })(); }, []);
+  };
+  useEffect(() => { load(); }, []);
+  const idOf = (l: any) => pick(l, 'uuid', 'id');
+  const create = async () => { const n = ask('New list name:'); if (!n) return; await run(fanvuePost('/custom-lists', { name: n }), load); };
+  const rename = async (l: any) => { const n = ask('Rename list:', pick(l, 'name', 'title') || ''); if (!n) return; await run(fanvuePatch(`/custom-lists/${idOf(l)}`, { name: n }), load); };
+  const del = async (l: any) => { if (!sure('Delete this list?')) return; await run(fanvueDelete(`/custom-lists/${idOf(l)}`), load); };
   if (!loaded) return <div className="v3-card">Loading lists…</div>;
-  const Card = ({ title, list }: { title: string; list: any[] }) => (
-    <div className="v3-card"><div className="v3-card-head"><h3>{title} ({list.length})</h3></div>
-      {list.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>None.</p> :
-        list.map((l, i) => <Row key={i} main={pick(l, 'name', 'title') || 'List'} right={String(pick(l, 'memberCount', 'members', 'count') ?? '')} />)}
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="v3-card">
+        <div className="v3-card-head"><h3>Custom lists ({custom.length})</h3><button style={btn} onClick={create}>+ List</button></div>
+        {custom.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>None.</p> :
+          custom.map((l, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--v3-line)', padding: '8px 4px' }}>
+              <span style={{ flex: 1 }}>{pick(l, 'name', 'title') || 'List'} <span style={{ color: 'var(--v3-muted)' }}>· {pick(l, 'memberCount', 'members', 'count') ?? 0}</span></span>
+              <button style={btn} onClick={() => rename(l)}>Rename</button>
+              <button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(l)}>Delete</button>
+            </div>
+          ))}
+      </div>
+      <div className="v3-card"><div className="v3-card-head"><h3>Smart lists ({smart.length})</h3></div>
+        {smart.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>None.</p> :
+          smart.map((l, i) => <Row key={i} main={pick(l, 'name', 'title') || 'List'} right={String(pick(l, 'memberCount', 'members', 'count') ?? '')} />)}
+        <p style={{ fontSize: '0.74rem', color: 'var(--v3-muted)', marginTop: 8 }}>Smart lists are auto-managed by Fanvue (read-only).</p>
+      </div>
     </div>
   );
-  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}><Card title="Custom lists" list={custom} /><Card title="Smart lists" list={smart} /></div>;
 }
 
 // ─── Media library ──────────────────────────────────────────────────────────
@@ -425,15 +481,61 @@ function MediaTab() {
 // ─── Tracking links ─────────────────────────────────────────────────────────
 function TrackingTab() {
   const [d, setD] = useState<any>(undefined);
-  useEffect(() => { fanvueGet('/tracking-links').then(setD).catch(() => setD(null)); }, []);
+  const load = () => fanvueGet('/tracking-links').then(setD).catch(() => setD(null));
+  useEffect(() => { load(); }, []);
+  const create = async () => { const n = ask('Tracking link name:'); if (!n) return; await run(fanvuePost('/tracking-links', { name: n }), load); };
+  const del = async (r: any) => { if (!sure('Delete this tracking link?')) return; await run(fanvueDelete(`/tracking-links/${pick(r, 'uuid', 'id')}`), load); };
   if (d === undefined) return <div className="v3-card">Loading tracking links…</div>;
   if (d?.error) return <ErrCard d={d} />;
   const rows = asArray(d);
-  return <div className="v3-card"><div className="v3-card-head"><h3>Tracking links</h3></div>
+  return <div className="v3-card">
+    <div className="v3-card-head"><h3>Tracking links</h3><button style={btn} onClick={create}>+ New link</button></div>
     {rows.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>None.</p> :
-      rows.map((r, i) => <Row key={i} main={pick(r, 'name', 'label', 'slug', 'url') || 'Link'} sub={pick(r, 'url', 'shortUrl')} right={String(pick(r, 'clicks', 'impressions', 'userCount') ?? '')} />)}
+      rows.map((r, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--v3-line)', padding: '8px 4px' }}>
+          <span style={{ flex: 1, minWidth: 0 }}><b>{pick(r, 'name', 'label', 'slug') || 'Link'}</b><span style={{ display: 'block', fontSize: '0.76rem', color: 'var(--v3-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pick(r, 'url', 'shortUrl') || ''}</span></span>
+          <span style={{ color: 'var(--v3-muted)', fontSize: '0.78rem' }}>{pick(r, 'clicks', 'impressions', 'userCount') ?? 0}</span>
+          <button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(r)}>Delete</button>
+        </div>
+      ))}
     <RawPeek d={d} />
   </div>;
+}
+
+// ─── Broadcast (mass messages) ──────────────────────────────────────────────
+function BroadcastTab() {
+  const [text, setText] = useState('');
+  const [sent, setSent] = useState<any[] | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const load = () => fanvueGet('/mass-messages').then(d => setSent(asArray(d))).catch(() => setSent([]));
+  useEffect(() => { load(); }, []);
+  const send = async () => {
+    if (!text.trim()) return; setBusy(true);
+    const ok = await run(fanvuePost('/mass-messages', { text }), () => { setText(''); load(); });
+    setBusy(false); if (ok) alert('Broadcast sent.');
+  };
+  const del = async (m: any) => { if (!sure('Unsend / delete this broadcast?')) return; await run(fanvueDelete(`/mass-messages/${pick(m, 'uuid', 'id')}`), load); };
+  return (
+    <div style={{ display: 'grid', gap: 14, maxWidth: 720 }}>
+      <div className="v3-card">
+        <div className="v3-card-head"><h3>New broadcast</h3></div>
+        <p style={{ fontSize: '0.82rem', color: 'var(--v3-muted)', marginTop: 0 }}>Sends a mass message to your audience on Fanvue.</p>
+        <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Write your broadcast…" rows={4}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--v3-line)', fontFamily: 'inherit', fontSize: '0.9rem', resize: 'vertical' }} />
+        <button className="v3-btn v3-btn-primary" style={{ marginTop: 10 }} disabled={busy || !text.trim()} onClick={send}>Send broadcast</button>
+      </div>
+      <div className="v3-card">
+        <div className="v3-card-head"><h3>Sent broadcasts</h3></div>
+        {sent === undefined ? 'Loading…' : sent.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>None yet.</p> :
+          sent.map((m, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--v3-line)', padding: '8px 4px' }}>
+              <span style={{ flex: 1, minWidth: 0 }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{pick(m, 'text', 'content', 'message') || '(media)'}</span><span style={{ fontSize: '0.74rem', color: 'var(--v3-muted)' }}>{dateOf(pick(m, 'createdAt', 'sentAt', 'scheduledAt'))}</span></span>
+              <button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(m)}>Delete</button>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
 }
 
 // ─── Notifications ──────────────────────────────────────────────────────────
