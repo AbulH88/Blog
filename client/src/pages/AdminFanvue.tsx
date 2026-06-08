@@ -425,73 +425,98 @@ function EarningsTab() {
 }
 
 // ─── Vault (folders → media) ────────────────────────────────────────────────
+
+/** Map a browser File's MIME type to Fanvue's mediaType enum. */
+function detectFanvueMediaType(file: File): 'image' | 'video' | 'audio' | 'document' {
+  const t = String(file.type || '').toLowerCase();
+  if (t.startsWith('image/')) return 'image';
+  if (t.startsWith('video/')) return 'video';
+  if (t.startsWith('audio/')) return 'audio';
+  return 'document';
+}
+
 /**
  * Upload a single file to a Fanvue vault folder via the documented multipart
- * flow: POST /media/uploads (session) → GET signed URLs per part → PUT parts
- * directly to S3 → PATCH /media/uploads/:id (complete) → POST attach.
+ * flow. Field names match Fanvue's API reference verbatim:
  *
- * Field names in the create-session response are read defensively (uploadId
- * vs id, mediaUuid vs uuid, etc.) because Fanvue's docs don't publish the
- * exact response schema. If a name is wrong we throw with the full payload
- * so it's obvious what to rename in code.
+ *   1. POST   /media/uploads
+ *      body:     { name, filename, mediaType }      (all required)
+ *      returns:  { uploadId, mediaUuid }
+ *
+ *   2. GET    /media/uploads/{uploadId}/parts/{n}/url
+ *      returns:  plain-text signed S3 URL (NOT JSON — comes back as
+ *                {raw: "https://..."} via our proxy's text-fallback path)
+ *
+ *   3. PUT    signed S3 URL with file chunk
+ *      returns:  ETag in response header
+ *
+ *   4. PATCH  /media/uploads/{uploadId}
+ *      body:     { parts: [{ PartNumber, ETag }] }  (PascalCase! S3 convention)
+ *
+ *   5. POST   /vault/folders/{folderName}/media
+ *      body:     { mediaUuids: [mediaUuid] }
+ *
+ * For now we send the whole file as a single S3 part (partNumber=1). This
+ * works for any size up to S3's 5GB per-part limit which covers all
+ * realistic creator-side images and most videos. Multi-part chunking can
+ * be added later by reading partSize/partCount from the create response
+ * IF Fanvue ever returns them.
  */
 async function uploadFileToVault(
   file: File,
   folderName: string,
   onProgress?: (pct: number) => void,
 ): Promise<{ mediaUuid: string }> {
-  // 1. CREATE multipart upload session
+  // 1. CREATE multipart upload session — verified schema (name, filename, mediaType)
   const session = await fanvuePost('/media/uploads', {
-    fileName: file.name,
-    contentType: file.type || 'application/octet-stream',
-    fileSize: file.size,
+    name: file.name,
+    filename: file.name,
+    mediaType: detectFanvueMediaType(file),
   });
-  if (session?.error) throw new Error('Create session failed: ' + session.error);
-
-  // Read response fields defensively — Fanvue may return slightly different
-  // field names. If something's missing we throw with the raw payload so the
-  // next iteration can fix the name.
-  const uploadId = pick(session, 'uploadId', 'id', 'uuid', 'sessionId');
-  const mediaUuid = pick(session, 'mediaUuid', 'mediaId', 'uuid')
-    ?? pick(session.media || {}, 'uuid', 'id', 'mediaUuid');
-  const partSize = Number(pick(session, 'partSize', 'chunkSize') || file.size);
-  const partCount = Number(pick(session, 'partCount', 'parts', 'totalParts') || 1);
-
+  if (session?.error) {
+    throw new Error('Create session failed: ' + session.error
+      + (session.detail ? ' · ' + JSON.stringify(session.detail) : ''));
+  }
+  const uploadId = pick(session, 'uploadId', 'id');
+  const mediaUuid = pick(session, 'mediaUuid', 'uuid');
   if (!uploadId || !mediaUuid) {
-    throw new Error('Fanvue create response missing uploadId/mediaUuid. Raw: ' + JSON.stringify(session));
+    throw new Error('Create response missing uploadId/mediaUuid. Raw: ' + JSON.stringify(session));
   }
 
-  // 2. UPLOAD each part to S3 via signed URLs
-  const parts: Array<{ partNumber: number; eTag: string }> = [];
-  for (let n = 1; n <= partCount; n++) {
-    const start = (n - 1) * partSize;
-    const end = Math.min(start + partSize, file.size);
-    const chunk = file.slice(start, end);
-
-    const urlRes = await fanvueGet(`/media/uploads/${uploadId}/parts/${n}/url`);
-    if (urlRes?.error) throw new Error(`Signed URL part ${n} failed: ${urlRes.error}`);
-    const signedUrl: string = typeof urlRes === 'string'
-      ? urlRes
-      : pick(urlRes, 'url', 'signedUrl', 'uploadUrl') || '';
-    if (!signedUrl) throw new Error(`Signed URL part ${n} missing. Raw: ${JSON.stringify(urlRes)}`);
-
-    // Direct S3 PUT (no proxy through our backend — signed URL is the auth).
-    const putRes = await fetch(signedUrl, { method: 'PUT', body: chunk });
-    if (!putRes.ok) throw new Error(`S3 part ${n} PUT failed: HTTP ${putRes.status}`);
-    const eTag = (putRes.headers.get('ETag') || '').replace(/^"|"$/g, '');
-    if (!eTag) throw new Error(`S3 part ${n} missing ETag — likely CORS blocking ETag exposure`);
-    parts.push({ partNumber: n, eTag });
-
-    onProgress?.(Math.floor((n / partCount) * 80)); // 80% on upload, 20% on finalize
+  // 2. GET signed URL for part 1 — Fanvue returns plain text. Our proxy
+  //    couldn't JSON-parse it so it gets wrapped as { raw: "https://..." }.
+  onProgress?.(10);
+  const urlRes = await fanvueGet(`/media/uploads/${uploadId}/parts/1/url`);
+  if (urlRes?.error) throw new Error('Signed URL failed: ' + urlRes.error);
+  const signedUrl: string =
+    typeof urlRes === 'string' ? urlRes
+    : (pick(urlRes, 'url', 'signedUrl', 'uploadUrl', 'raw') || '');
+  if (!signedUrl.startsWith('http')) {
+    throw new Error('Signed URL not a URL. Raw: ' + JSON.stringify(urlRes));
   }
 
-  // 3. COMPLETE the multipart upload (PATCH, NOT POST /complete)
-  onProgress?.(85);
-  const completeRes = await fanvuePatch(`/media/uploads/${uploadId}`, { parts });
+  // 3. PUT chunk directly to S3
+  onProgress?.(25);
+  const putRes = await fetch(signedUrl, { method: 'PUT', body: file });
+  if (!putRes.ok) throw new Error(`S3 PUT failed: HTTP ${putRes.status}`);
+  const eTag = (putRes.headers.get('ETag') || '').replace(/^"|"$/g, '');
+  if (!eTag) {
+    // If CORS blocks ETag header exposure, we can still proceed (Fanvue may
+    // accept completion without ETag verification — docs say ETag is
+    // "optional but recommended"). Send empty string as a fallback.
+    onProgress?.(70);
+  } else {
+    onProgress?.(70);
+  }
+
+  // 4. PATCH complete — PascalCase {PartNumber, ETag}, not camelCase!
+  const completeRes = await fanvuePatch(`/media/uploads/${uploadId}`, {
+    parts: [{ PartNumber: 1, ETag: eTag || undefined }],
+  });
   if (completeRes?.error) throw new Error('Complete failed: ' + completeRes.error);
 
-  // 4. ATTACH the new media uuid to the vault folder
-  onProgress?.(95);
+  // 5. ATTACH media uuid → vault folder
+  onProgress?.(90);
   const attachRes = await fanvuePost(
     `/vault/folders/${encodeURIComponent(folderName)}/media`,
     { mediaUuids: [mediaUuid] },
@@ -508,8 +533,9 @@ function VaultTab() {
   const [media, setMedia] = useState<any[]>([]);
   // Upload UI state
   const [uploadBusy, setUploadBusy] = useState(false);
-  const [uploadPct, setUploadPct] = useState(0);
-  const [uploadErr, setUploadErr] = useState<string>('');
+  const [queueProgress, setQueueProgress] = useState({ done: 0, total: 0, pct: 0 });
+  const [uploadErrors, setUploadErrors] = useState<Array<{ name: string; err: string }>>([]);
+  const [dragOver, setDragOver] = useState(false);
 
   const load = () => fanvueGet('/vault/folders').then(d => setFolders(asArray(d))).catch(() => setFolders([]));
   useEffect(() => { load(); }, []);
@@ -517,27 +543,68 @@ function VaultTab() {
   const loadMedia = async (folder: any) => {
     setMedia(asArray(await fanvueGet(`/vault/folders/${encodeURIComponent(nameOfF(folder))}/media`)));
   };
-  const open = async (f: any) => { setSel(f); setUploadErr(''); await loadMedia(f); };
+  const open = async (f: any) => { setSel(f); setUploadErrors([]); await loadMedia(f); };
   const create = async () => { const n = ask('Folder name:'); if (!n) return; await run(fanvuePost('/vault/folders', { name: n }), load); };
   const rename = async (f: any) => { const n = ask('Rename folder:', nameOfF(f)); if (!n) return; await run(fanvuePatch(`/vault/folders/${encodeURIComponent(nameOfF(f))}`, { name: n }), () => { load(); setSel(null); }); };
   const del = async (f: any) => { if (!sure('Delete folder? (media is kept)')) return; await run(fanvueDelete(`/vault/folders/${encodeURIComponent(nameOfF(f))}`), () => { load(); setSel(null); }); };
 
-  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // reset so picking the same file again re-fires
-    if (!file || !sel) return;
-    setUploadBusy(true); setUploadPct(0); setUploadErr('');
-    try {
-      await uploadFileToVault(file, nameOfF(sel), setUploadPct);
-      await loadMedia(sel); // refresh grid
-    } catch (err: any) {
-      setUploadErr(err?.message || 'Upload failed');
-    } finally {
-      setUploadBusy(false);
+  /** Upload one or more files sequentially. Used by both the file picker
+   *  and the drop zone. Errors per-file are accumulated; the loop continues
+   *  past failed files so a single bad image doesn't kill a batch upload. */
+  const uploadFiles = async (files: File[]) => {
+    if (!sel || files.length === 0) return;
+    setUploadBusy(true);
+    setUploadErrors([]);
+    const errs: Array<{ name: string; err: string }> = [];
+    const total = files.length;
+    for (let i = 0; i < total; i++) {
+      const f = files[i];
+      const indexStart = (i / total) * 100;
+      const indexShare = 100 / total;
+      try {
+        await uploadFileToVault(f, nameOfF(sel), (pct) => {
+          setQueueProgress({ done: i, total, pct: Math.floor(indexStart + (pct * indexShare) / 100) });
+        });
+      } catch (err: any) {
+        errs.push({ name: f.name, err: err?.message || 'Upload failed' });
+      }
     }
+    setQueueProgress({ done: total, total, pct: 100 });
+    await loadMedia(sel); // single refresh after the whole batch
+    setUploadErrors(errs);
+    setUploadBusy(false);
+  };
+
+  const onPickFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = Array.from(e.target.files || []);
+    e.target.value = ''; // reset so picking the same file(s) again re-fires
+    await uploadFiles(list);
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (!sel || uploadBusy) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setDragOver(true);
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (!sel || uploadBusy) return;
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length) await uploadFiles(files);
   };
 
   if (folders === undefined) return <div className="v3-card">Loading vault…</div>;
+
+  const progressLabel = queueProgress.total > 1
+    ? `Uploading ${queueProgress.done + 1}/${queueProgress.total}… ${queueProgress.pct}%`
+    : `Uploading ${queueProgress.pct}%…`;
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14 }}>
       <div className="v3-card">
@@ -545,11 +612,23 @@ function VaultTab() {
         {folders.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>No folders.</p> :
           folders.map((f, i) => <Row key={i} onClick={() => open(f)} active={sel === f} main={pick(f, 'name', 'folderName') || 'Folder'} right={String(pick(f, 'mediaCount', 'count') ?? '')} />)}
       </div>
-      <div className="v3-card">
+      <div
+        className="v3-card"
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        style={{
+          position: 'relative',
+          outline: dragOver ? '2px dashed var(--v3-terracotta, #C75A3E)' : 'none',
+          outlineOffset: -6,
+          transition: 'outline-color 0.15s',
+        }}
+      >
         <div className="v3-card-head"><h3>{sel ? nameOfF(sel) : 'Media'}</h3>
           {sel && (
             <span style={{ display: 'flex', gap: 6 }}>
-              {/* Upload button — hidden <input> triggered by the styled button label */}
+              {/* Upload button — accepts multiple files. Hidden <input>
+                  triggered by the styled label. */}
               <label style={{
                 ...btn,
                 background: uploadBusy ? '#e8e3d8' : 'var(--v3-terracotta, #C75A3E)',
@@ -557,26 +636,51 @@ function VaultTab() {
                 borderColor: 'transparent',
                 cursor: uploadBusy ? 'wait' : 'pointer',
               }}>
-                {uploadBusy ? `Uploading ${uploadPct}%…` : '+ Upload'}
-                <input type="file" accept="image/*,video/*" disabled={uploadBusy} onChange={onPickFile} style={{ display: 'none' }} />
+                {uploadBusy ? progressLabel : '+ Upload'}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,video/*,audio/*"
+                  disabled={uploadBusy}
+                  onChange={onPickFiles}
+                  style={{ display: 'none' }}
+                />
               </label>
               <button style={btn} onClick={() => rename(sel)} disabled={uploadBusy}>Rename</button>
               <button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(sel)} disabled={uploadBusy}>Delete</button>
             </span>
           )}
         </div>
-        {/* Inline progress bar while uploading */}
+
+        {/* Inline progress bar */}
         {uploadBusy && (
           <div style={{ height: 6, background: 'var(--v3-cream-deep)', borderRadius: 999, overflow: 'hidden', margin: '0 0 10px' }}>
-            <div style={{ height: '100%', width: `${uploadPct}%`, background: 'var(--v3-terracotta, #C75A3E)', transition: 'width 0.2s' }} />
+            <div style={{ height: '100%', width: `${queueProgress.pct}%`, background: 'var(--v3-terracotta, #C75A3E)', transition: 'width 0.2s' }} />
           </div>
         )}
-        {uploadErr && (
+
+        {/* Per-file errors after a batch */}
+        {uploadErrors.length > 0 && (
           <div style={{
             padding: '10px 12px', background: 'rgba(220,38,38,0.10)', color: 'var(--v3-danger)',
             borderRadius: 8, fontSize: '0.82rem', marginBottom: 10, wordBreak: 'break-word',
-          }}>⚠️ {uploadErr}</div>
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>
+              ⚠️ {uploadErrors.length} of the upload{uploadErrors.length === 1 ? '' : 's'} failed:
+            </div>
+            {uploadErrors.map((e, i) => (
+              <div key={i} style={{ marginTop: 4 }}><b>{e.name}</b>: {e.err}</div>
+            ))}
+          </div>
         )}
+
+        {/* Drop-zone hint when a folder is selected + not currently uploading */}
+        {sel && !uploadBusy && media.length === 0 && (
+          <p style={{ color: dragOver ? 'var(--v3-terracotta, #C75A3E)' : 'var(--v3-muted)', fontSize: '0.86rem', marginTop: 8 }}>
+            {dragOver ? '⬇ Drop to upload' : 'Drag & drop files here, or click + Upload above. Multiple files supported.'}
+          </p>
+        )}
+
         {!sel ? <p style={{ color: 'var(--v3-muted)' }}>Pick a folder.</p> : <MediaGrid items={media} />}
       </div>
     </div>
