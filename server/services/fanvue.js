@@ -15,47 +15,26 @@ const cache = require('./cache');
 const AUTH_BASE = 'https://auth.fanvue.com';
 const API_BASE = 'https://api.fanvue.com';
 const API_VERSION = '2025-06-26';
-// Full scope list matching every resource exposed by the admin's allow-listed
-// proxy (see fanvueApiRoutes.js GET_/POST_/PATCH_/DELETE_ALLOW). Each resource
-// gets the read + write scope it actually needs. Adding new admin tabs?
-// Add the matching scope here AND have the creator re-OAuth.
+// Minimal scope set: the original 4 known-working scopes + vault read/write
+// (needed for the admin "Vault" tab — folder/media CRUD).
 //
-// If Fanvue rejects an unknown scope name during authorize, drop it and reconnect.
+// Why so small: Fanvue rejects the ENTIRE authorize request if even one scope
+// name isn't recognised (the consent screen flashes "Authorization was
+// cancelled" and bails). So we only request what we've verified.
+//
+// To add more scopes (for posts/broadcasts/earnings/etc), add them ONE AT A
+// TIME and have the creator reconnect. If reconnect succeeds → keep it. If
+// "Authorization was cancelled" → that name is wrong, drop it.
 const SCOPES = [
-  // Required for OAuth + token refresh
   'openid',
   'offline_access',
   'offline',
-  // Profile / account / notifications
   'read:self',
-  'read:notification',
-  // Chats + DM send
   'read:chat',
   'write:chat',
-  // Fans / subscribers / lists
   'read:fan',
-  'read:list',
-  'write:list',
-  // Posts + comments
-  'read:post',
-  'write:post',
-  // Vault folders + media (THIS is what fixes the "Insufficient scopes" error)
-  'read:vault',
-  'write:vault',
-  'read:media',
-  'write:media',
-  // Mass messages / broadcasts / templates
-  'read:broadcast',
-  'write:broadcast',
-  // Tracking links
-  'read:tracking',
-  'write:tracking',
-  // Earnings + insights
-  'read:earnings',
-  'read:insight',
-  // Content collections
-  'read:collection',
-  'write:collection',
+  'read:vault',   // ← NEW: for vault folder + media listing
+  'write:vault',  // ← NEW: for "+ Folder" / upload (was 403 "Insufficient scopes")
 ].join(' ');
 const PKCE_TTL = 600; // 10 min
 
