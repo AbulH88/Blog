@@ -15,26 +15,40 @@ const cache = require('./cache');
 const AUTH_BASE = 'https://auth.fanvue.com';
 const API_BASE = 'https://api.fanvue.com';
 const API_VERSION = '2025-06-26';
-// Minimal scope set: the original 4 known-working scopes + vault read/write
-// (needed for the admin "Vault" tab — folder/media CRUD).
+// Fanvue OAuth scope set — every name verified against the official docs
+// at https://api.fanvue.com/docs/authentication/scopes
 //
-// Why so small: Fanvue rejects the ENTIRE authorize request if even one scope
-// name isn't recognised (the consent screen flashes "Authorization was
-// cancelled" and bails). So we only request what we've verified.
+// Critical: Fanvue rejects the ENTIRE authorize request if ANY scope name is
+// unknown (the consent screen flashes "Authorization was cancelled" and the
+// flow dies). Earlier attempts that included guessed names (read:vault,
+// read:notification, read:broadcast, read:collection, read:list, etc.)
+// all failed for this reason — none of those exist.
 //
-// To add more scopes (for posts/broadcasts/earnings/etc), add them ONE AT A
-// TIME and have the creator reconnect. If reconnect succeeds → keep it. If
-// "Authorization was cancelled" → that name is wrong, drop it.
+// VAULT FOLDER NOTE: Fanvue's docs explicitly state write:media is
+// "required for vault folder management" — there is no separate vault scope.
 const SCOPES = [
+  // System (OAuth + token refresh)
   'openid',
   'offline_access',
   'offline',
+  // Own account
   'read:self',
+  // Chats + DM send (broadcasts/mass-messages also use write:chat)
   'read:chat',
   'write:chat',
+  // Fans / subscribers / custom-lists / smart-lists
   'read:fan',
-  'read:vault',   // ← NEW: for vault folder + media listing
-  'write:vault',  // ← NEW: for "+ Folder" / upload (was 403 "Insufficient scopes")
+  // Media + vault folders (write:media is THE scope for vault folder create)
+  'read:media',
+  'write:media',
+  // Posts + comments + likes + tips
+  'read:post',
+  'write:post',
+  // Earnings, analytics, top-spending-fans
+  'read:insights',
+  // Tracking links (underscore, not hyphen)
+  'read:tracking_links',
+  'write:tracking_links',
 ].join(' ');
 const PKCE_TTL = 600; // 10 min
 
