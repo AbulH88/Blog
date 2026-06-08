@@ -69,6 +69,10 @@ const Creator = sequelize.define('Creator', {
   // Cached display info from /current-user (avoids an extra call for status):
   fanvueUserUuid:     { type: DataTypes.STRING, allowNull: true },
   fanvueHandle:       { type: DataTypes.STRING, allowNull: true },
+  // AI auto-reply to new Fanvue DMs (off by default). fanvueAiSeen maps
+  // chatUuid → last inbound message uuid the AI has replied to (dedup).
+  fanvueAiAutoReply:  { type: DataTypes.BOOLEAN, defaultValue: false },
+  fanvueAiSeen:       { type: DataTypes.JSON, defaultValue: {} },
 
   // Discreet billing descriptor — shown on bank statements for every
   // charge. Max ~22 chars (Visa/MC limit). Must be neutral / brand-safe —

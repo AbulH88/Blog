@@ -953,3 +953,9 @@ export const fanvueEarningsSummary = () => fanvueFirst(['/insights/earnings/summ
 export const fanvueEarningsData = () => fanvueFirst(['/insights/earnings/data', '/earnings/data']);
 export const fanvueSubscribers  = (q = '') => fanvueGet(`/subscribers${q}`);
 export const fanvueTopFans      = () => fanvueGet('/insights/top-spending-fans');
+
+// AI: suggest a reply for a chat; toggle background auto-reply.
+export const fanvueAiReply      = (chatUuid: string) =>
+  fvRaw('/ai-reply', { method: 'POST', headers: fvHeaders(), body: JSON.stringify({ chatUuid }) });
+export const fanvueSetAutoReply = (autoReply: boolean) =>
+  fvRaw('/settings', { method: 'PATCH', headers: fvHeaders(), body: JSON.stringify({ autoReply }) });

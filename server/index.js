@@ -421,6 +421,12 @@ syncDatabase()
 
     server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
 
+    // Fanvue AI auto-reply poller — ONE worker only (PM2 sets NODE_APP_INSTANCE
+    // per cluster worker). Avoids double-sending across the 2 workers.
+    if (process.env.NODE_APP_INSTANCE === '0' || process.env.NODE_APP_INSTANCE === undefined) {
+      require('./services/fanvuePoller').start();
+    }
+
     // ─── Graceful shutdown ─────────────────────────────────────────────────────
     // PM2 reload / SIGTERM / Ctrl-C all flow through here. We stop accepting
     // new connections, let in-flight requests finish (up to 10s), then close

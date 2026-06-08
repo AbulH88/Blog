@@ -215,9 +215,35 @@ async function generateTestReply({ creator, sandboxHistory }) {
   return parsePpvSentinel(reply);
 }
 
+/**
+ * Fanvue reply — stateless, reuses the creator's persona/model/NSFW settings.
+ * NO PPV/collections (Fanvue monetization is separate), so the model can't
+ * attach a platform bundle. `history` is already mapped to chat-completion
+ * roles: [{ role: 'user'|'assistant', content }].
+ * @returns {Promise<string>} clean reply text
+ */
+async function generateFanvueReply({ creator, history }) {
+  const systemPrompt = buildSystemPrompt({
+    creator,
+    collections: [],
+    messagesSincePpv: 0,
+    allowPpvThisTurn: false,
+  });
+  const reply = await callOpenRouter({
+    model: creator.aiModel || 'sao10k/l3.3-euryale-70b',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...history.slice(-HISTORY_WINDOW),
+    ],
+  });
+  // Strip any stray PPV sentinel/placeholder; ignore collectionId on Fanvue.
+  return parsePpvSentinel(reply).text;
+}
+
 module.exports = {
   generateReply,
   generateTestReply,
+  generateFanvueReply,
   buildSystemPrompt,
   defaultPersona,
 };

@@ -299,6 +299,8 @@ const applyMigrations = async () => {
       ['fanvueConnected',     'BOOLEAN DEFAULT false',     'INTEGER DEFAULT 0'],
       ['fanvueUserUuid',      'VARCHAR(255)',              'TEXT'],
       ['fanvueHandle',        'VARCHAR(255)',              'TEXT'],
+      ['fanvueAiAutoReply',   'BOOLEAN DEFAULT false',     'INTEGER DEFAULT 0'],
+      ['fanvueAiSeen',        "JSON DEFAULT '{}'::json",   "TEXT DEFAULT '{}'"],
     ];
     if (dialect === 'postgres') {
       for (const [name, pgType] of cols) {

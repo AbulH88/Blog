@@ -5,6 +5,7 @@ import {
   fanvueAccount, fanvueChats, fanvueMessages, fanvueSendMessage,
   fanvueEarningsSummary, fanvueEarningsData, fanvueSubscribers, fanvueTopFans,
   fanvueGet, fanvuePost, fanvuePatch, fanvueDelete, fanvueUnread,
+  fanvueAiReply, fanvueSetAutoReply,
 } from '../api';
 
 // Run a write call, surface errors, then refresh. Keeps the write controls terse.
@@ -121,7 +122,7 @@ export default function AdminFanvue() {
         <>
           {sub === 'connect'       && <ConnectTab status={status} onChange={loadStatus} />}
           {sub === 'overview'      && gate(<OverviewTab />)}
-          {sub === 'chats'         && gate(<ChatsTab />)}
+          {sub === 'chats'         && gate(<ChatsTab initialAuto={!!status?.autoReply} />)}
           {sub === 'broadcast'     && gate(<BroadcastTab />)}
           {sub === 'posts'         && gate(<PostsTab />)}
           {sub === 'subscribers'   && gate(<FansTab />)}
@@ -231,12 +232,14 @@ function OverviewTab() {
 }
 
 // ─── Chats ────────────────────────────────────────────────────────────────
-function ChatsTab() {
+function ChatsTab({ initialAuto }: { initialAuto: boolean }) {
   const [chats, setChats] = useState<any[] | undefined>(undefined);
   const [active, setActive] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [auto, setAuto] = useState(initialAuto);
   useEffect(() => { fanvueChats().then(d => setChats(asArray(d))).catch(() => setChats([])); }, []);
   const uuidOf = (c: any) => pick(c, 'userUuid', 'counterpartUserUuid', 'uuid', 'id') || pick(c.user || {}, 'uuid', 'id');
   const open = async (c: any) => { setActive(c); setMessages(asArray(await fanvueMessages(uuidOf(c)))); };
@@ -245,8 +248,26 @@ function ChatsTab() {
     await fanvueSendMessage(uuidOf(active), { text }); setText('');
     setMessages(asArray(await fanvueMessages(uuidOf(active)))); setSending(false);
   };
+  const aiSuggest = async () => {
+    if (!active) return; setAiBusy(true);
+    const r = await fanvueAiReply(uuidOf(active));
+    setAiBusy(false);
+    if (r?.text) setText(r.text); else alert('AI: ' + (r?.error || 'no reply'));
+  };
+  const toggleAuto = async () => {
+    const next = !auto; setAuto(next);
+    const r = await fanvueSetAutoReply(next);
+    if (r?.error) { setAuto(!next); alert('Could not change: ' + r.error); }
+  };
   if (chats === undefined) return <div className="v3-card">Loading chats…</div>;
   return (
+   <div>
+    <div className="v3-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '12px 16px' }}>
+      <span style={{ fontSize: '0.86rem' }}><b>AI auto-reply</b> — answers new DMs automatically in your voice.</span>
+      <button onClick={toggleAuto} title="Toggle auto-reply" style={{ position: 'relative', width: 46, height: 26, borderRadius: 999, border: 'none', cursor: 'pointer', background: auto ? 'var(--v3-terracotta)' : 'var(--v3-line)', transition: 'background .15s' }}>
+        <span style={{ position: 'absolute', top: 3, left: auto ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+      </button>
+    </div>
     <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 14, minHeight: 420 }}>
       <div className="v3-card" style={{ padding: 0, overflow: 'hidden', maxHeight: 560, overflowY: 'auto' }}>
         {chats.length === 0 && <p style={{ padding: 16, color: 'var(--v3-muted)' }}>No chats.</p>}
@@ -267,12 +288,14 @@ function ChatsTab() {
             })}
           </div>
           <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--v3-line)', paddingTop: 10 }}>
+            <button style={{ ...btn, whiteSpace: 'nowrap' }} disabled={aiBusy} onClick={aiSuggest} title="Draft a reply with your AI">{aiBusy ? '…' : '✨ AI reply'}</button>
             <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} placeholder="Type a message…" style={{ flex: 1, padding: '10px 12px', borderRadius: 999, border: '1px solid var(--v3-line)', fontFamily: 'inherit' }} />
             <button className="v3-btn v3-btn-primary" disabled={sending || !text.trim()} onClick={send}>Send</button>
           </div>
         </>)}
       </div>
     </div>
+   </div>
   );
 }
 

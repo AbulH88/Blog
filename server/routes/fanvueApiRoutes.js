@@ -17,6 +17,7 @@ const router = express.Router();
 const { Creator } = require('../models');
 const { requireAuth, requireCreator } = require('../middleware/authMiddleware');
 const fanvue = require('../services/fanvue');
+const { suggestReply } = require('../services/fanvueAi');
 
 const MEMBERS_URL = process.env.PUBLIC_APP_URL || 'https://members.thecristinaadam.com';
 const callbackUri = (req) => `${req.protocol}://${req.get('host')}/api/fanvue/callback`;
@@ -110,7 +111,29 @@ router.get('/status', loadCreator, (req, res) => {
     handle: c.fanvueHandle || null,
     scopes: c.fanvueScopes || null,
     tokenExpiresAt: c.fanvueTokenExpiresAt || null,
+    autoReply: !!c.fanvueAiAutoReply,
   });
+});
+
+// AI assist — suggest a reply for a chat (reuses the creator's AI persona/model).
+router.post('/ai-reply', loadCreator, async (req, res) => {
+  const { chatUuid } = req.body || {};
+  if (!chatUuid) return res.status(400).json({ error: 'chatUuid required' });
+  try {
+    const text = await suggestReply(req.creator, chatUuid);
+    if (!text) return res.status(422).json({ error: 'No reply generated' });
+    res.json({ text });
+  } catch (err) {
+    handleErr(res, err);
+  }
+});
+
+// Toggle background AI auto-reply for new Fanvue DMs.
+router.patch('/settings', loadCreator, async (req, res) => {
+  const patch = {};
+  if (typeof req.body?.autoReply === 'boolean') patch.fanvueAiAutoReply = req.body.autoReply;
+  await req.creator.update(patch);
+  res.json({ ok: true, autoReply: !!req.creator.fanvueAiAutoReply });
 });
 
 // ── Generic, allow-listed proxy over the Fanvue API ──────────────────────────
