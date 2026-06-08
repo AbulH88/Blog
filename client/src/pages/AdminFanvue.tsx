@@ -495,19 +495,30 @@ async function uploadFileToVault(
     throw new Error('Signed URL not a URL. Raw: ' + JSON.stringify(urlRes));
   }
 
-  // 3. PUT chunk directly to S3
+  // 3. PUT chunk directly to S3.
+  //
+  // IMPORTANT: send as ArrayBuffer (not the raw File). When body is a File,
+  // the browser auto-adds `Content-Type: <file.type>`. Fanvue's signed URL
+  // is typically presigned WITHOUT a Content-Type clause, so any extra
+  // header makes S3 reject with 403 "SignatureDoesNotMatch". ArrayBuffer
+  // body sends no Content-Type (or application/octet-stream — both fine).
   onProgress?.(25);
-  const putRes = await fetch(signedUrl, { method: 'PUT', body: file });
-  if (!putRes.ok) throw new Error(`S3 PUT failed: HTTP ${putRes.status}`);
-  const eTag = (putRes.headers.get('ETag') || '').replace(/^"|"$/g, '');
-  if (!eTag) {
-    // If CORS blocks ETag header exposure, we can still proceed (Fanvue may
-    // accept completion without ETag verification — docs say ETag is
-    // "optional but recommended"). Send empty string as a fallback.
-    onProgress?.(70);
-  } else {
-    onProgress?.(70);
+  const bytes = await file.arrayBuffer();
+  const putRes = await fetch(signedUrl, { method: 'PUT', body: bytes });
+  if (!putRes.ok) {
+    // Read S3's XML error body — it tells us EXACTLY why (SignatureDoesNotMatch,
+    // RequestTimeTooSkewed, AccessDenied, etc). Without this the error is
+    // useless to debug.
+    const errText = await putRes.text().catch(() => '');
+    const errCode = (/<Code>([^<]+)<\/Code>/.exec(errText)?.[1]) || '';
+    const errMsg = (/<Message>([^<]+)<\/Message>/.exec(errText)?.[1]) || '';
+    const detail = errCode ? `${errCode}: ${errMsg}` : errText.slice(0, 200);
+    throw new Error(`S3 PUT failed: HTTP ${putRes.status}${detail ? ' · ' + detail : ''}`);
   }
+  const eTag = (putRes.headers.get('ETag') || '').replace(/^"|"$/g, '');
+  onProgress?.(70);
+  // If CORS blocks ETag header exposure, we still proceed — docs say
+  // ETag is "optional but recommended" on completion.
 
   // 4. PATCH complete — PascalCase {PartNumber, ETag}, not camelCase!
   const completeRes = await fanvuePatch(`/media/uploads/${uploadId}`, {
