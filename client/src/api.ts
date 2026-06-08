@@ -934,12 +934,22 @@ export const fanvuePatch = (path: string, body?: any) =>
 export const fanvueDelete = (path: string) =>
   fvRaw(`/delete?path=${encodeURIComponent(path)}`, { method: 'DELETE', headers: fvHeaders() });
 
+// Try candidate paths in order, return the first non-error response (the docs
+// are inconsistent about /current-user vs /users and where earnings live, so
+// we probe and use whatever the real API actually serves).
+export const fanvueFirst = async (paths: string[]) => {
+  let last: any = { error: 'No path matched' };
+  for (const p of paths) { const r = await fanvueGet(p); if (r && !r.error) return r; last = r; }
+  return last;
+};
+
 // Named convenience wrappers used across the Fanvue admin module.
-export const fanvueAccount      = () => fanvueGet('/current-user/account');
+export const fanvueAccount      = () => fanvueFirst(['/users/account', '/current-user/account', '/users/me', '/current-user']);
+export const fanvueUnread       = () => fanvueFirst(['/users/unread-counts', '/current-user/unread-counts']);
 export const fanvueChats        = (q = '') => fanvueGet(`/chats${q}`);
 export const fanvueMessages     = (uuid: string, q = '') => fanvueGet(`/chats/${uuid}/messages${q}`);
 export const fanvueSendMessage  = (uuid: string, b: any) => fanvuePost(`/chats/${uuid}/messages`, b);
-export const fanvueEarningsSummary = () => fanvueGet('/earnings/summary');
-export const fanvueEarningsData = (q = '') => fanvueGet(`/earnings/data${q}`);
+export const fanvueEarningsSummary = () => fanvueFirst(['/insights/earnings/summary', '/earnings/summary']);
+export const fanvueEarningsData = () => fanvueFirst(['/insights/earnings/data', '/earnings/data']);
 export const fanvueSubscribers  = (q = '') => fanvueGet(`/subscribers${q}`);
 export const fanvueTopFans      = () => fanvueGet('/insights/top-spending-fans');

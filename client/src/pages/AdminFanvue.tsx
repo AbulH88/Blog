@@ -4,7 +4,7 @@ import {
   fanvueStatus, fanvueConnect, fanvueDisconnect, fanvueSaveCreds,
   fanvueAccount, fanvueChats, fanvueMessages, fanvueSendMessage,
   fanvueEarningsSummary, fanvueEarningsData, fanvueSubscribers, fanvueTopFans,
-  fanvueGet, fanvuePost, fanvuePatch, fanvueDelete,
+  fanvueGet, fanvuePost, fanvuePatch, fanvueDelete, fanvueUnread,
 } from '../api';
 
 // Run a write call, surface errors, then refresh. Keeps the write controls terse.
@@ -211,7 +211,7 @@ function OverviewTab() {
   const [unread, setUnread] = useState<any>(null);
   useEffect(() => {
     fanvueAccount().then(setD).catch(() => setD(null));
-    fanvueGet('/current-user/unread-counts').then(setUnread).catch(() => {});
+    fanvueUnread().then(setUnread).catch(() => {});
   }, []);
   if (d === undefined) return <div className="v3-card">Loading account…</div>;
   if (!d || d.error) return <ErrCard d={d} />;

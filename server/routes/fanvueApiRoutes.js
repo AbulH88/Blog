@@ -119,6 +119,8 @@ router.get('/status', loadCreator, (req, res) => {
 // (/agencies/*, /creators/{uuid}/*) are deliberately excluded everywhere.
 const GET_ALLOW = [
   /^\/current-user(\/(account|unread-counts))?$/,
+  /^\/users\/(me|account|unread-counts)$/,
+  /^\/insights\/earnings\/(summary|data|percentile|reversals)$/,
   /^\/notifications$/,
   /^\/posts$/,
   /^\/posts\/[\w-]+$/,
