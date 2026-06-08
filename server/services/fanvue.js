@@ -169,7 +169,16 @@ async function fanvueFetch(creator, method, path, body, _retry = false) {
   }
   const text = await res.text();
   let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text.slice(0, 500) }; }
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // Non-JSON response. On SUCCESS (e.g. /media/uploads/:id/parts/:n/url
+    // returns a plain-text S3 signed URL ~700 chars long), keep the FULL
+    // text — truncating would clip the URL and the next PUT would fail
+    // with S3 SignatureDoesNotMatch. On error, truncate to keep error
+    // logs short.
+    data = { raw: res.ok ? text : text.slice(0, 500) };
+  }
   if (!res.ok) {
     const detail = (data && (data.error_description || data.message || data.error)) || '';
     const err = new Error(`Fanvue ${method} ${path} → ${res.status}${detail ? ' · ' + detail : ''}`);
