@@ -157,10 +157,10 @@ const GET_ALLOW = [
   /^\/user\/media$/,
   /^\/media\/bulk$/,
   /^\/media\/[\w-]+(\/entitled)?$/,
-  // Multipart upload — signed URL per part (verified against Fanvue docs at
-  // /docs/api-reference/reference/media). Previously /media/multipart-uploads/
-  // /:id/signed-urls (guessed, never worked).
-  /^\/media\/uploads\/[\w-]+\/parts\/\d+\/url$/,
+  // Multipart upload — signed URL per part. The uploadId is an opaque
+  // Fanvue/S3 token that contains UUID-hyphens, underscores, dots, base64
+  // chars, etc. — much wider than \w. Use [^/?]+ to match any uploadId.
+  /^\/media\/uploads\/[^/?]+\/parts\/\d+\/url$/,
   /^\/tracking-links$/,
   /^\/tracking-links\/[\w-]+\/users$/,
   /^\/tracking-metadata\/[\w-]+$/,
@@ -200,8 +200,9 @@ const PATCH_ALLOW = [
   /^\/mass-messages\/[\w-]+$/,
   /^\/content-collections\/[\w-]+$/,
   // Complete multipart upload — finalises the S3 upload and triggers
-  // processing. Body carries the parts array with {partNumber, eTag}.
-  /^\/media\/uploads\/[\w-]+$/,
+  // processing. Body carries the parts array with {PartNumber, ETag}.
+  // uploadId is an opaque S3 token; use [^/?]+ (see GET_ALLOW comment).
+  /^\/media\/uploads\/[^/?]+$/,
 ];
 const DELETE_ALLOW = [
   /^\/posts\/[\w-]+$/,
