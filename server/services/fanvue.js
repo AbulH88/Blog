@@ -15,7 +15,48 @@ const cache = require('./cache');
 const AUTH_BASE = 'https://auth.fanvue.com';
 const API_BASE = 'https://api.fanvue.com';
 const API_VERSION = '2025-06-26';
-const SCOPES = 'openid offline_access offline read:self read:chat write:chat read:fan';
+// Full scope list matching every resource exposed by the admin's allow-listed
+// proxy (see fanvueApiRoutes.js GET_/POST_/PATCH_/DELETE_ALLOW). Each resource
+// gets the read + write scope it actually needs. Adding new admin tabs?
+// Add the matching scope here AND have the creator re-OAuth.
+//
+// If Fanvue rejects an unknown scope name during authorize, drop it and reconnect.
+const SCOPES = [
+  // Required for OAuth + token refresh
+  'openid',
+  'offline_access',
+  'offline',
+  // Profile / account / notifications
+  'read:self',
+  'read:notification',
+  // Chats + DM send
+  'read:chat',
+  'write:chat',
+  // Fans / subscribers / lists
+  'read:fan',
+  'read:list',
+  'write:list',
+  // Posts + comments
+  'read:post',
+  'write:post',
+  // Vault folders + media (THIS is what fixes the "Insufficient scopes" error)
+  'read:vault',
+  'write:vault',
+  'read:media',
+  'write:media',
+  // Mass messages / broadcasts / templates
+  'read:broadcast',
+  'write:broadcast',
+  // Tracking links
+  'read:tracking',
+  'write:tracking',
+  // Earnings + insights
+  'read:earnings',
+  'read:insight',
+  // Content collections
+  'read:collection',
+  'write:collection',
+].join(' ');
 const PKCE_TTL = 600; // 10 min
 
 const b64url = (buf) => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
