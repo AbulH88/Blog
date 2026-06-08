@@ -157,7 +157,10 @@ const GET_ALLOW = [
   /^\/user\/media$/,
   /^\/media\/bulk$/,
   /^\/media\/[\w-]+(\/entitled)?$/,
-  /^\/media\/multipart-uploads\/[\w-]+\/signed-urls$/,
+  // Multipart upload — signed URL per part (verified against Fanvue docs at
+  // /docs/api-reference/reference/media). Previously /media/multipart-uploads/
+  // /:id/signed-urls (guessed, never worked).
+  /^\/media\/uploads\/[\w-]+\/parts\/\d+\/url$/,
   /^\/tracking-links$/,
   /^\/tracking-links\/[\w-]+\/users$/,
   /^\/tracking-metadata\/[\w-]+$/,
@@ -180,8 +183,9 @@ const POST_ALLOW = [
   /^\/vault\/folders\/[^/?]+\/media$/,
   /^\/custom-lists$/,
   /^\/custom-lists\/[\w-]+\/members$/,
-  /^\/media\/multipart-uploads$/,
-  /^\/media\/multipart-uploads\/[\w-]+\/complete$/,
+  // Multipart upload session — create (POST). Completion is PATCH below,
+  // NOT a separate /complete suffix. Both paths verified against docs.
+  /^\/media\/uploads$/,
   /^\/media\/[\w-]+\/grant-access$/,
   /^\/tracking-links$/,
   /^\/mass-messages$/,
@@ -195,6 +199,9 @@ const PATCH_ALLOW = [
   /^\/custom-lists\/[\w-]+$/,
   /^\/mass-messages\/[\w-]+$/,
   /^\/content-collections\/[\w-]+$/,
+  // Complete multipart upload — finalises the S3 upload and triggers
+  // processing. Body carries the parts array with {partNumber, eTag}.
+  /^\/media\/uploads\/[\w-]+$/,
 ];
 const DELETE_ALLOW = [
   /^\/posts\/[\w-]+$/,

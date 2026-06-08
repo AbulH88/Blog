@@ -425,17 +425,118 @@ function EarningsTab() {
 }
 
 // ─── Vault (folders → media) ────────────────────────────────────────────────
+/**
+ * Upload a single file to a Fanvue vault folder via the documented multipart
+ * flow: POST /media/uploads (session) → GET signed URLs per part → PUT parts
+ * directly to S3 → PATCH /media/uploads/:id (complete) → POST attach.
+ *
+ * Field names in the create-session response are read defensively (uploadId
+ * vs id, mediaUuid vs uuid, etc.) because Fanvue's docs don't publish the
+ * exact response schema. If a name is wrong we throw with the full payload
+ * so it's obvious what to rename in code.
+ */
+async function uploadFileToVault(
+  file: File,
+  folderName: string,
+  onProgress?: (pct: number) => void,
+): Promise<{ mediaUuid: string }> {
+  // 1. CREATE multipart upload session
+  const session = await fanvuePost('/media/uploads', {
+    fileName: file.name,
+    contentType: file.type || 'application/octet-stream',
+    fileSize: file.size,
+  });
+  if (session?.error) throw new Error('Create session failed: ' + session.error);
+
+  // Read response fields defensively — Fanvue may return slightly different
+  // field names. If something's missing we throw with the raw payload so the
+  // next iteration can fix the name.
+  const uploadId = pick(session, 'uploadId', 'id', 'uuid', 'sessionId');
+  const mediaUuid = pick(session, 'mediaUuid', 'mediaId', 'uuid')
+    ?? pick(session.media || {}, 'uuid', 'id', 'mediaUuid');
+  const partSize = Number(pick(session, 'partSize', 'chunkSize') || file.size);
+  const partCount = Number(pick(session, 'partCount', 'parts', 'totalParts') || 1);
+
+  if (!uploadId || !mediaUuid) {
+    throw new Error('Fanvue create response missing uploadId/mediaUuid. Raw: ' + JSON.stringify(session));
+  }
+
+  // 2. UPLOAD each part to S3 via signed URLs
+  const parts: Array<{ partNumber: number; eTag: string }> = [];
+  for (let n = 1; n <= partCount; n++) {
+    const start = (n - 1) * partSize;
+    const end = Math.min(start + partSize, file.size);
+    const chunk = file.slice(start, end);
+
+    const urlRes = await fanvueGet(`/media/uploads/${uploadId}/parts/${n}/url`);
+    if (urlRes?.error) throw new Error(`Signed URL part ${n} failed: ${urlRes.error}`);
+    const signedUrl: string = typeof urlRes === 'string'
+      ? urlRes
+      : pick(urlRes, 'url', 'signedUrl', 'uploadUrl') || '';
+    if (!signedUrl) throw new Error(`Signed URL part ${n} missing. Raw: ${JSON.stringify(urlRes)}`);
+
+    // Direct S3 PUT (no proxy through our backend — signed URL is the auth).
+    const putRes = await fetch(signedUrl, { method: 'PUT', body: chunk });
+    if (!putRes.ok) throw new Error(`S3 part ${n} PUT failed: HTTP ${putRes.status}`);
+    const eTag = (putRes.headers.get('ETag') || '').replace(/^"|"$/g, '');
+    if (!eTag) throw new Error(`S3 part ${n} missing ETag — likely CORS blocking ETag exposure`);
+    parts.push({ partNumber: n, eTag });
+
+    onProgress?.(Math.floor((n / partCount) * 80)); // 80% on upload, 20% on finalize
+  }
+
+  // 3. COMPLETE the multipart upload (PATCH, NOT POST /complete)
+  onProgress?.(85);
+  const completeRes = await fanvuePatch(`/media/uploads/${uploadId}`, { parts });
+  if (completeRes?.error) throw new Error('Complete failed: ' + completeRes.error);
+
+  // 4. ATTACH the new media uuid to the vault folder
+  onProgress?.(95);
+  const attachRes = await fanvuePost(
+    `/vault/folders/${encodeURIComponent(folderName)}/media`,
+    { mediaUuids: [mediaUuid] },
+  );
+  if (attachRes?.error) throw new Error('Attach to folder failed: ' + attachRes.error);
+
+  onProgress?.(100);
+  return { mediaUuid: String(mediaUuid) };
+}
+
 function VaultTab() {
   const [folders, setFolders] = useState<any[] | undefined>(undefined);
   const [sel, setSel] = useState<any>(null);
   const [media, setMedia] = useState<any[]>([]);
+  // Upload UI state
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
+  const [uploadErr, setUploadErr] = useState<string>('');
+
   const load = () => fanvueGet('/vault/folders').then(d => setFolders(asArray(d))).catch(() => setFolders([]));
   useEffect(() => { load(); }, []);
   const nameOfF = (f: any) => pick(f, 'name', 'folderName', 'id');
-  const open = async (f: any) => { setSel(f); setMedia(asArray(await fanvueGet(`/vault/folders/${encodeURIComponent(nameOfF(f))}/media`))); };
+  const loadMedia = async (folder: any) => {
+    setMedia(asArray(await fanvueGet(`/vault/folders/${encodeURIComponent(nameOfF(folder))}/media`)));
+  };
+  const open = async (f: any) => { setSel(f); setUploadErr(''); await loadMedia(f); };
   const create = async () => { const n = ask('Folder name:'); if (!n) return; await run(fanvuePost('/vault/folders', { name: n }), load); };
   const rename = async (f: any) => { const n = ask('Rename folder:', nameOfF(f)); if (!n) return; await run(fanvuePatch(`/vault/folders/${encodeURIComponent(nameOfF(f))}`, { name: n }), () => { load(); setSel(null); }); };
   const del = async (f: any) => { if (!sure('Delete folder? (media is kept)')) return; await run(fanvueDelete(`/vault/folders/${encodeURIComponent(nameOfF(f))}`), () => { load(); setSel(null); }); };
+
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // reset so picking the same file again re-fires
+    if (!file || !sel) return;
+    setUploadBusy(true); setUploadPct(0); setUploadErr('');
+    try {
+      await uploadFileToVault(file, nameOfF(sel), setUploadPct);
+      await loadMedia(sel); // refresh grid
+    } catch (err: any) {
+      setUploadErr(err?.message || 'Upload failed');
+    } finally {
+      setUploadBusy(false);
+    }
+  };
+
   if (folders === undefined) return <div className="v3-card">Loading vault…</div>;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14 }}>
@@ -446,8 +547,36 @@ function VaultTab() {
       </div>
       <div className="v3-card">
         <div className="v3-card-head"><h3>{sel ? nameOfF(sel) : 'Media'}</h3>
-          {sel && <span style={{ display: 'flex', gap: 6 }}><button style={btn} onClick={() => rename(sel)}>Rename</button><button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(sel)}>Delete</button></span>}
+          {sel && (
+            <span style={{ display: 'flex', gap: 6 }}>
+              {/* Upload button — hidden <input> triggered by the styled button label */}
+              <label style={{
+                ...btn,
+                background: uploadBusy ? '#e8e3d8' : 'var(--v3-terracotta, #C75A3E)',
+                color: uploadBusy ? 'var(--v3-muted)' : '#fff',
+                borderColor: 'transparent',
+                cursor: uploadBusy ? 'wait' : 'pointer',
+              }}>
+                {uploadBusy ? `Uploading ${uploadPct}%…` : '+ Upload'}
+                <input type="file" accept="image/*,video/*" disabled={uploadBusy} onChange={onPickFile} style={{ display: 'none' }} />
+              </label>
+              <button style={btn} onClick={() => rename(sel)} disabled={uploadBusy}>Rename</button>
+              <button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(sel)} disabled={uploadBusy}>Delete</button>
+            </span>
+          )}
         </div>
+        {/* Inline progress bar while uploading */}
+        {uploadBusy && (
+          <div style={{ height: 6, background: 'var(--v3-cream-deep)', borderRadius: 999, overflow: 'hidden', margin: '0 0 10px' }}>
+            <div style={{ height: '100%', width: `${uploadPct}%`, background: 'var(--v3-terracotta, #C75A3E)', transition: 'width 0.2s' }} />
+          </div>
+        )}
+        {uploadErr && (
+          <div style={{
+            padding: '10px 12px', background: 'rgba(220,38,38,0.10)', color: 'var(--v3-danger)',
+            borderRadius: 8, fontSize: '0.82rem', marginBottom: 10, wordBreak: 'break-word',
+          }}>⚠️ {uploadErr}</div>
+        )}
         {!sel ? <p style={{ color: 'var(--v3-muted)' }}>Pick a folder.</p> : <MediaGrid items={media} />}
       </div>
     </div>
