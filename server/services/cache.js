@@ -94,6 +94,27 @@ async function get(key) {
   return getLocal(key);
 }
 
+/**
+ * Atomic claim — set the key ONLY if it doesn't already exist (Redis SET NX).
+ * Returns true if THIS caller won the claim, false if someone already holds it.
+ * Cluster-safe across PM2 workers (Redis is shared). Used to guarantee a single
+ * AI auto-reply per inbound message even when the webhook and the poller race.
+ */
+async function claim(key, ttlSec) {
+  if (redis.isEnabled()) {
+    try {
+      const r = await redis.client.set(key, '1', 'EX', ttlSec, 'NX');
+      return r === 'OK';
+    } catch (err) {
+      console.warn('[cache] claim error:', err.message);
+      // Fall through to local (best-effort) rather than risk a double-send block.
+    }
+  }
+  if (getLocal(key) !== null) return false;
+  setLocal(key, '1', ttlSec);
+  return true;
+}
+
 /** Invalidate a single key (e.g. after a write that affects cached data). */
 async function del(key) {
   if (redis.isEnabled()) {
@@ -124,4 +145,4 @@ async function delPattern(pattern) {
   }
 }
 
-module.exports = { getOrSet, set, get, del, delPattern };
+module.exports = { getOrSet, set, get, claim, del, delPattern };

@@ -14,12 +14,20 @@
 const { Creator } = require('../models');
 const fanvue = require('./fanvue');
 const aiChat = require('./aiChat');
+const cache = require('./cache');
 const { mapFanvueHistory, asArray, pick, isFromCreator, msgUuid, msgTime } = require('./fanvueAi');
 
-const INTERVAL_MS = 45_000;
+// Webhooks now drive real-time replies; the poller is a safety-net fallback, so
+// it can run less often (lower API load + smaller race window with webhooks).
+const INTERVAL_MS = 120_000;
 const MAX_CHATS_PER_CYCLE = 25;
 const MAX_REPLIES_PER_CYCLE = 10;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Human-like "typing" pause before sending, so replies don't fire back in <1s
+// like a bot. Scales a little with reply length; capped so it still feels prompt.
+const typingDelay = (text) =>
+  Math.min(11_000, 2500 + (text ? text.length : 0) * 22 + Math.random() * 2500);
 
 const newestMessage = (msgs) => {
   if (!msgs.length) return null;
@@ -64,7 +72,13 @@ async function processCreator(creator) {
     if (!newest) continue;
     if (isFromCreator(newest, creatorUuid)) continue;  // last word is ours → nothing to answer
     const newestId = msgUuid(newest) || String(msgTime(newest));
-    if (seen[chatUuid] === newestId) continue;          // already answered this one
+    if (seen[chatUuid] === newestId) continue;          // already answered this one (local map)
+
+    // Atomic cross-worker claim: ONLY one of {webhook, poller, any worker} may
+    // reply to this exact inbound message. If we don't win the claim, someone
+    // else is handling it → record it as seen locally and move on.
+    const claimed = await cache.claim(`fanvue:reply:${creator.id}:${chatUuid}:${newestId}`, 300);
+    if (!claimed) { seen[chatUuid] = newestId; changed = true; continue; }
 
     let text;
     try { text = await aiChat.generateFanvueReply({ creator, history: mapFanvueHistory(msgs, creatorUuid) }); }
@@ -72,6 +86,7 @@ async function processCreator(creator) {
     if (!text) { seen[chatUuid] = newestId; changed = true; continue; }
 
     try {
+      await sleep(typingDelay(text)); // human-like pause before sending
       await fanvue.fanvueFetch(creator, 'POST', `/chats/${chatUuid}/message`, { text });
       seen[chatUuid] = newestId; changed = true; replies++;
       console.log(`[fanvue-poll] replied creator=${creator.id} chat=${chatUuid}`);
