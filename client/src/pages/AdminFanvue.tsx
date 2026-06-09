@@ -254,7 +254,18 @@ function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: stri
   const [auto, setAuto] = useState(initialAuto);
   useEffect(() => { fanvueChats().then(d => setChats(asArray(d))).catch(() => setChats([])); }, []);
   const uuidOf = (c: any) => pick(c, 'userUuid', 'counterpartUserUuid', 'uuid', 'id') || pick(c.user || {}, 'uuid', 'id');
+  const activeUuid = active ? uuidOf(active) : null;
   const open = async (c: any) => { setActive(c); setMessages(asArray(await fanvueMessages(uuidOf(c)))); };
+  // Live refresh: poll the chat list + open conversation every 8s so new
+  // messages (and the AI's replies) appear without reloading the page.
+  useEffect(() => {
+    const tick = async () => {
+      try { setChats(asArray(await fanvueChats())); } catch { /* keep last */ }
+      if (activeUuid) { try { setMessages(asArray(await fanvueMessages(activeUuid))); } catch { /* keep last */ } }
+    };
+    const id = setInterval(() => { if (document.visibilityState === 'visible') tick(); }, 8000);
+    return () => clearInterval(id);
+  }, [activeUuid]);
   const send = async () => {
     if (!text.trim() || !active) return; setSending(true);
     await fanvueSendMessage(uuidOf(active), { text }); setText('');
@@ -284,7 +295,7 @@ function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: stri
       <div className="v3-card" style={{ padding: 0, overflow: 'hidden', maxHeight: 560, overflowY: 'auto' }}>
         {chats.length === 0 && <p style={{ padding: 16, color: 'var(--v3-muted)' }}>No chats.</p>}
         {chats.map((c, i) => (
-          <button key={i} onClick={() => open(c)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', borderBottom: '1px solid var(--v3-line)', background: active === c ? 'var(--v3-cream-deep)' : '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button key={i} onClick={() => open(c)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', borderBottom: '1px solid var(--v3-line)', background: activeUuid && uuidOf(c) === activeUuid ? 'var(--v3-cream-deep)' : '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
             <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{nameOf(c)}</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txt(pick(c, 'lastMessage', 'preview'))}</div>
           </button>
