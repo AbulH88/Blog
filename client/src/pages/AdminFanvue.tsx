@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { ReactElement } from 'react';
 import {
   fanvueStatus, fanvueConnect, fanvueDisconnect, fanvueSaveCreds,
@@ -252,6 +252,8 @@ function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: stri
   const [sending, setSending] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [auto, setAuto] = useState(initialAuto);
+  const [imgStatus, setImgStatus] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => { fanvueChats().then(d => setChats(asArray(d))).catch(() => setChats([])); }, []);
   const uuidOf = (c: any) => pick(c, 'userUuid', 'counterpartUserUuid', 'uuid', 'id') || pick(c.user || {}, 'uuid', 'id');
   const activeUuid = active ? uuidOf(active) : null;
@@ -270,6 +272,34 @@ function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: stri
     if (!text.trim() || !active) return; setSending(true);
     await fanvueSendMessage(uuidOf(active), { text }); setText('');
     setMessages(asArray(await fanvueMessages(uuidOf(active)))); setSending(false);
+  };
+  // Attach + send a photo in one click: upload → get media uuid → send with
+  // optional caption (the composer text) and optional PPV price.
+  const sendImage = async (file: File) => {
+    if (!active || !file) return;
+    if (!/^image\//.test(file.type)) { alert('Please pick an image file.'); return; }
+    setSending(true);
+    try {
+      setImgStatus('Uploading…');
+      const { mediaUuid } = await uploadFanvueMedia(file, (p) => setImgStatus(`Uploading… ${p}%`));
+      setImgStatus('Sending…');
+      const priceRaw = (window.prompt('Price in USD to unlock this photo?\nLeave blank to send it free.', '') || '').trim();
+      const price = priceRaw ? Math.round(parseFloat(priceRaw) * 100) : undefined; // Fanvue uses cents; min 300 (=$3)
+      const body: any = { mediaUuids: [mediaUuid] };
+      if (text.trim()) body.text = text.trim();
+      if (price && price >= 300) body.price = price;
+      const r = await fanvueSendMessage(uuidOf(active), body);
+      if (r?.error) throw new Error(r.error + (r.detail ? ' · ' + JSON.stringify(r.detail) : ''));
+      setText('');
+      setMessages(asArray(await fanvueMessages(uuidOf(active))));
+      setImgStatus(null);
+    } catch (e: any) {
+      setImgStatus(null);
+      alert('Photo send failed: ' + (e?.message || e));
+    } finally {
+      setSending(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
   };
   const aiSuggest = async () => {
     if (!active) return; setAiBusy(true);
@@ -310,7 +340,11 @@ function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: stri
               return <div key={i} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '70%', padding: '8px 12px', borderRadius: 14, background: mine ? 'var(--v3-terracotta)' : 'var(--v3-cream-deep)', color: mine ? '#fff' : 'var(--v3-ink)', fontSize: '0.88rem' }}>{txt(pick(m, 'text', 'content', 'body', 'message')) || <i>(media)</i>}</div>;
             })}
           </div>
-          <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--v3-line)', paddingTop: 10 }}>
+          {imgStatus && <div style={{ fontSize: '0.8rem', color: 'var(--v3-terracotta)', padding: '4px 2px' }}>📷 {imgStatus}</div>}
+          <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--v3-line)', paddingTop: 10, alignItems: 'center' }}>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) sendImage(f); }} />
+            <button style={{ ...btn, whiteSpace: 'nowrap' }} disabled={sending} onClick={() => fileRef.current?.click()} title="Send a photo (optionally set a price to make it pay-to-unlock)">📎 Photo</button>
             <button style={{ ...btn, whiteSpace: 'nowrap' }} disabled={aiBusy} onClick={aiSuggest} title="Draft a reply with your AI">{aiBusy ? '…' : '✨ AI reply'}</button>
             <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} placeholder="Type a message…" style={{ flex: 1, padding: '10px 12px', borderRadius: 999, border: '1px solid var(--v3-line)', fontFamily: 'inherit' }} />
             <button className="v3-btn v3-btn-primary" disabled={sending || !text.trim()} onClick={send}>Send</button>
@@ -485,9 +519,14 @@ function detectFanvueMediaType(file: File): 'image' | 'video' | 'audio' | 'docum
  * be added later by reading partSize/partCount from the create response
  * IF Fanvue ever returns them.
  */
-async function uploadFileToVault(
+/**
+ * Upload a single file to Fanvue and return its media uuid (steps 1-4 of the
+ * multipart flow — create session, signed URL, S3 PUT, complete). Does NOT
+ * attach to a vault folder; callers decide where the media goes (vault folder,
+ * chat message, post, …). Shared by uploadFileToVault and the chat composer.
+ */
+async function uploadFanvueMedia(
   file: File,
-  folderName: string,
   onProgress?: (pct: number) => void,
 ): Promise<{ mediaUuid: string }> {
   // 1. CREATE multipart upload session — verified schema (name, filename, mediaType)
@@ -549,16 +588,25 @@ async function uploadFileToVault(
   });
   if (completeRes?.error) throw new Error('Complete failed: ' + completeRes.error);
 
+  onProgress?.(100);
+  return { mediaUuid: String(mediaUuid) };
+}
+
+/** Upload a file then attach it to a vault folder (steps 1-5). */
+async function uploadFileToVault(
+  file: File,
+  folderName: string,
+  onProgress?: (pct: number) => void,
+): Promise<{ mediaUuid: string }> {
+  const { mediaUuid } = await uploadFanvueMedia(file, (p) => onProgress?.(Math.round(p * 0.9)));
   // 5. ATTACH media uuid → vault folder
-  onProgress?.(90);
   const attachRes = await fanvuePost(
     `/vault/folders/${encodeURIComponent(folderName)}/media`,
     { mediaUuids: [mediaUuid] },
   );
   if (attachRes?.error) throw new Error('Attach to folder failed: ' + attachRes.error);
-
   onProgress?.(100);
-  return { mediaUuid: String(mediaUuid) };
+  return { mediaUuid };
 }
 
 function VaultTab() {
