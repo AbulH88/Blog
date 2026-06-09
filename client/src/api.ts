@@ -962,3 +962,8 @@ export const fanvueSetAutoReply = (autoReply: boolean) =>
 // AI: suggest a photo (from the curated folder) + caption for a chat.
 export const fanvueAiPhoto      = (chatUuid: string) =>
   fvRaw('/ai-photo', { method: 'POST', headers: fvHeaders(), body: JSON.stringify({ chatUuid }) });
+// Mobile alerts (Telegram): toggle on/off + send a test push.
+export const fanvueSetNotify    = (notify: boolean) =>
+  fvRaw('/settings', { method: 'PATCH', headers: fvHeaders(), body: JSON.stringify({ notify }) });
+export const fanvueNotifyTest   = () =>
+  fvRaw('/notify-test', { method: 'POST', headers: fvHeaders(), body: '{}' });

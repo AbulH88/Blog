@@ -6,6 +6,7 @@ import {
   fanvueEarningsSummary, fanvueEarningsData, fanvueSubscribers, fanvueTopFans,
   fanvueGet, fanvuePost, fanvuePatch, fanvueDelete, fanvueUnread,
   fanvueAiReply, fanvueSetAutoReply, fanvueAiPhoto,
+  fanvueSetNotify, fanvueNotifyTest,
 } from '../api';
 
 // Run a write call, surface errors, then refresh. Keeps the write controls terse.
@@ -143,7 +144,7 @@ export default function AdminFanvue() {
           {sub === 'lists'         && gate(<ListsTab />)}
           {sub === 'media'         && gate(<MediaTab />)}
           {sub === 'tracking'      && gate(<TrackingTab />)}
-          {sub === 'notifications' && gate(<NotificationsTab />)}
+          {sub === 'notifications' && gate(<NotificationsTab status={status} onChange={loadStatus} />)}
         </>
       )}
     </div>
@@ -927,12 +928,61 @@ function BroadcastTab() {
 }
 
 // ─── Notifications ──────────────────────────────────────────────────────────
-function NotificationsTab() {
+function NotificationsTab({ status, onChange }: { status: any; onChange: () => void }) {
   const [d, setD] = useState<any>(undefined);
   useEffect(() => { fanvueGet('/notifications').then(setD).catch(() => setD(null)); }, []);
-  if (d === undefined) return <div className="v3-card">Loading…</div>;
-  if (d?.error) return <ErrCard d={d} />;
-  const rows = asArray(d);
+  return <div>
+    <MobileAlerts status={status} onChange={onChange} />
+    {d === undefined ? <div className="v3-card">Loading…</div>
+     : d?.error ? <ErrCard d={d} />
+     : <NotificationsList rows={asArray(d)} d={d} />}
+  </div>;
+}
+
+// 📱 Mobile alerts (Telegram) — toggle + test + setup hint.
+function MobileAlerts({ status, onChange }: { status: any; onChange: () => void }) {
+  const ready = !!status?.telegramReady;
+  const [on, setOn] = useState<boolean>(status?.notify !== false);
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    const next = !on; setOn(next);
+    const r = await fanvueSetNotify(next);
+    if (r?.error) { setOn(!next); alert('Could not change: ' + r.error); } else onChange();
+  };
+  const test = async () => {
+    setBusy(true);
+    const r = await fanvueNotifyTest();
+    setBusy(false);
+    alert(r?.error ? '❌ ' + r.error : '✅ Sent! Check your phone.');
+  };
+  return (
+    <div className="v3-card" style={{ marginBottom: 14 }}>
+      <div className="v3-card-head"><h3>📱 Mobile alerts</h3></div>
+      <p style={{ fontSize: '0.84rem', color: 'var(--v3-muted)', marginTop: 4 }}>
+        Get a Telegram push on your phone the moment a fan messages, tips, subscribes or unlocks content.
+      </p>
+      {!ready ? (
+        <div style={{ fontSize: '0.82rem', background: 'var(--v3-cream-deep)', borderRadius: 10, padding: '10px 12px', lineHeight: 1.5 }}>
+          <b>One-time setup:</b><br />
+          1. In Telegram, message <b>@BotFather</b> → <code>/newbot</code> → copy the <b>token</b>.<br />
+          2. Paste it in <b>Admin → AI Chatbot → Telegram bot token</b> and save.<br />
+          3. Open your new bot and send <code>/start</code> — it replies with your <b>chat ID</b>.<br />
+          4. Paste the chat ID in the same place and save. Then come back here.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <button onClick={toggle} title="Toggle mobile alerts" style={{ position: 'relative', width: 46, height: 26, borderRadius: 999, border: 'none', cursor: 'pointer', background: on ? 'var(--v3-terracotta)' : 'var(--v3-line)', transition: 'background .15s' }}>
+            <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+          </button>
+          <span style={{ fontSize: '0.86rem' }}>{on ? 'Alerts ON' : 'Alerts off'}</span>
+          <button style={{ ...btn }} disabled={busy} onClick={test}>{busy ? '…' : 'Send test'}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotificationsList({ rows, d }: { rows: any[]; d: any }) {
   return <div className="v3-card"><div className="v3-card-head"><h3>Notifications</h3></div>
     {rows.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>Nothing new.</p> :
       rows.map((n, i) => <Row key={i} main={pick(n, 'title', 'type', 'kind') || 'Notification'} sub={pick(n, 'message', 'text', 'body')} right={dateOf(pick(n, 'createdAt', 'date'))} />)}

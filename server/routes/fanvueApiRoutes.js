@@ -56,6 +56,7 @@ router.get('/callback', async (req, res) => {
 // reusing the poller's tested reply+dedup logic. The 45s poller remains as a
 // safety-net fallback. fanvueAiSeen dedup prevents double-replies between them.
 const fanvuePoller = require('../services/fanvuePoller');
+const fanvueNotify = require('../services/fanvueNotify');
 const webhookTokenOk = (req) => {
   const expected = process.env.FANVUE_WEBHOOK_TOKEN;
   if (!expected) return false;
@@ -71,16 +72,20 @@ router.post('/webhook', async (req, res) => {
   if (!webhookTokenOk(req)) return res.status(401).json({ error: 'unauthorized' });
   res.status(200).json({ ok: true }); // ACK immediately; process out-of-band
   try {
-    const event = req.body?.event || req.body?.type || req.body?.eventType || '';
-    // Only inbound chat messages trigger an auto-reply.
-    if (event && !/message\.received|message_received|message/i.test(String(event))) return;
-    const creator = await Creator.findOne({
-      where: { fanvueConnected: true, fanvueAiAutoReply: true },
-    });
+    const event = String(req.body?.event || req.body?.type || req.body?.eventType || '');
+    const creator = await Creator.findOne({ where: { fanvueConnected: true } });
     if (!creator) return;
     console.log(`[fanvue-webhook] event=${event || '?'} → creator=${creator.id}`);
-    fanvuePoller.processCreatorGuarded(creator)
-      .catch((e) => console.warn('[fanvue-webhook] process fail:', e.message));
+
+    // 1. Mobile push alert (any event type) — best-effort, never blocks.
+    fanvueNotify.notify(creator, event, req.body)
+      .catch((e) => console.warn('[fanvue-webhook] notify fail:', e.message));
+
+    // 2. AI auto-reply — only on inbound messages, and only if enabled.
+    if (/message/i.test(event) && creator.fanvueAiAutoReply) {
+      fanvuePoller.processCreatorGuarded(creator)
+        .catch((e) => console.warn('[fanvue-webhook] process fail:', e.message));
+    }
   } catch (e) {
     console.warn('[fanvue-webhook] error:', e.message);
   }
@@ -152,7 +157,20 @@ router.get('/status', loadCreator, (req, res) => {
     userUuid: c.fanvueUserUuid || null,
     photoFolder: c.fanvueAiPhotoFolder || 'AI Images',
     photoPrice: c.fanvueAiPhotoPrice || 500,
+    notify: c.fanvueNotify !== false,
+    telegramReady: !!(c.telegramBotToken && c.telegramChatId),
   });
+});
+
+// Send a test mobile alert to confirm Telegram is wired up.
+router.post('/notify-test', loadCreator, async (req, res) => {
+  const c = req.creator;
+  if (!c.telegramBotToken || !c.telegramChatId) {
+    return res.status(400).json({ error: 'Telegram not set up yet. Add your bot token + chat ID in Admin → AI Chatbot first.' });
+  }
+  const ok = await fanvueNotify.notify(c, 'message.received', { data: { user: { handle: 'test_fan' }, message: { text: 'This is a test alert from your site 🎉' } } });
+  if (!ok) return res.status(502).json({ error: 'Could not send — check the Telegram token/chat ID.' });
+  res.json({ ok: true });
 });
 
 // AI photo assist — suggest a photo (from the curated folder) + caption for a
@@ -186,8 +204,9 @@ router.patch('/settings', loadCreator, async (req, res) => {
   if (typeof req.body?.autoReply === 'boolean') patch.fanvueAiAutoReply = req.body.autoReply;
   if (typeof req.body?.photoFolder === 'string' && req.body.photoFolder.trim()) patch.fanvueAiPhotoFolder = req.body.photoFolder.trim();
   if (req.body?.photoPrice != null && Number.isFinite(+req.body.photoPrice)) patch.fanvueAiPhotoPrice = Math.max(300, Math.round(+req.body.photoPrice));
+  if (typeof req.body?.notify === 'boolean') patch.fanvueNotify = req.body.notify;
   await req.creator.update(patch);
-  res.json({ ok: true, autoReply: !!req.creator.fanvueAiAutoReply, photoFolder: req.creator.fanvueAiPhotoFolder, photoPrice: req.creator.fanvueAiPhotoPrice });
+  res.json({ ok: true, autoReply: !!req.creator.fanvueAiAutoReply, photoFolder: req.creator.fanvueAiPhotoFolder, photoPrice: req.creator.fanvueAiPhotoPrice, notify: req.creator.fanvueNotify !== false });
 });
 
 // ── Generic, allow-listed proxy over the Fanvue API ──────────────────────────

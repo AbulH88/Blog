@@ -78,6 +78,9 @@ const Creator = sequelize.define('Creator', {
   // Fanvue-recommended price. The AI only SUGGESTS; the creator approves+sends.
   fanvueAiPhotoFolder:{ type: DataTypes.STRING, defaultValue: 'AI Images' },
   fanvueAiPhotoPrice: { type: DataTypes.INTEGER, defaultValue: 500 },
+  // Mobile push alerts for Fanvue events (message/tip/subscribe/…) via the
+  // creator's Telegram bot. On by default once Telegram is configured.
+  fanvueNotify:       { type: DataTypes.BOOLEAN, defaultValue: true },
 
   // Discreet billing descriptor — shown on bank statements for every
   // charge. Max ~22 chars (Visa/MC limit). Must be neutral / brand-safe —
