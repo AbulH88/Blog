@@ -37,7 +37,14 @@ const hasUnread = (c) => {
 };
 
 async function processCreator(creator) {
-  const creatorUuid = creator.fanvueUserUuid;
+  // Self-heal: the OAuth callback may not have stored the creator's own Fanvue
+  // uuid (needed to tell creator vs fan messages apart). Fetch + persist once.
+  let creatorUuid = creator.fanvueUserUuid;
+  if (!creatorUuid) {
+    for (const p of ['/users/me', '/current-user']) {
+      try { const me = await fanvue.fanvueFetch(creator, 'GET', p); if (me && me.uuid) { creatorUuid = me.uuid; await creator.update({ fanvueUserUuid: me.uuid }); break; } } catch { /* try next */ }
+    }
+  }
   const chats = asArray(await fanvue.fanvueFetch(creator, 'GET', '/chats')).slice(0, MAX_CHATS_PER_CYCLE);
   const seen = { ...(creator.fanvueAiSeen || {}) };
   let replies = 0;
@@ -65,7 +72,7 @@ async function processCreator(creator) {
     if (!text) { seen[chatUuid] = newestId; changed = true; continue; }
 
     try {
-      await fanvue.fanvueFetch(creator, 'POST', `/chats/${chatUuid}/messages`, { text });
+      await fanvue.fanvueFetch(creator, 'POST', `/chats/${chatUuid}/message`, { text });
       seen[chatUuid] = newestId; changed = true; replies++;
       console.log(`[fanvue-poll] replied creator=${creator.id} chat=${chatUuid}`);
       await sleep(300);

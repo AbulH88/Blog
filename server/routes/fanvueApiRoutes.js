@@ -178,7 +178,7 @@ const POST_ALLOW = [
   /^\/posts$/,
   /^\/posts\/[\w-]+\/(pin|repost|comments)$/,
   /^\/chats$/,
-  /^\/chats\/[\w-]+\/messages$/,
+  /^\/chats\/[\w-]+\/messages?$/,
   /^\/chats\/messages\/(bulk|media\/resolve)$/,
   /^\/vault\/folders$/,
   /^\/vault\/folders\/[^/?]+\/media$/,

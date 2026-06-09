@@ -948,7 +948,7 @@ export const fanvueAccount      = () => fanvueFirst(['/users/account', '/current
 export const fanvueUnread       = () => fanvueFirst(['/users/unread-counts', '/current-user/unread-counts']);
 export const fanvueChats        = (q = '') => fanvueGet(`/chats${q}`);
 export const fanvueMessages     = (uuid: string, q = '') => fanvueGet(`/chats/${uuid}/messages${q}`);
-export const fanvueSendMessage  = (uuid: string, b: any) => fanvuePost(`/chats/${uuid}/messages`, b);
+export const fanvueSendMessage  = (uuid: string, b: any) => fanvuePost(`/chats/${uuid}/message`, b);
 export const fanvueEarningsSummary = () => fanvueFirst(['/insights/earnings/summary', '/earnings/summary']);
 export const fanvueEarningsData = () => fanvueFirst(['/insights/earnings/data', '/earnings/data']);
 export const fanvueSubscribers  = (q = '') => fanvueGet(`/subscribers${q}`);
