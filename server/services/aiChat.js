@@ -240,10 +240,62 @@ async function generateFanvueReply({ creator, history }) {
   return parsePpvSentinel(reply).text;
 }
 
+/**
+ * Photo picker for Fanvue DMs. Given the conversation + a catalog of available
+ * photos (each with Fanvue's auto-generated description/tags), decide whether a
+ * photo fits THIS moment and which one. Suggest-only: the creator approves+sends.
+ * @param {{creator, history, catalog:Array<{i,desc,tags}>}}
+ * @returns {Promise<{photo:number, caption:string, reason:string}>}
+ *          photo=0 means "no photo right now".
+ */
+async function pickFanvuePhoto({ creator, history, catalog }) {
+  const name = creator.displayName || 'the creator';
+  const list = catalog
+    .map((c) => `${c.i}. [${c.tags || ''}] ${c.desc}`)
+    .join('\n');
+  const system = `You help ${name} decide whether to send a photo in this DM and which one.
+
+Available photos (refer to them ONLY by their number):
+${list}
+
+Rules:
+- Suggest a photo ONLY if the fan is asking for pics/content, flirting hard, or the moment clearly calls for it. If it's just small talk or a greeting, return photo 0 (send nothing).
+- Pick the ONE photo whose description best matches what the fan wants right now.
+- These are PAID unlocks. Write a short, teasing caption in ${name}'s voice (first person, lowercase, mobile-DM style, 1 line) to entice the unlock. Don't describe the photo literally.
+- Never claim it's free.
+
+Respond with ONLY a JSON object, no other text:
+{"photo": <number, 0 for none>, "caption": "<short caption>", "reason": "<one short sentence>"}`;
+
+  const raw = await callOpenRouter({
+    model: creator.aiModel || 'sao10k/l3.3-euryale-70b',
+    messages: [
+      { role: 'system', content: system },
+      ...history.slice(-HISTORY_WINDOW),
+      { role: 'user', content: '[Decide now. Return only the JSON.]' },
+    ],
+  });
+  // Tolerant JSON parse — strip code fences / stray prose.
+  let parsed;
+  try {
+    const m = raw.match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(m ? m[0] : raw);
+  } catch {
+    return { photo: 0, caption: '', reason: 'Could not parse AI photo decision.' };
+  }
+  const photo = Number.isFinite(+parsed.photo) ? parseInt(parsed.photo, 10) : 0;
+  return {
+    photo: photo > 0 ? photo : 0,
+    caption: typeof parsed.caption === 'string' ? parsed.caption.trim() : '',
+    reason: typeof parsed.reason === 'string' ? parsed.reason.trim() : '',
+  };
+}
+
 module.exports = {
   generateReply,
   generateTestReply,
   generateFanvueReply,
+  pickFanvuePhoto,
   buildSystemPrompt,
   defaultPersona,
 };

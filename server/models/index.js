@@ -301,6 +301,8 @@ const applyMigrations = async () => {
       ['fanvueHandle',        'VARCHAR(255)',              'TEXT'],
       ['fanvueAiAutoReply',   'BOOLEAN DEFAULT false',     'INTEGER DEFAULT 0'],
       ['fanvueAiSeen',        "JSON DEFAULT '{}'::json",   "TEXT DEFAULT '{}'"],
+      ['fanvueAiPhotoFolder', "VARCHAR(255) DEFAULT 'AI Images'", "TEXT DEFAULT 'AI Images'"],
+      ['fanvueAiPhotoPrice',  'INTEGER DEFAULT 500',       'INTEGER DEFAULT 500'],
     ];
     if (dialect === 'postgres') {
       for (const [name, pgType] of cols) {

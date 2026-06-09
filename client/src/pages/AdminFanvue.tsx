@@ -5,7 +5,7 @@ import {
   fanvueAccount, fanvueChats, fanvueMessages, fanvueSendMessage,
   fanvueEarningsSummary, fanvueEarningsData, fanvueSubscribers, fanvueTopFans,
   fanvueGet, fanvuePost, fanvuePatch, fanvueDelete, fanvueUnread,
-  fanvueAiReply, fanvueSetAutoReply,
+  fanvueAiReply, fanvueSetAutoReply, fanvueAiPhoto,
 } from '../api';
 
 // Run a write call, surface errors, then refresh. Keeps the write controls terse.
@@ -254,6 +254,9 @@ function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: stri
   const [auto, setAuto] = useState(initialAuto);
   const [imgStatus, setImgStatus] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  // AI photo suggestion awaiting creator approval.
+  const [suggestion, setSuggestion] = useState<{ mediaUuid: string; name: string; description: string; price: number } | null>(null);
   useEffect(() => { fanvueChats().then(d => setChats(asArray(d))).catch(() => setChats([])); }, []);
   const uuidOf = (c: any) => pick(c, 'userUuid', 'counterpartUserUuid', 'uuid', 'id') || pick(c.user || {}, 'uuid', 'id');
   const activeUuid = active ? uuidOf(active) : null;
@@ -307,6 +310,38 @@ function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: stri
     setAiBusy(false);
     if (r?.text) setText(r.text); else alert('AI: ' + (r?.error || 'no reply'));
   };
+  // Ask the AI to suggest a photo from the curated folder. If it picks one,
+  // show an approval banner + drop its caption into the composer.
+  const aiSuggestPhoto = async () => {
+    if (!active) return; setPhotoBusy(true);
+    const r = await fanvueAiPhoto(uuidOf(active));
+    setPhotoBusy(false);
+    if (r?.error) { alert('AI photo: ' + r.error); return; }
+    if (r?.none) { alert(r.reason || 'AI: no photo fits right now.'); return; }
+    setSuggestion({ mediaUuid: r.mediaUuid, name: r.name || 'photo', description: r.description || '', price: r.price || 500 });
+    setText(r.caption || '');
+  };
+  // Approve + send the suggested photo (caption = composer text, paid unlock).
+  const sendSuggested = async () => {
+    if (!active || !suggestion) return; setSending(true);
+    try {
+      const body: any = { mediaUuids: [suggestion.mediaUuid], price: suggestion.price };
+      if (text.trim()) body.text = text.trim();
+      const r = await fanvueSendMessage(uuidOf(active), body);
+      if (r?.error) throw new Error(r.error + (r.detail ? ' · ' + JSON.stringify(r.detail) : ''));
+      setSuggestion(null); setText('');
+      setMessages(asArray(await fanvueMessages(uuidOf(active))));
+    } catch (e: any) {
+      alert('Send failed: ' + (e?.message || e));
+    } finally { setSending(false); }
+  };
+  const changePrice = () => {
+    if (!suggestion) return;
+    const v = (window.prompt('Unlock price in USD (min $3):', String((suggestion.price / 100).toFixed(2))) || '').trim();
+    if (!v) return;
+    const cents = Math.max(300, Math.round(parseFloat(v) * 100));
+    if (Number.isFinite(cents)) setSuggestion({ ...suggestion, price: cents });
+  };
   const toggleAuto = async () => {
     const next = !auto; setAuto(next);
     const r = await fanvueSetAutoReply(next);
@@ -340,11 +375,26 @@ function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: stri
               return <div key={i} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '70%', padding: '8px 12px', borderRadius: 14, background: mine ? 'var(--v3-terracotta)' : 'var(--v3-cream-deep)', color: mine ? '#fff' : 'var(--v3-ink)', fontSize: '0.88rem' }}>{txt(pick(m, 'text', 'content', 'body', 'message')) || <i>(media)</i>}</div>;
             })}
           </div>
+          {suggestion && (
+            <div style={{ border: '1px solid var(--v3-terracotta)', borderRadius: 12, padding: '10px 12px', marginBottom: 8, background: 'var(--v3-cream-deep)' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: 4 }}>📷 AI suggests sending a photo</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', marginBottom: 6 }}>
+                <b>{txt(suggestion.name)}</b> — {txt(suggestion.description).slice(0, 160)}{txt(suggestion.description).length > 160 ? '…' : ''}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button className="v3-btn v3-btn-primary" disabled={sending} onClick={sendSuggested}>Send photo · ${(suggestion.price / 100).toFixed(2)}</button>
+                <button style={{ ...btn }} onClick={changePrice}>Change price</button>
+                <button style={{ ...btn }} onClick={() => setSuggestion(null)}>Discard</button>
+                <span style={{ fontSize: '0.72rem', color: 'var(--v3-muted)' }}>Caption = the text box below (editable).</span>
+              </div>
+            </div>
+          )}
           {imgStatus && <div style={{ fontSize: '0.8rem', color: 'var(--v3-terracotta)', padding: '4px 2px' }}>📷 {imgStatus}</div>}
           <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--v3-line)', paddingTop: 10, alignItems: 'center' }}>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) sendImage(f); }} />
             <button style={{ ...btn, whiteSpace: 'nowrap' }} disabled={sending} onClick={() => fileRef.current?.click()} title="Send a photo (optionally set a price to make it pay-to-unlock)">📎 Photo</button>
+            <button style={{ ...btn, whiteSpace: 'nowrap' }} disabled={photoBusy} onClick={aiSuggestPhoto} title="Let the AI pick a photo from your 'AI Images' folder + draft a caption">{photoBusy ? '…' : '✨ Suggest photo'}</button>
             <button style={{ ...btn, whiteSpace: 'nowrap' }} disabled={aiBusy} onClick={aiSuggest} title="Draft a reply with your AI">{aiBusy ? '…' : '✨ AI reply'}</button>
             <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} placeholder="Type a message…" style={{ flex: 1, padding: '10px 12px', borderRadius: 999, border: '1px solid var(--v3-line)', fontFamily: 'inherit' }} />
             <button className="v3-btn v3-btn-primary" disabled={sending || !text.trim()} onClick={send}>Send</button>

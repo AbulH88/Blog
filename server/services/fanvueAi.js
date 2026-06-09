@@ -40,4 +40,51 @@ async function suggestReply(creator, chatUuid) {
   return aiChat.generateFanvueReply({ creator, history });
 }
 
-module.exports = { mapFanvueHistory, suggestReply, asArray, pick, isFromCreator, senderUuid, msgText, msgUuid, msgTime };
+/**
+ * Suggest a photo to send in a chat. Reads the creator's curated AI photo
+ * folder, uses Fanvue's auto-generated descriptions/tags (get /media/bulk) so
+ * the AI can pick the best match, then drafts a caption. Suggest-only — the
+ * route returns this to the admin UI for the creator to approve + send.
+ * @returns {{none:true, reason}} | {{mediaUuid, name, description, caption, price}}
+ */
+async function suggestPhoto(creator, chatUuid) {
+  const folder = creator.fanvueAiPhotoFolder || 'AI Images';
+  const media = asArray(await fanvue.fanvueFetch(
+    creator, 'GET', `/vault/folders/${encodeURIComponent(folder)}/media?size=50`));
+  if (!media.length) return { none: true, reason: `No photos in your "${folder}" Vault folder yet. Add some there first.` };
+
+  const uuids = media.map((m) => pick(m, 'uuid', 'id')).filter(Boolean).slice(0, 20);
+  let results = {};
+  try {
+    const bulk = await fanvue.fanvueFetch(creator, 'GET', `/media/bulk?mediaUuids=${uuids.join(',')}`);
+    results = bulk?.results || {};
+  } catch { /* fall through — handled below */ }
+
+  const catalog = uuids.map((u, idx) => {
+    const r = results[u] || {};
+    const tags = Array.isArray(r?.tags?.tags) ? r.tags.tags.join(', ') : '';
+    return { i: idx + 1, uuid: u, name: r.name || '', desc: r.description || r.caption || '', tags, price: r.recommendedPrice || null };
+  }).filter((c) => c.desc);
+  if (!catalog.length) return { none: true, reason: 'Your photos are still being tagged by Fanvue — try again in a minute.' };
+
+  const msgs = await fanvue.fanvueFetch(creator, 'GET', `/chats/${chatUuid}/messages`);
+  const history = mapFanvueHistory(msgs, creator.fanvueUserUuid);
+  if (!history.length) return { none: true, reason: 'No conversation yet to base a photo on.' };
+
+  const decision = await aiChat.pickFanvuePhoto({ creator, history, catalog });
+  if (!decision.photo) return { none: true, reason: decision.reason || 'AI judged no photo fits right now.' };
+
+  const chosen = catalog.find((c) => c.i === decision.photo);
+  if (!chosen) return { none: true, reason: 'AI picked a photo that is not available.' };
+  const price = chosen.price || creator.fanvueAiPhotoPrice || 500;
+  return {
+    mediaUuid: chosen.uuid,
+    name: chosen.name,
+    description: chosen.desc,
+    caption: decision.caption || '',
+    price,
+    reason: decision.reason || '',
+  };
+}
+
+module.exports = { mapFanvueHistory, suggestReply, suggestPhoto, asArray, pick, isFromCreator, senderUuid, msgText, msgUuid, msgTime };

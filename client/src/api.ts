@@ -959,3 +959,6 @@ export const fanvueAiReply      = (chatUuid: string) =>
   fvRaw('/ai-reply', { method: 'POST', headers: fvHeaders(), body: JSON.stringify({ chatUuid }) });
 export const fanvueSetAutoReply = (autoReply: boolean) =>
   fvRaw('/settings', { method: 'PATCH', headers: fvHeaders(), body: JSON.stringify({ autoReply }) });
+// AI: suggest a photo (from the curated folder) + caption for a chat.
+export const fanvueAiPhoto      = (chatUuid: string) =>
+  fvRaw('/ai-photo', { method: 'POST', headers: fvHeaders(), body: JSON.stringify({ chatUuid }) });

@@ -73,6 +73,11 @@ const Creator = sequelize.define('Creator', {
   // chatUuid → last inbound message uuid the AI has replied to (dedup).
   fanvueAiAutoReply:  { type: DataTypes.BOOLEAN, defaultValue: false },
   fanvueAiSeen:       { type: DataTypes.JSON, defaultValue: {} },
+  // AI photo-suggest: which curated Vault folder the AI may pick photos from,
+  // and the default pay-to-unlock price (in cents) when a photo has no
+  // Fanvue-recommended price. The AI only SUGGESTS; the creator approves+sends.
+  fanvueAiPhotoFolder:{ type: DataTypes.STRING, defaultValue: 'AI Images' },
+  fanvueAiPhotoPrice: { type: DataTypes.INTEGER, defaultValue: 500 },
 
   // Discreet billing descriptor — shown on bank statements for every
   // charge. Max ~22 chars (Visa/MC limit). Must be neutral / brand-safe —
