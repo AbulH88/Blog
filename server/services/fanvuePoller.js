@@ -84,6 +84,16 @@ async function processCreator(creator) {
   if (changed) await creator.update({ fanvueAiSeen: seen });
 }
 
+// Per-creator in-flight lock so the 45s poller and an incoming webhook can't
+// process the same creator concurrently (avoids double-sends).
+const inFlight = new Set();
+async function processCreatorGuarded(creator) {
+  if (inFlight.has(creator.id)) return false;
+  inFlight.add(creator.id);
+  try { await processCreator(creator); return true; }
+  finally { inFlight.delete(creator.id); }
+}
+
 async function cycle() {
   let creators = [];
   try {
@@ -91,7 +101,7 @@ async function cycle() {
   } catch (e) { console.warn('[fanvue-poll] query fail:', e.message); return; }
   if (creators.length) console.log(`[fanvue-poll] cycle — ${creators.length} creator(s)`);
   for (const creator of creators) {
-    try { await processCreator(creator); }
+    try { await processCreatorGuarded(creator); }
     catch (e) { console.warn(`[fanvue-poll] creator=${creator.id} fail: ${e.message}`); }
   }
 }
@@ -101,4 +111,4 @@ function start() {
   setInterval(() => { cycle().catch((e) => console.warn('[fanvue-poll] cycle error:', e.message)); }, INTERVAL_MS);
 }
 
-module.exports = { start, cycle };
+module.exports = { start, cycle, processCreator, processCreatorGuarded };

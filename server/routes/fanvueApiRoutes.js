@@ -49,6 +49,43 @@ router.get('/callback', async (req, res) => {
   }
 });
 
+// ── PUBLIC: real-time webhook receiver ───────────────────────────────────────
+// Fanvue calls this the instant a DM arrives (event "message.received"), so the
+// AI replies in ~1-2s instead of waiting for the 45s poller. Guarded by a shared
+// secret token (?token= or X-Webhook-Token). We ACK fast, then process async
+// reusing the poller's tested reply+dedup logic. The 45s poller remains as a
+// safety-net fallback. fanvueAiSeen dedup prevents double-replies between them.
+const fanvuePoller = require('../services/fanvuePoller');
+const webhookTokenOk = (req) => {
+  const expected = process.env.FANVUE_WEBHOOK_TOKEN;
+  if (!expected) return false;
+  const got = req.query.token || req.get('x-webhook-token') || '';
+  return String(got) === String(expected);
+};
+// Some webhook systems verify the endpoint with a GET challenge — echo it.
+router.get('/webhook', (req, res) => {
+  if (req.query.challenge) return res.status(200).send(String(req.query.challenge));
+  res.status(200).json({ ok: true });
+});
+router.post('/webhook', async (req, res) => {
+  if (!webhookTokenOk(req)) return res.status(401).json({ error: 'unauthorized' });
+  res.status(200).json({ ok: true }); // ACK immediately; process out-of-band
+  try {
+    const event = req.body?.event || req.body?.type || req.body?.eventType || '';
+    // Only inbound chat messages trigger an auto-reply.
+    if (event && !/message\.received|message_received|message/i.test(String(event))) return;
+    const creator = await Creator.findOne({
+      where: { fanvueConnected: true, fanvueAiAutoReply: true },
+    });
+    if (!creator) return;
+    console.log(`[fanvue-webhook] event=${event || '?'} → creator=${creator.id}`);
+    fanvuePoller.processCreatorGuarded(creator)
+      .catch((e) => console.warn('[fanvue-webhook] process fail:', e.message));
+  } catch (e) {
+    console.warn('[fanvue-webhook] error:', e.message);
+  }
+});
+
 // ── Everything below requires a creator (admin) token ──
 router.use(requireAuth, requireCreator);
 
