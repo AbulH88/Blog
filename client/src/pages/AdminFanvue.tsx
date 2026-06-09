@@ -52,7 +52,19 @@ const money = (v: any) => {
 const asArray = (d: any): any[] =>
   Array.isArray(d) ? d : (d?.data || d?.items || d?.results || d?.members || d?.folders || []);
 const dateOf = (v: any) => (v ? String(v).slice(0, 10) : '');
-const nameOf = (o: any) => pick(o?.user || o, 'displayName', 'handle', 'username', 'name') || 'User';
+// SAFE renderers — never return an object (rendering an object as a React child
+// crashes the whole page). Use these for anything shown directly in JSX.
+const txt = (v: any): string => {
+  if (v == null) return '';
+  if (typeof v === 'object') return pick(v, 'text', 'name', 'title', 'label') ?? '';
+  return String(v);
+};
+const num = (v: any): number => {
+  const raw = (v && typeof v === 'object') ? (v.count ?? v.total ?? v.value ?? 0) : v;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+};
+const nameOf = (o: any) => txt(pick(o?.user || o, 'displayName', 'handle', 'username', 'name')) || 'User';
 
 export default function AdminFanvue() {
   const [sub, setSub] = useState<Sub>('overview');
@@ -220,8 +232,8 @@ function OverviewTab() {
   const stats = [
     { label: 'All-time earnings', value: money(pick(e, 'allTime', 'total', 'lifetime', 'gross')), cls: 'dark' },
     { label: 'This month', value: money(pick(e, 'thisMonth', 'month', 'currentMonth')), cls: 'peach' },
-    { label: 'Subscribers', value: pick(d, 'subscriberCount', 'subscribers', 'activeSubscribers') ?? '—', cls: 'pink' },
-    { label: 'Unread chats', value: pick(unread || {}, 'unreadChats', 'chats', 'unread') ?? '—', cls: 'peach' },
+    { label: 'Subscribers', value: num(pick(d, 'subscriberCount', 'subscribers', 'activeSubscribers')), cls: 'pink' },
+    { label: 'Unread chats', value: num(pick(unread || {}, 'unreadChats', 'chats', 'unread')), cls: 'peach' },
   ];
   return (<>
     <div className="v3-stat-grid">{stats.map((s, i) => (
@@ -274,7 +286,7 @@ function ChatsTab({ initialAuto }: { initialAuto: boolean }) {
         {chats.map((c, i) => (
           <button key={i} onClick={() => open(c)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '12px 14px', border: 'none', borderBottom: '1px solid var(--v3-line)', background: active === c ? 'var(--v3-cream-deep)' : '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
             <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{nameOf(c)}</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(pick(c, 'lastMessage', 'preview') || '')}</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--v3-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txt(pick(c, 'lastMessage', 'preview'))}</div>
           </button>
         ))}
       </div>
@@ -284,7 +296,7 @@ function ChatsTab({ initialAuto }: { initialAuto: boolean }) {
             {messages.length === 0 && <p style={{ color: 'var(--v3-muted)' }}>No messages.</p>}
             {messages.map((m, i) => {
               const mine = !!pick(m, 'isCreator', 'fromCreator', 'isSelf', 'sentByMe');
-              return <div key={i} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '70%', padding: '8px 12px', borderRadius: 14, background: mine ? 'var(--v3-terracotta)' : 'var(--v3-cream-deep)', color: mine ? '#fff' : 'var(--v3-ink)', fontSize: '0.88rem' }}>{pick(m, 'text', 'content', 'body', 'message') || <i>(media)</i>}</div>;
+              return <div key={i} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '70%', padding: '8px 12px', borderRadius: 14, background: mine ? 'var(--v3-terracotta)' : 'var(--v3-cream-deep)', color: mine ? '#fff' : 'var(--v3-ink)', fontSize: '0.88rem' }}>{txt(pick(m, 'text', 'content', 'body', 'message')) || <i>(media)</i>}</div>;
             })}
           </div>
           <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--v3-line)', paddingTop: 10 }}>
@@ -334,8 +346,8 @@ function PostsTab() {
         <div className="v3-card-head"><h3>Posts</h3><button style={btn} onClick={newPost}>+ New post</button></div>
         {posts.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>No posts.</p> : posts.map((p, i) => (
           <button key={i} onClick={() => open(p)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 8px', border: 'none', borderTop: i ? '1px solid var(--v3-line)' : 'none', background: sel === p ? 'var(--v3-cream-deep)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
-            <div style={{ fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pick(p, 'text', 'caption', 'title') || '(no caption)'}</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--v3-muted)' }}>{dateOf(pick(p, 'createdAt', 'publishedAt', 'date'))} · ❤ {pick(p, 'likeCount', 'likes') ?? 0} · 💝 {pick(p, 'tipCount', 'tips') ?? 0}</div>
+            <div style={{ fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txt(pick(p, 'text', 'caption', 'title')) || '(no caption)'}</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--v3-muted)' }}>{dateOf(pick(p, 'createdAt', 'publishedAt', 'date'))} · ❤ {num(pick(p, 'likeCount', 'likes'))} · 💝 {num(pick(p, 'tipCount', 'tips'))}</div>
           </button>
         ))}
       </div>
@@ -412,7 +424,7 @@ function EarningsTab() {
             <tbody>{rows.slice(0, 50).map((r, i) => (
               <tr key={i} style={{ borderTop: '1px solid var(--v3-line)' }}>
                 <td style={{ padding: '6px 8px' }}>{dateOf(pick(r, 'createdAt', 'date', 'created'))}</td>
-                <td style={{ padding: '6px 8px' }}>{pick(r, 'type', 'source', 'kind') || '—'}</td>
+                <td style={{ padding: '6px 8px' }}>{txt(pick(r, 'type', 'source', 'kind')) || '—'}</td>
                 <td style={{ padding: '6px 8px' }}>{nameOf(r)}</td>
                 <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700 }}>{money(pick(r, 'amount', 'gross', 'net', 'total'))}</td>
               </tr>
@@ -635,7 +647,7 @@ function VaultTab() {
           transition: 'outline-color 0.15s',
         }}
       >
-        <div className="v3-card-head"><h3>{sel ? nameOfF(sel) : 'Media'}</h3>
+        <div className="v3-card-head"><h3>{sel ? txt(nameOfF(sel)) : 'Media'}</h3>
           {sel && (
             <span style={{ display: 'flex', gap: 6 }}>
               {/* Upload button — accepts multiple files. Hidden <input>
@@ -721,7 +733,7 @@ function ListsTab() {
         {custom.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>None.</p> :
           custom.map((l, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--v3-line)', padding: '8px 4px' }}>
-              <span style={{ flex: 1 }}>{pick(l, 'name', 'title') || 'List'} <span style={{ color: 'var(--v3-muted)' }}>· {pick(l, 'memberCount', 'members', 'count') ?? 0}</span></span>
+              <span style={{ flex: 1 }}>{txt(pick(l, 'name', 'title')) || 'List'} <span style={{ color: 'var(--v3-muted)' }}>· {num(pick(l, 'memberCount', 'members', 'count'))}</span></span>
               <button style={btn} onClick={() => rename(l)}>Rename</button>
               <button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(l)}>Delete</button>
             </div>
@@ -760,8 +772,8 @@ function TrackingTab() {
     {rows.length === 0 ? <p style={{ color: 'var(--v3-muted)' }}>None.</p> :
       rows.map((r, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--v3-line)', padding: '8px 4px' }}>
-          <span style={{ flex: 1, minWidth: 0 }}><b>{pick(r, 'name', 'label', 'slug') || 'Link'}</b><span style={{ display: 'block', fontSize: '0.76rem', color: 'var(--v3-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pick(r, 'url', 'shortUrl') || ''}</span></span>
-          <span style={{ color: 'var(--v3-muted)', fontSize: '0.78rem' }}>{pick(r, 'clicks', 'impressions', 'userCount') ?? 0}</span>
+          <span style={{ flex: 1, minWidth: 0 }}><b>{txt(pick(r, 'name', 'label', 'slug')) || 'Link'}</b><span style={{ display: 'block', fontSize: '0.76rem', color: 'var(--v3-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txt(pick(r, 'url', 'shortUrl'))}</span></span>
+          <span style={{ color: 'var(--v3-muted)', fontSize: '0.78rem' }}>{num(pick(r, 'clicks', 'impressions', 'userCount'))}</span>
           <button style={{ ...btn, color: 'var(--v3-danger)' }} onClick={() => del(r)}>Delete</button>
         </div>
       ))}
@@ -825,10 +837,10 @@ function Row({ main, sub, right, onClick, active }: { main: string; sub?: any; r
   return (
     <C onClick={onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', textAlign: 'left', padding: '9px 6px', borderTop: '1px solid var(--v3-line)', background: active ? 'var(--v3-cream-deep)' : 'transparent', border: onClick ? 'none' : undefined, borderTopWidth: 1, cursor: onClick ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: '0.86rem' }}>
       <span style={{ minWidth: 0 }}>
-        <span style={{ fontWeight: 600 }}>{main}</span>
-        {sub && <span style={{ display: 'block', color: 'var(--v3-muted)', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(sub)}</span>}
+        <span style={{ fontWeight: 600 }}>{txt(main)}</span>
+        {sub != null && txt(sub) && <span style={{ display: 'block', color: 'var(--v3-muted)', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txt(sub)}</span>}
       </span>
-      {right && <span style={{ color: 'var(--v3-muted)', fontWeight: 700, flexShrink: 0 }}>{right}</span>}
+      {right != null && txt(right) && <span style={{ color: 'var(--v3-muted)', fontWeight: 700, flexShrink: 0 }}>{txt(right)}</span>}
     </C>
   );
 }
