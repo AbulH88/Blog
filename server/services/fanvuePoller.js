@@ -14,34 +14,30 @@
 const { Creator } = require('../models');
 const fanvue = require('./fanvue');
 const aiChat = require('./aiChat');
-const { mapFanvueHistory, asArray, pick, isFromCreator, msgUuid } = require('./fanvueAi');
+const { mapFanvueHistory, asArray, pick, isFromCreator, msgUuid, msgTime } = require('./fanvueAi');
 
 const INTERVAL_MS = 45_000;
 const MAX_CHATS_PER_CYCLE = 25;
 const MAX_REPLIES_PER_CYCLE = 10;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const ts = (m) => {
-  const v = pick(m, 'createdAt', 'sentAt', 'created', 'timestamp', 'date');
-  const n = v ? Date.parse(v) : NaN;
-  return Number.isFinite(n) ? n : 0;
-};
 const newestMessage = (msgs) => {
   if (!msgs.length) return null;
-  if (msgs.some(ts)) return [...msgs].sort((a, b) => ts(b) - ts(a))[0]; // newest first
-  return msgs[msgs.length - 1]; // no timestamps → assume ascending order
+  return [...msgs].sort((a, b) => msgTime(b) - msgTime(a))[0]; // newest by timestamp
 };
 const chatUuidOf = (c) =>
-  pick(c, 'counterpartUserUuid', 'userUuid', 'uuid', 'id') || pick(c.user || {}, 'uuid', 'id');
+  pick(c.user || {}, 'uuid', 'id') || pick(c, 'counterpartUserUuid', 'userUuid', 'uuid', 'id');
+// Real chat shape uses unreadMessagesCount + isRead.
 const hasUnread = (c) => {
-  const u = pick(c, 'unreadCount', 'unread');
+  const u = pick(c, 'unreadMessagesCount', 'unreadCount', 'unread');
   if (typeof u === 'number') return u > 0;
-  const h = pick(c, 'hasUnread', 'isUnread');
-  if (typeof h === 'boolean') return h;
-  return null; // unknown
+  const r = pick(c, 'isRead');
+  if (typeof r === 'boolean') return !r;
+  return null; // unknown → process anyway
 };
 
 async function processCreator(creator) {
+  const creatorUuid = creator.fanvueUserUuid;
   const chats = asArray(await fanvue.fanvueFetch(creator, 'GET', '/chats')).slice(0, MAX_CHATS_PER_CYCLE);
   const seen = { ...(creator.fanvueAiSeen || {}) };
   let replies = 0;
@@ -51,7 +47,6 @@ async function processCreator(creator) {
     if (replies >= MAX_REPLIES_PER_CYCLE) break;
     const chatUuid = chatUuidOf(c);
     if (!chatUuid) continue;
-    if (hasUnread(c) === false) continue; // definitely nothing new
 
     await sleep(300);
     let msgs;
@@ -60,12 +55,12 @@ async function processCreator(creator) {
 
     const newest = newestMessage(msgs);
     if (!newest) continue;
-    if (isFromCreator(newest)) continue;            // last word is ours → nothing to answer
-    const newestId = msgUuid(newest) || String(ts(newest));
-    if (seen[chatUuid] === newestId) continue;       // already answered this one
+    if (isFromCreator(newest, creatorUuid)) continue;  // last word is ours → nothing to answer
+    const newestId = msgUuid(newest) || String(msgTime(newest));
+    if (seen[chatUuid] === newestId) continue;          // already answered this one
 
     let text;
-    try { text = await aiChat.generateFanvueReply({ creator, history: mapFanvueHistory(msgs) }); }
+    try { text = await aiChat.generateFanvueReply({ creator, history: mapFanvueHistory(msgs, creatorUuid) }); }
     catch (e) { console.warn(`[fanvue-poll] gen fail chat=${chatUuid}: ${e.message}`); continue; }
     if (!text) { seen[chatUuid] = newestId; changed = true; continue; }
 

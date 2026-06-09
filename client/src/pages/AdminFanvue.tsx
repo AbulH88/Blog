@@ -134,7 +134,7 @@ export default function AdminFanvue() {
         <>
           {sub === 'connect'       && <ConnectTab status={status} onChange={loadStatus} />}
           {sub === 'overview'      && gate(<OverviewTab />)}
-          {sub === 'chats'         && gate(<ChatsTab initialAuto={!!status?.autoReply} />)}
+          {sub === 'chats'         && gate(<ChatsTab initialAuto={!!status?.autoReply} meUuid={status?.userUuid} />)}
           {sub === 'broadcast'     && gate(<BroadcastTab />)}
           {sub === 'posts'         && gate(<PostsTab />)}
           {sub === 'subscribers'   && gate(<FansTab />)}
@@ -244,7 +244,7 @@ function OverviewTab() {
 }
 
 // ─── Chats ────────────────────────────────────────────────────────────────
-function ChatsTab({ initialAuto }: { initialAuto: boolean }) {
+function ChatsTab({ initialAuto, meUuid }: { initialAuto: boolean; meUuid?: string }) {
   const [chats, setChats] = useState<any[] | undefined>(undefined);
   const [active, setActive] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -294,8 +294,8 @@ function ChatsTab({ initialAuto }: { initialAuto: boolean }) {
         {!active ? <p style={{ color: 'var(--v3-muted)' }}>Select a conversation.</p> : (<>
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 12, maxHeight: 440 }}>
             {messages.length === 0 && <p style={{ color: 'var(--v3-muted)' }}>No messages.</p>}
-            {messages.map((m, i) => {
-              const mine = !!pick(m, 'isCreator', 'fromCreator', 'isSelf', 'sentByMe');
+            {[...messages].sort((a, b) => Date.parse(pick(a, 'sentAt', 'createdAt') || 0) - Date.parse(pick(b, 'sentAt', 'createdAt') || 0)).map((m, i) => {
+              const mine = (pick(m.sender || {}, 'uuid') || pick(m, 'senderUuid')) === meUuid;
               return <div key={i} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '70%', padding: '8px 12px', borderRadius: 14, background: mine ? 'var(--v3-terracotta)' : 'var(--v3-cream-deep)', color: mine ? '#fff' : 'var(--v3-ink)', fontSize: '0.88rem' }}>{txt(pick(m, 'text', 'content', 'body', 'message')) || <i>(media)</i>}</div>;
             })}
           </div>

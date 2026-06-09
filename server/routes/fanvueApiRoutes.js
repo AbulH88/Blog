@@ -112,6 +112,7 @@ router.get('/status', loadCreator, (req, res) => {
     scopes: c.fanvueScopes || null,
     tokenExpiresAt: c.fanvueTokenExpiresAt || null,
     autoReply: !!c.fanvueAiAutoReply,
+    userUuid: c.fanvueUserUuid || null,
   });
 });
 
