@@ -30,9 +30,13 @@ const JPEG_QUALITY = 82;  // ~85% perceptual quality, ~30% file size of original
  * Reprocess a single file in place. Returns the (possibly rewritten) file object.
  * Animated GIFs are passed through — re-encoding strips animation and we'd
  * rather keep the file as-is than silently break it.
+ * @param {object} opts — { maxWidth } override (default MAX_WIDTH). Small UI
+ *   assets (logos, chat avatars) pass 512: they render ≤120px, so 512 is
+ *   retina-sharp while keeping the file tiny.
  */
-async function processOne(file) {
+async function processOne(file, opts = {}) {
   if (!file?.path) return file;
+  const maxWidth = opts.maxWidth || MAX_WIDTH;
 
   const ext = path.extname(file.originalname || file.filename || '').toLowerCase();
   const isImageByExt = IMAGE_EXTS.has(ext);
@@ -50,7 +54,7 @@ async function processOne(file) {
   try {
     const img = sharp(file.path, { failOn: 'none' });
     const meta = await img.metadata();
-    const needsResize = (meta.width || 0) > MAX_WIDTH;
+    const needsResize = (meta.width || 0) > maxWidth;
 
     // Preserve transparency: PNG/WebP images with an alpha channel must stay
     // in a format that supports alpha. JPEG flattens alpha to black — the
@@ -66,7 +70,7 @@ async function processOne(file) {
     const finalPath = path.join(dir, `${base}${outExt}`);
 
     let pipeline = sharp(file.path, { failOn: 'none' }).rotate(); // auto-orient
-    if (needsResize) pipeline = pipeline.resize({ width: MAX_WIDTH, withoutEnlargement: true });
+    if (needsResize) pipeline = pipeline.resize({ width: maxWidth, withoutEnlargement: true });
     if (keepAlpha) {
       // PNG with palette + max compression — good for logos/UI graphics.
       // palette:true quantizes to 256 colors which dramatically shrinks
@@ -102,18 +106,19 @@ async function processOne(file) {
 
 /**
  * Express middleware. Works with single, array, and fields multer setups.
+ * `opts` is forwarded to processOne (e.g. { maxWidth: 512 } for UI assets).
  */
-async function processImageUploads(req, _res, next) {
+async function processImageUploads(req, _res, next, opts = {}) {
   try {
     if (req.file) {
-      await processOne(req.file);
+      await processOne(req.file, opts);
     }
     if (Array.isArray(req.files)) {
-      for (const f of req.files) await processOne(f);
+      for (const f of req.files) await processOne(f, opts);
     } else if (req.files && typeof req.files === 'object') {
       // .fields() → { fieldName: File[] }
       for (const arr of Object.values(req.files)) {
-        if (Array.isArray(arr)) for (const f of arr) await processOne(f);
+        if (Array.isArray(arr)) for (const f of arr) await processOne(f, opts);
       }
     }
     next();

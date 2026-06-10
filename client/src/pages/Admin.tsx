@@ -708,8 +708,8 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
               onFiles={async (files) => {
                 if (!files.length) return;
                 setStatus('Uploading logo…');
-                // raw=true → server skips sharp resize/recompress so the
-                // transparent PNG stays transparent and pixel-perfect.
+                // raw=true → small-UI-asset profile: optimized to ≤512px,
+                // transparency preserved by the server pipeline.
                 const res = await uploadImage(files[0], { raw: true });
                 if (res.url) {
                   setFormData((prev: any) => ({ ...prev, logoUrl: res.url }));
@@ -753,8 +753,8 @@ const Admin = ({ config, refreshConfig }: { config: any; refreshConfig: () => vo
               onFiles={async (files) => {
                 if (!files.length) return;
                 setStatus('Uploading chat avatar…');
-                // raw=true → keep original quality + alpha; avatars are small
-                // enough that compression isn't needed.
+                // raw=true → small-UI-asset profile: optimized to ≤512px,
+                // alpha preserved; oversized avatars get shrunk server-side.
                 const res = await uploadImage(files[0], { raw: true });
                 if (res.url) {
                   setFormData((prev: any) => ({ ...prev, chatAvatarUrl: res.url }));

@@ -368,12 +368,14 @@ app.use('/f', require('./routes/fanvueRoutes'));
 app.use('/api/fanvue', require('./routes/fanvueApiRoutes'));
 
 // ─── Admin upload ──────────────────────────────────────────────────────────────
-// Custom middleware wrapper so we can conditionally skip sharp processing
-// when the client passes ?raw=1 (used for logos / chat avatars where
-// transparency must be preserved and the file is already small).
+// ?raw=1 (logos / chat avatars) used to SKIP optimization entirely — that's
+// how a 1792×2400 / 3 MB PNG ended up as the navbar logo, served to every
+// visitor. The processor preserves transparency itself (alpha → PNG), so the
+// bypass is unnecessary: raw now means "small UI asset" — same pipeline, but
+// capped at 512px (these render ≤120px; 512 is retina-sharp and tiny).
 const maybeProcessImage = (req, res, next) => {
-  if (req.query?.raw === '1' || req.query?.raw === 'true') return next();
-  return processImageUploads(req, res, next);
+  const isUiAsset = req.query?.raw === '1' || req.query?.raw === 'true';
+  return processImageUploads(req, res, next, isUiAsset ? { maxWidth: 512 } : {});
 };
 app.post('/api/upload', requireAuth, requireCreator, writeLimiter, upload.single('image'), maybeProcessImage, (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
