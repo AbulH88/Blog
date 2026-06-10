@@ -3,6 +3,7 @@ import { SERVER_URL } from '../api';
 import HeroSlider from '../components/HeroSlider';
 import InstagramFeed from '../components/InstagramFeed';
 import { isMembersDomain, crossDomainUrl } from '../lib/hostname';
+import { fanvueLink } from '../lib/fanvueLink';
 
 const fullUrl = (p?: string) => (!p ? '' : (p.startsWith('http') ? p : `${SERVER_URL}${p}`));
 
@@ -98,9 +99,13 @@ const Home = ({ config }: { config: any }) => {
             <p className="v3-hero-sub v3-anim" style={{ animationDelay: '0.4s' }}>
               A little corner of lifestyle, travel &amp; creative work.
             </p>
+            {/* ONE primary CTA — the conversion path. Gallery stays as a ghost
+                on desktop (hidden on phones via CSS); Members lives in the nav. */}
             <div className="v3-hero-cta v3-anim" style={{ animationDelay: '0.55s' }}>
               <Link to={galleryUrl} className="v3-btn v3-btn-ghost">View Gallery</Link>
-              <a href={membersLoginUrl} className="v3-btn v3-btn-primary">Members</a>
+              {config?.fanvueUrl
+                ? <a href={fanvueLink()} className="v3-btn v3-btn-primary"><span aria-hidden>✦ </span>Join VIP</a>
+                : <a href={membersLoginUrl} className="v3-btn v3-btn-primary">Members</a>}
             </div>
           </div>
         </div>

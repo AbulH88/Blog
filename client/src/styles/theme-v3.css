@@ -404,6 +404,12 @@ body.v3, body.v3 .app, body.v3 main.container { max-width: 100vw; }
   /* Portrait crop on phones — matches the mobile hero upload (4:5).
      Faces stay centered, no top crop, fills the screen vertically. */
   .v3-hero-slider { aspect-ratio: 4 / 5; max-height: 70vh; }
+  /* Fill the portrait box. With `contain`, a wide desktop image letterboxes
+     inside the 4:5 slider and the first screen is mostly empty terracotta.
+     `cover` center-crops instead; exact-ratio mobile uploads are unaffected. */
+  .v3-hero-slide { object-fit: cover; }
+  /* Slim the terracotta frame to a thin border on phones. */
+  .v3-hero-frame { padding: 10px; }
 }
 
 /* ───── Welcome section + featured links ──────────────────── */
@@ -4179,6 +4185,9 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
       rgba(31, 26, 20, 0.70) 0%, rgba(31, 26, 20, 0.12) 52%, transparent 100%);
   }
   .v3-hero-sub { display: none; }
+  /* Phones get ONE button — the primary CTA. Gallery lives in the menu. */
+  .v3-hero-cta .v3-btn-ghost { display: none; }
+  .v3-hero-cta .v3-btn-primary { width: 100%; text-align: center; }
 }
 
 /* ── Editorial section heading ───────────────────────────────── */
@@ -4343,7 +4352,13 @@ a.v3-ig-card:hover { transform: translateY(-2px); }
   font-family: var(--v3-body);
   font-weight: 800; font-size: 0.9rem; letter-spacing: 0.3px;
   box-shadow: 0 8px 24px rgba(199, 90, 62, 0.34);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  transition: transform 0.25s ease, box-shadow 0.15s ease, filter 0.15s ease, opacity 0.25s ease;
+}
+/* Hidden until the visitor scrolls past the hero (see FanvueFloat.tsx). */
+.v3-fanvue-float--hidden {
+  opacity: 0;
+  transform: translateY(72px);
+  pointer-events: none;
 }
 .v3-fanvue-float:hover {
   transform: translateY(-2px);
